@@ -33,7 +33,7 @@ The schema files are the source of truth. If another document differs, the schem
 | `live_event` | Eventstream envelope | `event_id` | `occurred_at` / Eventhouse ingestion | Data and replay (replay) | KQL |
 | `service_event` | Service event from `ServiceEvents()` | `event_id` | `occurred_at` / `ingested_at` | Data and replay (KQL) | Dashboard (Activator, case writer) |
 | `account_context` | Context copy in Eventhouse | `mortgage_id`, `cycle_id`, `context_version` | – | Data and replay (`pl_copy_context`) | Dashboard (case writer), KQL |
-| `segment_membership` | Segment per account, cycle and run. Append only. | `mortgage_id`, `cycle_id`, `run_id` | – | Models | Dashboard |
+| `segment_membership` | Segment per account, cycle and run. Append only. | `mortgage_id`, `cycle_id`, `run_id` (`account_key` stored) | – | Models | Dashboard |
 | `risk_updated` | Event after a completed scoring run | `event_id` | `scored_at` | Models | Dashboard |
 
 `segment_membership` and `risk_updated` are owned by the Models and evaluation package. They are here because the blueprint data contract and event contract list them.
