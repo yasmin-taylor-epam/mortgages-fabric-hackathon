@@ -14,6 +14,14 @@ gh run list -R yasmin-taylor-epam/customer-pulse-360 -w pages.yml -L 1
 curl.exe -s -o NUL -w "%{http_code}" https://yasmin-taylor-epam.github.io/customer-pulse-360/
 ```
 
+## Build workspace
+
+- The build lives in `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/` and `reports/`. The README "Build layout" section names the owner of each folder.
+- Each work package (data and replay, models and evaluation, dashboard and action) runs in its own session. Change only the files that your work package owns.
+- The invariants INV-1 to INV-6 and the failure cases T01 to T07 in `site/index.html` are the acceptance rules. Do not weaken them.
+- Use synthetic data only. Never commit real customer records, generated output in `data/output/`, credentials or connection secrets.
+- The Fabric workspace is not ready yet. Do not claim that an item runs in Fabric until someone has run it there.
+
 ## Writing style
 
 - Write reader-facing text in clear, concise British English.

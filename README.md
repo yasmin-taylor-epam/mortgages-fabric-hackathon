@@ -4,7 +4,7 @@
 
 Mortgage Renewal Early Warning is a proposed customer intelligence system on Microsoft Fabric. It joins customer history with live activity, groups accounts, scores churn risk, and sends retention alerts for human review.
 
-**Status:** Proposal. The team chose Mortgage Renewal Early Warning as the scenario.
+**Status:** Proposal sent on 18 October. The build runs from 26 October to 6 November. The team chose Mortgage Renewal Early Warning as the scenario.
 
 ## Review the proposal
 
@@ -37,9 +37,27 @@ The scenario page maps these goals to Microsoft Fabric tools. The suggested tool
 - Feature attributions explain how model inputs affect a score. They do not prove the customer's true motivation or that an action will work.
 - Synthetic results can show that a workflow works. They cannot prove improved retention. That claim needs evidence from real actions and a comparison group.
 
+## Build layout
+
+The build follows the three work packages in the blueprint (section 06). Each work package can run in its own Copilot session. A session changes only the files that its work package owns.
+
+| Folder | Contents | Owner |
+| --- | --- | --- |
+| `data/` | Data contracts, synthetic data generator and replay fixtures. | Data and replay |
+| `kql/` | Eventhouse tables, ingestion mappings and journey queries. | Data and replay |
+| `notebooks/` | Validation, feature snapshot, training, scoring and evaluation notebooks. | Shared. Each notebook has one owner. |
+| `pipelines/` | Fabric pipeline definitions. | Shared. Each pipeline has one owner. |
+| `action/` | Activator rules, Power Automate flows and the SharePoint review-case list. | Dashboard and action |
+| `reports/` | Power BI semantic model and mortgage report. | Dashboard and action |
+
+Each folder README lists its planned items and the rules that apply. The Fabric workspace is not ready yet. Build items that run locally first.
+
+This repository holds the build for now. The team may move the build to a separate repository later.
+
 ## Repository contents
 
 - `site/index.html` — current scenario page and proposal.
+- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/` — build folders. See [Build layout](#build-layout).
 - `docs/archive/previous-readme.md` — previous repository overview.
 - `docs/archive/technical-blueprint.md` — earlier technical blueprint, retained for reference.
 
