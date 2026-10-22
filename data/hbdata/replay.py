@@ -149,7 +149,7 @@ def service_events(raw: pd.DataFrame, context: pd.DataFrame, cutoff=None) -> pd.
                              ingested_at=e["ingested_at"], evidence_ids=ev_ids))
     if not rows:
         return pd.DataFrame(columns=cols)
-    out = map_cycle(pd.DataFrame(rows), context)
+    out = map_cycle(pd.DataFrame(rows), context).sort_values(["ingested_at", "event_id"])  # arrival order
     return io.coerce(out, "service_event")
 
 

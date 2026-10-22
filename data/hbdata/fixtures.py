@@ -152,7 +152,7 @@ def case_t04() -> dict:
                          "snapshot": {"ctx_reversals_180d": 1, "ctx_missed_payments_180d": 1, "ctx_arrears_amount": 1100.0},
                          "service_events": [{"event_id": "PAY-900000405", "event_type": "payment_reversed",
                                              "evidence_ids": ["PAY-900000405", "PAY-900000403"]}],
-                         "note": "A reversal is not proof of default. Dashboard opens a review and requests rescoring; Models rescores."}}
+                         "note": "A reversal is not proof of default. It creates no new review case by itself. Dashboard flags open support and renewal cases for a recheck and records rescore_requested with these evidence IDs; Models rescores. A new renewal review starts only if the rescore publishes an eligible risk_updated event."}}
 
 
 def case_t05() -> dict:

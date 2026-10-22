@@ -20,7 +20,7 @@ Each file has `inputs` (rows per dataset), optional `live_events` (live-event en
 | `T01.json` | The same eligible event is replayed. | One service event and one journey row per `event_id`. | Dashboard: one review case per key. |
 | `T02.json` | Unknown account or conflicting borrower mapping. | Source records and live events go to quarantine. `identity_status = conflict`. | – |
 | `T03.json` | Payment feed stale or missing. | `ctx_payment_feed_stale = true` and null arrears. A missing feed is not zero arrears. | Dashboard: show the stale flag. |
-| `T04.json` | A payment is reversed. | Both ledger rows stay. An invalid reversal goes to quarantine. A live reversal becomes `payment_reversed`. | Dashboard: open a review and request rescoring. Models: rescore. |
+| `T04.json` | A payment is reversed. | Both ledger rows stay. An invalid reversal goes to quarantine. A live reversal becomes `payment_reversed`. | Dashboard: flag open cases for a recheck and record `rescore_requested`; no new case from the reversal alone. Models: rescore. |
 | `T05.json` | A scoring run fails. | `ScoreContext` keeps the last completed score, marked `stale`. Service events continue. | Models: publish no `risk_updated` for the failed run. |
 | `T06.json` | A review-case write fails. | The `risk_updated` example meets its contract. | Dashboard: retry with the same key; one case. |
 | `T07.json` | Three contacts about one unresolved problem; three contacts about separate enquiries. | Contacts per case and repeat contacts differ. A state change is not a contact. | – |
