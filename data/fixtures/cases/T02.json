@@ -1,0 +1,180 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T02",
+  "title": "An unknown account or a conflicting borrower mapping arrives.",
+  "rule": "The record goes to quarantine.",
+  "behaviour_owner": [
+    "Data and replay"
+  ],
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800201|C02",
+        "mortgage_id": "HB-M-800201",
+        "cycle_id": "C02",
+        "cohort_id": "2027-01",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2025-01-15T00:00:00Z",
+        "deal_end_at": "2027-01-15T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2025-01-15T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2025-01-15T02:00:00Z",
+        "ingested_at": "2025-01-15T03:00:00Z"
+      },
+      {
+        "account_key": "HB-M-800202|C02",
+        "mortgage_id": "HB-M-800202",
+        "cycle_id": "C02",
+        "cohort_id": "2027-01",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2025-01-15T00:00:00Z",
+        "deal_end_at": "2027-01-15T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2025-01-15T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2025-01-15T02:00:00Z",
+        "ingested_at": "2025-01-15T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800201",
+        "party_id": "HB-P-8002011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      },
+      {
+        "mortgage_id": "HB-M-800201",
+        "party_id": "HB-P-8002012",
+        "role": "primary",
+        "valid_from": "2023-06-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2023-06-01T00:00:00Z",
+        "ingested_at": "2023-06-01T00:00:00Z"
+      },
+      {
+        "mortgage_id": "HB-M-800202",
+        "party_id": "HB-P-8002021",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ],
+    "payment": [
+      {
+        "entry_id": "PAY-900000201",
+        "mortgage_id": "HB-M-899999",
+        "entry_type": "scheduled_collection",
+        "due_at": "2026-09-01T00:00:00Z",
+        "posted_at": "2026-09-01T10:00:00Z",
+        "ingested_at": "2026-09-01T12:00:00Z",
+        "amount_due": 900.0,
+        "amount_received": 900.0,
+        "reversal_of": null,
+        "reason_code": null
+      }
+    ],
+    "servicing_case_event": [
+      {
+        "case_event_id": "SCE-900000201",
+        "case_id": "CASE-9000201",
+        "mortgage_id": "HB-M-800202",
+        "changed_at": "2026-09-02T09:00:00Z",
+        "recorded_at": "2026-09-02T09:10:00Z",
+        "category": "general_enquiry",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      }
+    ],
+    "servicing_contact": [
+      {
+        "contact_id": "CON-90000201",
+        "case_id": "CASE-9000299",
+        "mortgage_id": "HB-M-800202",
+        "occurred_at": "2026-09-02T09:00:00Z",
+        "ingested_at": "2026-09-02T09:05:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      }
+    ]
+  },
+  "live_events": [
+    {
+      "event_id": "PTE-900000201",
+      "event_type": "transfer_request_event",
+      "schema_version": "1.0",
+      "source_system": "renewal_portal",
+      "mortgage_id": "HB-M-899998",
+      "application_id": "PTR-9000201",
+      "occurred_at": "2026-10-20T09:00:00Z",
+      "sent_at": "2026-10-20T09:00:00Z",
+      "simulated_ingested_at": "2026-10-20T09:00:30Z",
+      "payload": {
+        "stage": "documents_received",
+        "status": "error",
+        "error_code": "SYS-503",
+        "error_class": "software_fault",
+        "fault_verified": true,
+        "channel": "portal"
+      }
+    },
+    {
+      "event_id": "PTE-900000202",
+      "event_type": "transfer_request_event",
+      "schema_version": "1.0",
+      "source_system": "renewal_portal",
+      "mortgage_id": "HB-M-800201",
+      "application_id": "PTR-9000202",
+      "occurred_at": "2026-10-20T09:01:00Z",
+      "sent_at": "2026-10-20T09:01:00Z",
+      "simulated_ingested_at": "2026-10-20T09:01:30Z",
+      "payload": {
+        "stage": "documents_received",
+        "status": "error",
+        "error_code": "SYS-503",
+        "error_class": "software_fault",
+        "fault_verified": true,
+        "channel": "portal"
+      }
+    }
+  ],
+  "expected": {
+    "quarantine_by_reason": {
+      "unknown_account": 1,
+      "conflicting_borrower_mapping": 2,
+      "unknown_case_link": 1
+    },
+    "identity_status": {
+      "HB-M-800201": "conflict",
+      "HB-M-800202": "ok"
+    },
+    "live_accepted": 0,
+    "live_quarantine_by_reason": {
+      "unknown_account": 1,
+      "conflicting_borrower_mapping": 1
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/servicing_contact.schema.json",
+  "title": "servicing_contact",
+  "description": "One customer contact linked to a source servicing case. Count each contact_id once. A case state change is not a contact.",
+  "x-grain": "One row per contact_id.",
+  "x-primary-key": ["contact_id"],
+  "x-event-time": "occurred_at",
+  "x-ingestion-time": "ingested_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contact_id", "case_id", "mortgage_id", "occurred_at", "ingested_at", "channel", "direction"],
+  "properties": {
+    "contact_id": {"type": "string", "pattern": "^CON-[0-9]{8}$"},
+    "case_id": {"type": "string", "pattern": "^CASE-[0-9]{7}$"},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "channel": {"type": "string", "enum": ["phone", "email", "webchat", "secure_message"]},
+    "direction": {"type": "string", "enum": ["inbound", "outbound"]}
+  }
+}

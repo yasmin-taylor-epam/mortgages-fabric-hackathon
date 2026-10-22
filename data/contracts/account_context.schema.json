@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/account_context.schema.json",
+  "title": "account_context",
+  "description": "Versioned copy of account context that pl_copy_context writes to Eventhouse (blueprint step 7). The review-case writer reads it on every delivery and retry. It holds no balance. An account with no row is unknown and goes to quarantine (T02).",
+  "x-grain": "One row per mortgage_id + cycle_id + context_version.",
+  "x-primary-key": ["mortgage_id", "cycle_id", "context_version"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mortgage_id", "cycle_id", "deal_start_at", "deal_end_at", "checkpoint_at", "identity_status", "payment_support_status", "owner_id", "context_version", "copied_at"],
+  "properties": {
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "cycle_id": {"type": "string", "pattern": "^C[0-9]{2}$"},
+    "deal_start_at": {"type": "string", "format": "date-time"},
+    "deal_end_at": {"type": "string", "format": "date-time"},
+    "checkpoint_at": {"type": "string", "format": "date-time", "description": "deal_end_at minus 90 days."},
+    "identity_status": {"type": "string", "enum": ["ok", "conflict"], "description": "conflict when the borrower mapping is in conflict. Anything other than ok goes to quarantine."},
+    "payment_support_status": {"type": "string", "enum": ["active", "none", "unknown"], "description": "active = an unresolved payment-support case. unknown = the servicing feed is stale. unknown holds a renewal review."},
+    "owner_id": {"type": "string", "pattern": "^ADV-[0-9]{3}$"},
+    "context_version": {"type": "string", "description": "Version of this copy, for example ctx-20261015T000000Z."},
+    "copied_at": {"type": "string", "format": "date-time"}
+  }
+}

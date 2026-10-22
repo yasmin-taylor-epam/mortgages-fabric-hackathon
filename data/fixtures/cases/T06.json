@@ -1,0 +1,49 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T06",
+  "title": "A review-case write fails.",
+  "rule": "The write retries with the same key. No duplicate review case appears.",
+  "behaviour_owner": [
+    "Dashboard and action"
+  ],
+  "inputs": {
+    "risk_updated": [
+      {
+        "event_id": "RUP-20261020-800601",
+        "event_type": "risk_updated",
+        "schema_version": "1.0",
+        "mortgage_id": "HB-M-800601",
+        "cycle_id": "C02",
+        "run_id": "RUN-20261020-0800",
+        "snapshot_id": "SNP-0123456789abcdef",
+        "model_version": "hb-refi-clf:1",
+        "cluster_model_version": "hb-seg:1",
+        "segment_id": "S2",
+        "scored_at": "2026-10-20T08:03:00Z",
+        "cutoff_at": "2026-10-20T08:00:00Z",
+        "target": "confirmed_external_refinancing",
+        "score": 0.83,
+        "evidence_ids": [
+          "PTR-9000601",
+          "CASE-9000601"
+        ]
+      }
+    ]
+  },
+  "simulated_failures": [
+    {
+      "attempt": 1,
+      "result": "timeout"
+    },
+    {
+      "attempt": 2,
+      "result": "duplicate_key"
+    }
+  ],
+  "expected": {
+    "case_key": "HB-M-800601|C02|renewal",
+    "event_id_on_every_attempt": "RUP-20261020-800601",
+    "review_cases_for_key": 1
+  }
+}

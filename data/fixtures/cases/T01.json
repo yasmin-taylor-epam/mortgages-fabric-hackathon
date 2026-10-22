@@ -1,0 +1,102 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T01",
+  "title": "The same eligible event is replayed.",
+  "rule": "One review case for the same case key.",
+  "behaviour_owner": [
+    "Data and replay",
+    "Dashboard and action"
+  ],
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800101|C02",
+        "mortgage_id": "HB-M-800101",
+        "cycle_id": "C02",
+        "cohort_id": "2027-01",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2025-01-10T00:00:00Z",
+        "deal_end_at": "2027-01-10T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2025-01-10T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2025-01-10T02:00:00Z",
+        "ingested_at": "2025-01-10T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800101",
+        "party_id": "HB-P-8001011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "live_events": [
+    {
+      "event_id": "PTE-900000101",
+      "event_type": "transfer_request_event",
+      "schema_version": "1.0",
+      "source_system": "renewal_portal",
+      "mortgage_id": "HB-M-800101",
+      "application_id": "PTR-9000101",
+      "occurred_at": "2026-10-20T09:00:00Z",
+      "sent_at": "2026-10-20T09:00:00Z",
+      "simulated_ingested_at": "2026-10-20T09:00:30Z",
+      "payload": {
+        "stage": "documents_received",
+        "status": "error",
+        "error_code": "SYS-503",
+        "error_class": "software_fault",
+        "fault_verified": true,
+        "channel": "portal"
+      }
+    },
+    {
+      "event_id": "PTE-900000101",
+      "event_type": "transfer_request_event",
+      "schema_version": "1.0",
+      "source_system": "renewal_portal",
+      "mortgage_id": "HB-M-800101",
+      "application_id": "PTR-9000101",
+      "occurred_at": "2026-10-20T09:00:00Z",
+      "sent_at": "2026-10-20T09:05:00Z",
+      "simulated_ingested_at": "2026-10-20T09:05:30Z",
+      "payload": {
+        "stage": "documents_received",
+        "status": "error",
+        "error_code": "SYS-503",
+        "error_class": "software_fault",
+        "fault_verified": true,
+        "channel": "portal"
+      }
+    }
+  ],
+  "expected": {
+    "raw_event_rows": 2,
+    "service_event_count": 1,
+    "service_events": [
+      {
+        "event_id": "PTE-900000101",
+        "event_type": "portal_fault_verified",
+        "cycle_id": "C02"
+      }
+    ],
+    "journey_timeline_rows": 1,
+    "dashboard_review_cases_for_key": {
+      "HB-M-800101|C02|technical": 1
+    }
+  }
+}

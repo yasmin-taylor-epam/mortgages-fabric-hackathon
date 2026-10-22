@@ -1,0 +1,60 @@
+// Journey queries (blueprint section 03, step 6). Each takes a cutoff.
+// INV-2: only events with occurred_at and ingested_at at or before the cutoff.
+// T01: one row per event_id (earliest ingestion).
+// Twin: data/hbdata/journeys.py. Keep both in step. Not yet run in Fabric.
+// Null versus empty: tostring() of a missing payload value gives "". The twin uses null.
+.execute database script <|
+.create-or-alter function with (folder = "journeys", docstring = "Accepted product-transfer request events known at the cutoff, one row per event_id.")
+TransferEventsAt(cutoff: datetime) {
+    RawEvents
+    | where event_type == "transfer_request_event"
+    | where occurred_at <= cutoff and ingested_at <= cutoff
+    | summarize arg_min(ingested_at, *) by event_id
+    | extend stage = tostring(payload.stage), status = tostring(payload.status), error_code = tostring(payload.error_code),
+             error_class = tostring(payload.error_class), fault_verified = tobool(payload.fault_verified), channel = tostring(payload.channel)
+    | project event_id, application_id, mortgage_id, occurred_at, ingested_at, stage, status, error_code, error_class, fault_verified, channel
+}
+.create-or-alter function with (folder = "journeys", docstring = "Event-level flags: sequence, stage visit, software fault and retry.")
+JourneyFlags(cutoff: datetime) {
+    TransferEventsAt(cutoff)
+    | order by application_id asc, occurred_at asc, ingested_at asc, event_id asc
+    | extend seq = row_number(1, prev(application_id) != application_id)
+    | extend new_visit = iff(prev(application_id) != application_id or prev(stage) != stage, 1, 0)
+    | extend visit = row_cumsum(new_visit, prev(application_id) != application_id)
+    | extend is_software_fault = error_class == "software_fault"
+    | extend faults_so_far = row_cumsum(toint(is_software_fault), prev(application_id) != application_id or prev(visit) != visit)
+    | extend fault_before = (faults_so_far - toint(is_software_fault)) > 0
+    | extend is_retry = status == "in_progress" and fault_before
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 1: each request's stages and portal errors in time order.")
+JourneyTimeline(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | project application_id, mortgage_id, seq, event_id, occurred_at, ingested_at, stage, status, error_code, error_class, fault_verified, channel
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 2: days that a request remains at one stage. An open stage visit runs to the cutoff.")
+StageDwell(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | extend is_last = next(application_id) != application_id or next(visit) != visit
+    | summarize mortgage_id = take_any(mortgage_id), stage = take_any(stage), entered_at = min(occurred_at), last_event_at = max(occurred_at),
+                last_status = take_anyif(status, is_last), events = count(), errors = countif(status == "error")
+                by application_id, visit
+    | order by application_id asc, visit asc
+    | extend next_entered_at = iff(next(application_id) == application_id, next(entered_at), datetime(null))
+    | extend terminal = last_status in ("completed", "abandoned", "rejected")
+    | extend is_open = isnull(next_entered_at) and not(terminal)
+    | extend left_at = case(isnotnull(next_entered_at), next_entered_at, terminal, last_event_at, cutoff)
+    | extend dwell_days = (left_at - entered_at) / 1d
+    | project application_id, mortgage_id, visit, stage, entered_at, left_at, dwell_days, is_open, events, errors
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 3: retries after a renewal-portal software error, per request.")
+RetriesAfterError(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | summarize mortgage_id = take_any(mortgage_id), software_errors = countif(is_software_fault),
+                verified_faults = countif(is_software_fault and fault_verified == true), retries_after_error = countif(is_retry),
+                last_software_error_at = maxif(occurred_at, is_software_fault), last_fault_visit = maxif(visit, is_software_fault),
+                max_visit = max(visit)
+                by application_id
+    | where software_errors > 0
+    | extend recovered = max_visit > last_fault_visit
+    | project application_id, mortgage_id, software_errors, verified_faults, retries_after_error, last_software_error_at, recovered
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/quarantine_record.schema.json",
+  "title": "quarantine_record",
+  "description": "A source record or live event that failed validation. The record stays visible here. It never enters clean history or model inputs.",
+  "x-grain": "One row per quarantine_id.",
+  "x-primary-key": ["quarantine_id"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["quarantine_id", "dataset", "record_key", "mortgage_id", "reason", "detail", "detected_at", "record_json"],
+  "properties": {
+    "quarantine_id": {"type": "string", "pattern": "^QRN-[0-9a-f]{16}$"},
+    "dataset": {"type": "string"},
+    "record_key": {"type": "string"},
+    "mortgage_id": {"type": ["string", "null"]},
+    "reason": {"type": "string", "enum": ["schema_violation", "unknown_account", "conflicting_borrower_mapping", "unknown_case_link", "conflicting_case_link", "conflicting_duplicate", "invalid_reversal", "ingested_before_occurred"]},
+    "detail": {"type": "string"},
+    "detected_at": {"type": "string", "format": "date-time"},
+    "record_json": {"type": "string", "description": "The original record as JSON."}
+  }
+}
