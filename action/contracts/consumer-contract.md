@@ -1,6 +1,6 @@
 # Consumer contract: Dashboard and action
 
-**Status:** Draft. Data and replay agreed sections 2, 3 and the Data and replay rows of section 5 on 22 October 2026. Their schemas are in `data/contracts/*.schema.json` (PR #8). The tests in `action/tests/test_action_data_integration.py` and `reports/tests/test_report_data_integration.py` check this file against those schemas and fixtures. Models and evaluation has not replied yet.
+**Status:** Agreed by both producers on 22 October 2026. Data and replay agreed sections 2, 3 and their rows of section 5. Their schemas are in `data/contracts/*.schema.json` (PR #8). Models and evaluation agreed sections 1, 4 and their rows of section 5. They write the Gold tables to `data/output/lakehouse/gold/`. The tests in `action/tests/test_action_data_integration.py` and `reports/tests/test_report_data_integration.py` check this file against the producer schemas, fixtures and generated tables.
 
 This file lists the data that `action/` and `reports/` read. The producing work packages own the schemas. If a producer schema differs from this file, the producer schema wins and this file changes.
 
@@ -82,6 +82,8 @@ The context holds no loan balance. Payment-support priority must not depend on b
 | `status` | `running`, `completed`, `failed` | Only `completed` outputs are visible. |
 | `started_at`, `completed_at` | ISO 8601, UTC | `completed_at` is null unless the run completed. |
 
+The table also holds `model_version`, `cluster_model_version`, `cutoff_at` and `error`. `error` is null unless the run failed. This package does not read them. A failed run writes no outbox rows and publishes no `risk_updated` event. Agreed.
+
 ## 5. Gold tables for the report (Direct Lake)
 
 Direct Lake does not allow calculated columns on Lakehouse tables. Each table therefore needs its join keys as stored columns.
@@ -98,18 +100,18 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 | `servicing_contact` | One customer contact. | Data and replay | `contact_id`, `case_id`, `mortgage_id`, `occurred_at`, `ingested_at` |
 | `score_runs` | One scoring run. | Models and evaluation | See section 4. |
 | `account_scores` | One account, cycle and run. | Models and evaluation | `account_key`, `mortgage_id`, `cycle_id`, `run_id`, `snapshot_id`, `model_version`, `score`, `scored_at`, `cutoff_at` |
-| `feature_attributions` | One account, run and feature. | Models and evaluation | `account_key`, `run_id`, `feature_name`, `contribution` |
+| `feature_attributions` | One account, run and feature. | Models and evaluation | `account_key`, `run_id`, `feature_name`, `feature_value`, `contribution`, `rank` (1 = largest absolute contribution) |
 | `segment_membership` | One account, cycle and run. Append only. | Models and evaluation | `account_key`, `mortgage_id`, `cycle_id`, `run_id`, `segment_id`, `cluster_model_version`, `assigned_at`, `valid_from`, `valid_to` |
 | `review_cases` | One review case. | Dashboard and action | The SharePoint list columns in `action/sharepoint/review-cases.list.json`. |
 | `report_calendar` | One row per date. **Proposed.** | Dashboard and action | `date` |
 
 Conventions that the report relies on:
 
-- `account_key` is `mortgage_id + "|" + cycle_id`, stored as a column. Agreed for `mortgage_account`. **Proposed** for the Models and evaluation tables.
+- `account_key` is `mortgage_id + "|" + cycle_id`, stored as a column on `mortgage_account`, `account_scores`, `feature_attributions` and `segment_membership`. Agreed.
 - A reversal row has `entry_type = reversal`, `reversal_of` = the original `entry_id`, `amount_received` = minus the original amount and `amount_due = 0`. The other entry types are `scheduled_collection` and `manual_payment`. Manual payments also have `amount_due = 0`. Summing rows gives the position. Agreed.
 - Case status is `opened`, `in_progress`, `resolved` or `reopened`. A case is resolved only when its latest state at the report time is `resolved`. Both `changed_at` and `recorded_at` must be at or before that time. `reopened` means unresolved. Agreed.
 - `feed_watermark.is_stale` comes from the validation step. `stale_threshold_hours` is a number. The report also treats the feed as stale when `checked_at` or `max_ingested_at` is older than `stale_threshold_hours`. The `payment` dataset row drives the arrears display. Agreed.
-- `segment_membership` rows are never changed. The report takes the latest row that started at or before the chosen date.
+- `segment_membership` rows are never changed. `valid_to` is always null when a row is written, and no later run sets it. The report takes the latest row that started at or before the chosen date. It does not read `valid_to`. Agreed.
 - Times are UTC.
 
 ## 6. What this package produces

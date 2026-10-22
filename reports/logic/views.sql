@@ -142,14 +142,13 @@ FROM support_history(as_of)
 GROUP BY mortgage_id;
 
 -- Segment history: the segment of each account on any past date.
--- Rows are append-only, so valid_to may stay NULL on earlier rows. Take the latest row that started at or before as_of.
+-- Rows are append-only and valid_to stays NULL (Models and evaluation). Take the latest row that started at or before as_of.
 CREATE OR REPLACE MACRO segment_as_of(as_of) AS TABLE
 WITH eligible AS (
     SELECT *, row_number() OVER (PARTITION BY account_key ORDER BY valid_from DESC, assigned_at DESC) AS rn
     FROM segment_membership
     WHERE valid_from <= as_of
       AND assigned_at <= as_of
-      AND (valid_to IS NULL OR valid_to > as_of)
 )
 SELECT account_key, mortgage_id, cycle_id, segment_id, run_id, cluster_model_version, valid_from, valid_to
 FROM eligible

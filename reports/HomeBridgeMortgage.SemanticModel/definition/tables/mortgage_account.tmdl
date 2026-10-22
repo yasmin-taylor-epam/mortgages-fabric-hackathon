@@ -195,7 +195,6 @@ table mortgage_account
 			        segment_membership,
 			        segment_membership[valid_from] <= _d
 			            && segment_membership[assigned_at] <= _d
-			            && ( ISBLANK ( segment_membership[valid_to] ) || segment_membership[valid_to] > _d )
 			    )
 			VAR _start = MAXX ( _rows, segment_membership[valid_from] )
 			RETURN MAXX ( FILTER ( _rows, segment_membership[valid_from] = _start ), segment_membership[segment_id] )

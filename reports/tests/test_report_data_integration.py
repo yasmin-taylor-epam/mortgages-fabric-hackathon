@@ -24,6 +24,8 @@ DATA_AND_REPLAY_TABLES = [
     "mortgage", "mortgage_account", "payment", "feed_watermark", "transfer_request_event",
     "servicing_case", "servicing_case_event", "servicing_contact",
 ]
+MODELS_TABLES = ["score_runs", "account_scores", "feature_attributions", "segment_membership"]
+GOLD = DATA_DIR / "output" / "lakehouse" / "gold"
 
 needs_contracts = pytest.mark.skipif(not (CONTRACTS / "mortgage_account.schema.json").exists(),
                                      reason=f"Data and replay contracts not found at {CONTRACTS}")
@@ -134,6 +136,16 @@ def test_support_history_agrees_with_the_producer_case_summary(generated):
     assert set(mine) == set(theirs)
     assert [c for c in mine if mine[c]["contacts"] != theirs[c]["contact_count"]] == []
     assert [c for c in mine if mine[c]["is_resolved"] != theirs[c]["is_resolved"]] == []
+
+
+@pytest.mark.parametrize("table", MODELS_TABLES)
+def test_report_columns_exist_in_the_models_gold_tables(table):
+    path = GOLD / f"{table}.parquet"
+    if not path.exists():
+        pytest.skip(f"{path} not found. Models and evaluation writes it.")
+    names = {r[0] for r in duckdb.sql(f"DESCRIBE SELECT * FROM read_parquet('{path.as_posix()}')").fetchall()}
+    missing = set(gold_columns()[table]) - names
+    assert not missing, f"{table}: report reads {sorted(missing)}, which the Gold table does not have"
 
 
 def test_payment_reversals_net_against_the_original(generated):

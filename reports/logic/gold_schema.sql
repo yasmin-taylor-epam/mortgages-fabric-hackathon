@@ -109,7 +109,9 @@ CREATE TABLE IF NOT EXISTS feature_attributions (
     account_key   VARCHAR NOT NULL,
     run_id        VARCHAR NOT NULL,
     feature_name  VARCHAR NOT NULL,
-    contribution  DOUBLE NOT NULL
+    feature_value DOUBLE,
+    contribution  DOUBLE NOT NULL,
+    rank          INTEGER NOT NULL       -- 1 = largest absolute contribution
 );
 
 CREATE TABLE IF NOT EXISTS segment_membership (
@@ -121,7 +123,7 @@ CREATE TABLE IF NOT EXISTS segment_membership (
     cluster_model_version  VARCHAR NOT NULL,
     assigned_at            TIMESTAMP NOT NULL,
     valid_from             TIMESTAMP NOT NULL,
-    valid_to               TIMESTAMP,
+    valid_to               TIMESTAMP,     -- always NULL when written; rows are never edited
     PRIMARY KEY (account_key, run_id)
 );
 

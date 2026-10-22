@@ -16,11 +16,22 @@ table feature_attributions
 		summarizeBy: none
 		sourceColumn: feature_name
 
+	column feature_value
+		dataType: double
+		formatString: 0.000
+		summarizeBy: none
+		sourceColumn: feature_value
+
 	column contribution
 		dataType: double
 		formatString: 0.000
 		summarizeBy: none
 		sourceColumn: contribution
+
+	column rank
+		dataType: int64
+		summarizeBy: none
+		sourceColumn: rank
 
 	partition feature_attributions = entity
 		mode: directLake

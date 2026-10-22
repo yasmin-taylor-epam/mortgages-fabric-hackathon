@@ -23,11 +23,11 @@
                       "Entity": "feature_attributions"
                     }
                   },
-                  "Property": "run_id"
+                  "Property": "rank"
                 }
               },
-              "queryRef": "feature_attributions.run_id",
-              "nativeQueryRef": "run_id"
+              "queryRef": "feature_attributions.rank",
+              "nativeQueryRef": "rank"
             },
             {
               "field": {
@@ -51,11 +51,39 @@
                       "Entity": "feature_attributions"
                     }
                   },
+                  "Property": "feature_value"
+                }
+              },
+              "queryRef": "feature_attributions.feature_value",
+              "nativeQueryRef": "feature_value"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
                   "Property": "contribution"
                 }
               },
               "queryRef": "feature_attributions.contribution",
               "nativeQueryRef": "contribution"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "run_id"
+                }
+              },
+              "queryRef": "feature_attributions.run_id",
+              "nativeQueryRef": "run_id"
             }
           ]
         }
@@ -75,7 +103,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Score evidence: feature attributions'"
+                  "Value": "'Score evidence: feature attributions (1 = largest)'"
                 }
               }
             }

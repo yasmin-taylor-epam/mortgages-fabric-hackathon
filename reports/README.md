@@ -63,6 +63,7 @@ The schema test downloads the Microsoft JSON schemas from `github.com/microsoft/
 - Every column that the report reads exists in the producer contract in `data/contracts/`.
 - The T03 fixture scenarios (missing, stale and fresh payment feed) give the expected feed state and arrears.
 - The report rules run on the generated tables in `data/output/lakehouse/clean/`. Contacts per case and resolution agree with the producer's `servicing_case` summary for every case.
+- Every column that the report reads from a Models and evaluation table exists in `data/output/lakehouse/gold/`.
 
 These tests skip when the files are missing. Run `cd data; python -m hbdata all` first. Set `HOMEBRIDGE_DATA_DIR` to use another `data/` folder.
 
@@ -84,7 +85,7 @@ dotnet run --project reports\tools\tmdl-check -- reports\HomeBridgeMortgage.Sema
 
 - `review_cases` needs a copy of the SharePoint list in the Lakehouse. The copy job is not designed yet.
 - `report_calendar` needs one row per date. This package owns it. The job that fills it is not designed yet.
-- Models and evaluation has not confirmed `account_key` on its tables.
+- The real score threshold and score-age limit. Models and evaluation will send the frozen threshold.
 
 ## Rules
 
