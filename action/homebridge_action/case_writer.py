@@ -7,6 +7,7 @@ The writer mirrors the proposed Power Automate flow (action/power_automate/revie
 4. Write the case with the key mortgage_id + cycle_id + action_family.
    - A duplicate key reads the existing case (T01, INV-3).
    - A transient failure retries with the same key. Each failure is visible in the exception register (T06).
+   - Before each retry, steps 2 and 3 run again. A change in payment-support status can change the route.
 5. Apply holds and recheck flags. Earlier audit rows never change.
 
 The writer sends no customer message and makes no rate or credit decision (INV-6).
@@ -65,29 +66,57 @@ class CaseWriter:
 
     def handle(self, candidate: Candidate) -> WriteResult:
         alert_received_at = self.clock()
+        decision = self._decide(candidate, "decision")
+        if decision.outcome != Outcome.CREATE_CASE:
+            return self._finish_without_case(candidate, decision)
+
+        case_key = None
+        for attempt in range(1, self.max_attempts + 1):
+            if attempt > 1:
+                # Recheck identity, payment-support status, run status and freshness before each retry.
+                decision = self._decide(candidate, "decision_rechecked")
+                if decision.outcome != Outcome.CREATE_CASE:
+                    return self._finish_without_case(candidate, decision)
+            case = self._build_case(candidate, decision, alert_received_at)
+            case_key = case.case_key
+            try:
+                self.store.insert_case(case)
+            except DuplicateCaseKey:
+                existing = self.store.get_case(case.case_key)
+                self._audit(candidate, decision, "duplicate_key_read_existing", decision.reason,
+                            {"existing_source_event_id": existing.source_event_id if existing else None,
+                             "attempt": attempt}, case.case_key)
+                self._hold(candidate, decision)
+                return WriteResult(decision, existing, created=False)
+            except TransientWriteError as exc:
+                self._exception(candidate, case.case_key, "case_write_failed", str(exc) or "transient", attempt)
+                continue
+            self._audit(candidate, decision, "case_created", decision.reason,
+                        {"assigned_to": case.assigned_to, "action_family": case.action_family.value,
+                         "attempt": attempt, "store": case.store}, case.case_key)
+            self._hold(candidate, decision)
+            return WriteResult(decision, self.store.get_case(case.case_key), created=True)
+
+        message = f"retries exhausted after {self.max_attempts} attempts"
+        self._exception(candidate, case_key, "case_write_retries_exhausted", message, self.max_attempts)
+        self._audit(candidate, decision, "case_write_failed", message, {}, case_key)
+        return WriteResult(decision, None, created=False, error=message)
+
+    def _decide(self, candidate: Candidate, action: str) -> RoutingDecision:
         context = self.context_lookup(candidate.mortgage_id, candidate.cycle_id)
         run_status = self.run_status_lookup(candidate.run_id) if isinstance(candidate, RiskUpdated) else None
-        decision = route(candidate, context, self.policy, alert_received_at, run_status)
+        decision = route(candidate, context, self.policy, self.clock(), run_status)
+        self._audit(candidate, decision, action, decision.reason, self._decision_details(candidate, decision, context))
+        return decision
 
-        self._audit(candidate, decision, "decision", decision.reason, self._decision_details(candidate, decision, context))
-
+    def _finish_without_case(self, candidate: Candidate, decision: RoutingDecision) -> WriteResult:
         if decision.outcome == Outcome.QUARANTINE:
             self._exception(candidate, None, "quarantine", decision.reason)
-            return WriteResult(decision)
-        if decision.outcome == Outcome.HOLD:
+        elif decision.outcome == Outcome.HOLD:
             self._exception(candidate, None, "renewal_review_held", decision.reason)
-            return WriteResult(decision)
-        if decision.outcome == Outcome.RECHECK:
+        elif decision.outcome == Outcome.RECHECK:
             self._recheck(candidate, decision)
-            return WriteResult(decision)
-        if decision.outcome == Outcome.NO_CASE:
-            return WriteResult(decision)
-
-        case = self._build_case(candidate, decision, alert_received_at)
-        result = self._write_with_retry(candidate, decision, case)
-        if result.case is not None:
-            self._hold(candidate, decision)
-        return result
+        return WriteResult(decision)
 
     def _build_case(self, candidate: Candidate, decision: RoutingDecision, alert_received_at: datetime) -> ReviewCase:
         family = ActionFamily(decision.action_family)
@@ -103,7 +132,7 @@ class CaseWriter:
             source_event_id=candidate.event_id,
             evidence_ids=candidate.evidence_ids,
             alert_received_at=alert_received_at,
-            case_created_at=alert_received_at,
+            case_created_at=self.clock(),
             ingested_at=candidate.ingested_at,
         )
         if isinstance(candidate, RiskUpdated):
@@ -114,29 +143,6 @@ class CaseWriter:
             case.snapshot_id = candidate.snapshot_id
         return case
 
-    def _write_with_retry(self, candidate: Candidate, decision: RoutingDecision, case: ReviewCase) -> WriteResult:
-        for attempt in range(1, self.max_attempts + 1):
-            case.case_created_at = self.clock()
-            try:
-                self.store.insert_case(case)
-            except DuplicateCaseKey:
-                existing = self.store.get_case(case.case_key)
-                self._audit(candidate, decision, "duplicate_key_read_existing", decision.reason,
-                            {"existing_source_event_id": existing.source_event_id if existing else None,
-                             "attempt": attempt}, case.case_key)
-                return WriteResult(decision, existing, created=False)
-            except TransientWriteError as exc:
-                self._exception(candidate, case.case_key, "case_write_failed", str(exc) or "transient", attempt)
-                continue
-            self._audit(candidate, decision, "case_created", decision.reason,
-                        {"assigned_to": case.assigned_to, "action_family": case.action_family.value,
-                         "attempt": attempt, "store": case.store}, case.case_key)
-            return WriteResult(decision, self.store.get_case(case.case_key), created=True)
-
-        message = f"retries exhausted after {self.max_attempts} attempts"
-        self._exception(candidate, case.case_key, "case_write_retries_exhausted", message, self.max_attempts)
-        self._audit(candidate, decision, "case_write_failed", message, {}, case.case_key)
-        return WriteResult(decision, None, created=False, error=message)
 
     def _hold(self, candidate: Candidate, decision: RoutingDecision) -> None:
         # Payment support takes priority over a commercial renewal task. Keep the task; record its hold.

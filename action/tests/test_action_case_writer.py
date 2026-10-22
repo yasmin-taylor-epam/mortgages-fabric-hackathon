@@ -106,6 +106,38 @@ class TestT06WriteFailure:
         assert redelivered.case.action_family == ActionFamily.SUPPORT
         assert harness.store.get_case(RENEWAL_KEY) is None
 
+    def test_retry_within_one_delivery_rechecks_payment_support(self):
+        store = FlakyStore(failures=1)
+        h = Harness(store=store)
+        original_insert = store.insert_case
+
+        def insert_then_start_support(case):
+            if store.insert_calls == 0:
+                h.set_support("active")
+            original_insert(case)
+
+        store.insert_case = insert_then_start_support
+        result = h.writer.handle(make_risk())
+        assert result.created and result.case.case_key == SUPPORT_KEY
+        assert h.store.get_case(RENEWAL_KEY) is None
+        assert "decision_rechecked" in actions(h.store)
+
+    def test_retry_stops_when_the_recheck_removes_eligibility(self):
+        store = FlakyStore(failures=1)
+        h = Harness(store=store)
+        original_insert = store.insert_case
+
+        def insert_then_unknown(case):
+            if store.insert_calls == 0:
+                h.set_support("unknown")
+            original_insert(case)
+
+        store.insert_case = insert_then_unknown
+        result = h.writer.handle(make_risk())
+        assert result.decision.outcome == Outcome.HOLD and result.case is None
+        assert h.store.list_cases() == []
+        assert [e["kind"] for e in h.store.list_exceptions()] == ["case_write_failed", "renewal_review_held"]
+
 
 class TestPaymentSupportHold:
     def test_support_request_holds_an_open_renewal_case_and_keeps_it(self, harness):

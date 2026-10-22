@@ -45,7 +45,7 @@ Alert routing and review-case creation: Activator rules, Power Automate flows an
 - The case key is `mortgage_id|cycle_id|action_family`. The store rejects a second row for a key (INV-3).
 - A duplicate key reads the existing case (T01). A replay into the same store adds no case.
 - A transient write failure retries with the same key. Each failure goes to the exception register. After the last attempt, the error stays visible and no case exists (T06).
-- The writer reads the account context and run status on every delivery and every retry.
+- The writer reads the account context and run status on every delivery and before every retry. A change in payment-support status between attempts changes the route.
 - The audit log is append-only. The store rejects updates and deletes. Every decision is audited, including decisions that create no case.
 - Every case records evidence IDs, routing policy, assigned owner, decision reason and separate ingestion, scoring, alert and creation times. Score-based cases also record model version, cluster model version, run and snapshot.
 - Every local case has `store = local`. A local run never claims that SharePoint wrote a case.

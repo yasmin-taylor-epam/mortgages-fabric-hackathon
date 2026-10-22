@@ -6,9 +6,9 @@ The flow follows the tested local reference step by step. If the two differ, the
 
 | Flow step | Local reference |
 | --- | --- |
-| Steps 1 to 3 | `CaseWriter.handle` |
+| Steps 1 to 3 | `CaseWriter.handle` and `CaseWriter._decide` |
 | Step 4 | `router.route` |
-| Step 5 | `CaseWriter._write_with_retry` |
+| Step 5 | The retry loop in `CaseWriter.handle` |
 | Step 6 | `CaseWriter._hold` and `CaseWriter._recheck` |
 
 ## Trigger
