@@ -69,6 +69,8 @@ def test_scoring_runs_publish_append_and_fail_safely(released):
     pd.testing.assert_frame_equal(segs_2.iloc[:len(segs_1)].reset_index(drop=True), segs_1)
     assert set(segs_2["cluster_model_version"]) == {rel["cluster_model_version"]}
     assert segs_2["valid_to"].isna().all()
+    from hbdata import contracts as hb_contracts
+    assert hb_contracts.validate_frame(segs_2, "segment_membership") == []
 
     attr = gold.read(paths.gold, "feature_attributions")
     assert attr.groupby(["account_key", "run_id"])["rank"].min().eq(1).all()
