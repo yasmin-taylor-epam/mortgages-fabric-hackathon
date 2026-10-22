@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/payment.schema.json",
+  "title": "payment",
+  "description": "One posted ledger change. Reversals are new rows; the original row stays. A failed collection is not proof of default.",
+  "x-grain": "One row per entry_id.",
+  "x-primary-key": ["entry_id"],
+  "x-event-time": "posted_at",
+  "x-ingestion-time": "ingested_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entry_id", "mortgage_id", "entry_type", "due_at", "posted_at", "ingested_at", "amount_due", "amount_received", "reversal_of", "reason_code"],
+  "properties": {
+    "entry_id": {"type": "string", "pattern": "^PAY-[0-9]{9}$"},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "entry_type": {"type": "string", "enum": ["scheduled_collection", "manual_payment", "reversal"]},
+    "due_at": {"type": "string", "format": "date-time", "description": "Due date of the instalment that this entry relates to."},
+    "posted_at": {"type": "string", "format": "date-time", "description": "Event time: when the ledger change was posted."},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "amount_due": {"type": "number", "minimum": 0, "description": "Instalment due in GBP. Zero on reversal and manual-payment rows, so a sum over rows counts each instalment once."},
+    "amount_received": {"type": "number", "description": "GBP received. Zero for a failed collection. Negative for a reversal."},
+    "reversal_of": {"type": ["string", "null"], "pattern": "^PAY-[0-9]{9}$", "description": "entry_id of the reversed entry. Set only when entry_type is reversal."},
+    "reason_code": {"type": ["string", "null"], "enum": ["insufficient_funds", "mandate_cancelled", "technical_failure", "indemnity_claim", "bank_recall", null], "description": "Failure reason for a failed collection, or reversal reason."}
+  },
+  "allOf": [
+    {"if": {"properties": {"entry_type": {"const": "reversal"}}}, "then": {"properties": {"reversal_of": {"type": "string"}, "amount_received": {"maximum": 0}}}, "else": {"properties": {"reversal_of": {"type": "null"}, "amount_received": {"minimum": 0}}}}
+  ]
+}

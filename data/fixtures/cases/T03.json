@@ -1,0 +1,234 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T03",
+  "title": "The payment feed is stale or missing.",
+  "rule": "The view flags the feed as stale. A missing feed is not zero arrears.",
+  "behaviour_owner": [
+    "Data and replay",
+    "Dashboard and action"
+  ],
+  "scenarios": {
+    "missing": {
+      "cutoff_at": "2026-10-10T00:00:00Z",
+      "inputs": {
+        "mortgage_account": [
+          {
+            "account_key": "HB-M-800301|C02",
+            "mortgage_id": "HB-M-800301",
+            "cycle_id": "C02",
+            "cohort_id": "2027-01",
+            "product_type": "fixed_2y",
+            "repayment_type": "repayment",
+            "deal_start_at": "2025-01-08T00:00:00Z",
+            "deal_end_at": "2027-01-08T00:00:00Z",
+            "loan_end_at": "2049-01-01T00:00:00Z",
+            "originated_at": "2022-01-01T00:00:00Z",
+            "fixed_rate_pct": 4.8,
+            "follow_on_rate_pct": 7.49,
+            "balance": 180000.0,
+            "balance_as_of": "2025-01-08T00:00:00Z",
+            "current_payment": 1100.0,
+            "owner_id": "ADV-001",
+            "recorded_at": "2025-01-08T02:00:00Z",
+            "ingested_at": "2025-01-08T03:00:00Z"
+          }
+        ],
+        "account_party": [
+          {
+            "mortgage_id": "HB-M-800301",
+            "party_id": "HB-P-8003011",
+            "role": "primary",
+            "valid_from": "2022-01-01T00:00:00Z",
+            "valid_to": null,
+            "mapping_status": "approved",
+            "recorded_at": "2022-01-01T00:00:00Z",
+            "ingested_at": "2022-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "expected": {
+        "HB-M-800301": {
+          "ctx_payment_feed_stale": true,
+          "ctx_payment_feed_watermark": null,
+          "ctx_missed_payments_180d": null,
+          "ctx_arrears_amount": null
+        },
+        "feed_watermark": {
+          "dataset": "payment",
+          "is_stale": true,
+          "row_count": 0
+        }
+      }
+    },
+    "stale": {
+      "cutoff_at": "2026-10-10T00:00:00Z",
+      "inputs": {
+        "mortgage_account": [
+          {
+            "account_key": "HB-M-800302|C02",
+            "mortgage_id": "HB-M-800302",
+            "cycle_id": "C02",
+            "cohort_id": "2027-01",
+            "product_type": "fixed_2y",
+            "repayment_type": "repayment",
+            "deal_start_at": "2025-01-08T00:00:00Z",
+            "deal_end_at": "2027-01-08T00:00:00Z",
+            "loan_end_at": "2049-01-01T00:00:00Z",
+            "originated_at": "2022-01-01T00:00:00Z",
+            "fixed_rate_pct": 4.8,
+            "follow_on_rate_pct": 7.49,
+            "balance": 180000.0,
+            "balance_as_of": "2025-01-08T00:00:00Z",
+            "current_payment": 1100.0,
+            "owner_id": "ADV-001",
+            "recorded_at": "2025-01-08T02:00:00Z",
+            "ingested_at": "2025-01-08T03:00:00Z"
+          }
+        ],
+        "account_party": [
+          {
+            "mortgage_id": "HB-M-800302",
+            "party_id": "HB-P-8003021",
+            "role": "primary",
+            "valid_from": "2022-01-01T00:00:00Z",
+            "valid_to": null,
+            "mapping_status": "approved",
+            "recorded_at": "2022-01-01T00:00:00Z",
+            "ingested_at": "2022-01-01T00:00:00Z"
+          }
+        ],
+        "payment": [
+          {
+            "entry_id": "PAY-900000301",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-08-01T00:00:00Z",
+            "posted_at": "2026-08-01T10:00:00Z",
+            "ingested_at": "2026-08-01T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 0.0,
+            "reversal_of": null,
+            "reason_code": "insufficient_funds"
+          },
+          {
+            "entry_id": "PAY-900000302",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-09-01T00:00:00Z",
+            "posted_at": "2026-09-01T10:00:00Z",
+            "ingested_at": "2026-09-01T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 1100.0,
+            "reversal_of": null,
+            "reason_code": null
+          },
+          {
+            "entry_id": "PAY-900000303",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-10-01T00:00:00Z",
+            "posted_at": "2026-10-01T10:00:00Z",
+            "ingested_at": "2026-10-15T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 1100.0,
+            "reversal_of": null,
+            "reason_code": null
+          }
+        ]
+      },
+      "expected": {
+        "HB-M-800302": {
+          "ctx_payment_feed_stale": true,
+          "ctx_payment_feed_watermark": "2026-09-01T12:00:00Z",
+          "ctx_missed_payments_180d": null,
+          "ctx_arrears_amount": null
+        }
+      }
+    },
+    "fresh": {
+      "cutoff_at": "2026-10-16T00:00:00Z",
+      "inputs": {
+        "mortgage_account": [
+          {
+            "account_key": "HB-M-800302|C02",
+            "mortgage_id": "HB-M-800302",
+            "cycle_id": "C02",
+            "cohort_id": "2027-01",
+            "product_type": "fixed_2y",
+            "repayment_type": "repayment",
+            "deal_start_at": "2025-01-14T00:00:00Z",
+            "deal_end_at": "2027-01-14T00:00:00Z",
+            "loan_end_at": "2049-01-01T00:00:00Z",
+            "originated_at": "2022-01-01T00:00:00Z",
+            "fixed_rate_pct": 4.8,
+            "follow_on_rate_pct": 7.49,
+            "balance": 180000.0,
+            "balance_as_of": "2025-01-14T00:00:00Z",
+            "current_payment": 1100.0,
+            "owner_id": "ADV-001",
+            "recorded_at": "2025-01-14T02:00:00Z",
+            "ingested_at": "2025-01-14T03:00:00Z"
+          }
+        ],
+        "account_party": [
+          {
+            "mortgage_id": "HB-M-800302",
+            "party_id": "HB-P-8003021",
+            "role": "primary",
+            "valid_from": "2022-01-01T00:00:00Z",
+            "valid_to": null,
+            "mapping_status": "approved",
+            "recorded_at": "2022-01-01T00:00:00Z",
+            "ingested_at": "2022-01-01T00:00:00Z"
+          }
+        ],
+        "payment": [
+          {
+            "entry_id": "PAY-900000301",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-08-01T00:00:00Z",
+            "posted_at": "2026-08-01T10:00:00Z",
+            "ingested_at": "2026-08-01T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 0.0,
+            "reversal_of": null,
+            "reason_code": "insufficient_funds"
+          },
+          {
+            "entry_id": "PAY-900000302",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-09-01T00:00:00Z",
+            "posted_at": "2026-09-01T10:00:00Z",
+            "ingested_at": "2026-09-01T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 1100.0,
+            "reversal_of": null,
+            "reason_code": null
+          },
+          {
+            "entry_id": "PAY-900000303",
+            "mortgage_id": "HB-M-800302",
+            "entry_type": "scheduled_collection",
+            "due_at": "2026-10-01T00:00:00Z",
+            "posted_at": "2026-10-01T10:00:00Z",
+            "ingested_at": "2026-10-15T12:00:00Z",
+            "amount_due": 1100.0,
+            "amount_received": 1100.0,
+            "reversal_of": null,
+            "reason_code": null
+          }
+        ]
+      },
+      "expected": {
+        "HB-M-800302": {
+          "ctx_payment_feed_stale": false,
+          "ctx_missed_payments_180d": 1,
+          "ctx_arrears_amount": 1100.0
+        }
+      }
+    }
+  }
+}

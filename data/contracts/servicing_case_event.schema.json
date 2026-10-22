@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/servicing_case_event.schema.json",
+  "title": "servicing_case_event",
+  "description": "One recorded state change of a source servicing case. This is source history, not a new SharePoint review case. The table holds no case notes.",
+  "x-grain": "One row per case_event_id.",
+  "x-primary-key": ["case_event_id"],
+  "x-event-time": "changed_at",
+  "x-ingestion-time": "recorded_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_event_id", "case_id", "mortgage_id", "changed_at", "recorded_at", "category", "status", "owner_id", "support_route"],
+  "properties": {
+    "case_event_id": {"type": "string", "pattern": "^SCE-[0-9]{9}$"},
+    "case_id": {"type": "string", "pattern": "^CASE-[0-9]{7}$"},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "changed_at": {"type": "string", "format": "date-time", "description": "Event time of the state change."},
+    "recorded_at": {"type": "string", "format": "date-time", "description": "Time the change reached the case system. Treat it as the ingestion time for INV-2."},
+    "category": {"type": "string", "enum": ["general_enquiry", "billing_enquiry", "rate_enquiry", "complaint", "portal_problem", "payment_difficulty"]},
+    "status": {"type": "string", "enum": ["opened", "in_progress", "resolved", "reopened"]},
+    "owner_id": {"type": "string", "pattern": "^ADV-[0-9]{3}$"},
+    "support_route": {"type": "string", "enum": ["general_servicing", "complaints_team", "technical_support", "payment_support"], "description": "Routing information only. payment_support marks a payment-support request for INV-1."}
+  }
+}

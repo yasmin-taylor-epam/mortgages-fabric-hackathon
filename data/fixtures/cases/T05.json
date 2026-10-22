@@ -1,0 +1,123 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T05",
+  "title": "A scoring run fails.",
+  "rule": "The last score is marked stale. The live view still updates. No new risk_updated event fires. Service alerts remain independent.",
+  "behaviour_owner": [
+    "Models and evaluation",
+    "Data and replay",
+    "Dashboard and action"
+  ],
+  "copied_at": "2026-10-20T08:30:00Z",
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800501|C02",
+        "mortgage_id": "HB-M-800501",
+        "cycle_id": "C02",
+        "cohort_id": "2027-01",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2025-01-10T00:00:00Z",
+        "deal_end_at": "2027-01-10T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2025-01-10T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2025-01-10T02:00:00Z",
+        "ingested_at": "2025-01-10T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800501",
+        "party_id": "HB-P-8005011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "gold": {
+    "score_runs": [
+      {
+        "run_id": "RUN-20261020-0800",
+        "run_kind": "scheduled",
+        "status": "completed",
+        "started_at": "2026-10-20T08:00:00Z",
+        "completed_at": "2026-10-20T08:04:00Z"
+      },
+      {
+        "run_id": "RUN-20261020-0815",
+        "run_kind": "scheduled",
+        "status": "failed",
+        "started_at": "2026-10-20T08:15:00Z",
+        "completed_at": null
+      }
+    ],
+    "account_scores": [
+      {
+        "account_key": "HB-M-800501|C02",
+        "mortgage_id": "HB-M-800501",
+        "cycle_id": "C02",
+        "run_id": "RUN-20261020-0800",
+        "snapshot_id": "SNP-0123456789abcdef",
+        "model_version": "hb-refi-clf:1",
+        "score": 0.41,
+        "scored_at": "2026-10-20T08:03:00Z",
+        "cutoff_at": "2026-10-20T08:00:00Z"
+      },
+      {
+        "account_key": "HB-M-800501|C02",
+        "mortgage_id": "HB-M-800501",
+        "cycle_id": "C02",
+        "run_id": "RUN-20261020-0815",
+        "snapshot_id": "SNP-fedcba9876543210",
+        "model_version": "hb-refi-clf:1",
+        "score": 0.77,
+        "scored_at": "2026-10-20T08:16:00Z",
+        "cutoff_at": "2026-10-20T08:15:00Z"
+      }
+    ]
+  },
+  "live_events": [
+    {
+      "event_id": "PSE-900000501",
+      "event_type": "payment_support_requested",
+      "schema_version": "1.0",
+      "source_system": "servicing",
+      "mortgage_id": "HB-M-800501",
+      "application_id": null,
+      "occurred_at": "2026-10-20T08:20:00Z",
+      "sent_at": "2026-10-20T08:20:00Z",
+      "simulated_ingested_at": "2026-10-20T08:20:15Z",
+      "payload": {
+        "case_id": "CASE-9000501",
+        "support_route": "payment_support",
+        "channel": "phone"
+      }
+    }
+  ],
+  "expected": {
+    "score_context": {
+      "run_id": "RUN-20261020-0800",
+      "score": 0.41,
+      "score_state": "stale"
+    },
+    "service_events": [
+      {
+        "event_id": "PSE-900000501",
+        "event_type": "payment_support_requested"
+      }
+    ],
+    "models_publishes_risk_updated_for_failed_run": false
+  }
+}

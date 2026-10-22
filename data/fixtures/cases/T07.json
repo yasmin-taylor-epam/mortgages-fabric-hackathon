@@ -1,0 +1,252 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T07",
+  "title": "Three contacts concern one unresolved problem. Three other contacts concern separate enquiries.",
+  "rule": "The history distinguishes repeat contacts about one case from contacts about separate cases. A case state change alone does not count as a contact.",
+  "behaviour_owner": [
+    "Data and replay"
+  ],
+  "cutoff_at": "2026-10-01T00:00:00Z",
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800701|C02",
+        "mortgage_id": "HB-M-800701",
+        "cycle_id": "C02",
+        "cohort_id": "2026-12",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2024-12-30T00:00:00Z",
+        "deal_end_at": "2026-12-30T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2024-12-30T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2024-12-30T02:00:00Z",
+        "ingested_at": "2024-12-30T03:00:00Z"
+      },
+      {
+        "account_key": "HB-M-800702|C02",
+        "mortgage_id": "HB-M-800702",
+        "cycle_id": "C02",
+        "cohort_id": "2026-12",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2024-12-30T00:00:00Z",
+        "deal_end_at": "2026-12-30T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2024-12-30T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2024-12-30T02:00:00Z",
+        "ingested_at": "2024-12-30T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800701",
+        "party_id": "HB-P-8007011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      },
+      {
+        "mortgage_id": "HB-M-800702",
+        "party_id": "HB-P-8007021",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ],
+    "servicing_case_event": [
+      {
+        "case_event_id": "SCE-900000701",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "changed_at": "2026-08-12T09:00:00Z",
+        "recorded_at": "2026-08-12T10:00:00Z",
+        "category": "complaint",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "complaints_team"
+      },
+      {
+        "case_event_id": "SCE-900000702",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "changed_at": "2026-08-13T09:00:00Z",
+        "recorded_at": "2026-08-13T10:00:00Z",
+        "category": "complaint",
+        "status": "in_progress",
+        "owner_id": "ADV-001",
+        "support_route": "complaints_team"
+      },
+      {
+        "case_event_id": "SCE-900000703",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "changed_at": "2026-09-01T09:00:00Z",
+        "recorded_at": "2026-09-01T10:00:00Z",
+        "category": "complaint",
+        "status": "in_progress",
+        "owner_id": "ADV-001",
+        "support_route": "complaints_team"
+      },
+      {
+        "case_event_id": "SCE-900000711",
+        "case_id": "CASE-9000711",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-07-23T09:00:00Z",
+        "recorded_at": "2026-07-23T10:00:00Z",
+        "category": "general_enquiry",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      },
+      {
+        "case_event_id": "SCE-900000712",
+        "case_id": "CASE-9000711",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-07-24T09:00:00Z",
+        "recorded_at": "2026-07-24T10:00:00Z",
+        "category": "general_enquiry",
+        "status": "resolved",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      },
+      {
+        "case_event_id": "SCE-900000713",
+        "case_id": "CASE-9000712",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-08-12T09:00:00Z",
+        "recorded_at": "2026-08-12T10:00:00Z",
+        "category": "billing_enquiry",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      },
+      {
+        "case_event_id": "SCE-900000714",
+        "case_id": "CASE-9000712",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-08-13T09:00:00Z",
+        "recorded_at": "2026-08-13T10:00:00Z",
+        "category": "billing_enquiry",
+        "status": "resolved",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      },
+      {
+        "case_event_id": "SCE-900000715",
+        "case_id": "CASE-9000713",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-09-01T09:00:00Z",
+        "recorded_at": "2026-09-01T10:00:00Z",
+        "category": "rate_enquiry",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      },
+      {
+        "case_event_id": "SCE-900000716",
+        "case_id": "CASE-9000713",
+        "mortgage_id": "HB-M-800702",
+        "changed_at": "2026-09-02T09:00:00Z",
+        "recorded_at": "2026-09-02T10:00:00Z",
+        "category": "rate_enquiry",
+        "status": "resolved",
+        "owner_id": "ADV-001",
+        "support_route": "general_servicing"
+      }
+    ],
+    "servicing_contact": [
+      {
+        "contact_id": "CON-90000701",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "occurred_at": "2026-08-12T09:00:00Z",
+        "ingested_at": "2026-08-12T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000702",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "occurred_at": "2026-08-27T09:00:00Z",
+        "ingested_at": "2026-08-27T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000703",
+        "case_id": "CASE-9000701",
+        "mortgage_id": "HB-M-800701",
+        "occurred_at": "2026-09-19T09:00:00Z",
+        "ingested_at": "2026-09-19T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000711",
+        "case_id": "CASE-9000711",
+        "mortgage_id": "HB-M-800702",
+        "occurred_at": "2026-07-23T09:00:00Z",
+        "ingested_at": "2026-07-23T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000712",
+        "case_id": "CASE-9000712",
+        "mortgage_id": "HB-M-800702",
+        "occurred_at": "2026-08-12T09:00:00Z",
+        "ingested_at": "2026-08-12T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000713",
+        "case_id": "CASE-9000713",
+        "mortgage_id": "HB-M-800702",
+        "occurred_at": "2026-09-01T09:00:00Z",
+        "ingested_at": "2026-09-01T10:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      }
+    ]
+  },
+  "expected": {
+    "HB-M-800701": {
+      "svc_contacts_90d": 3,
+      "svc_max_contacts_per_case_365d": 3,
+      "svc_repeat_contacts_unresolved": 2,
+      "svc_open_cases_at_cutoff": 1,
+      "svc_unresolved_complaint": true,
+      "svc_cases_opened_365d": 1
+    },
+    "HB-M-800702": {
+      "svc_contacts_90d": 3,
+      "svc_max_contacts_per_case_365d": 1,
+      "svc_repeat_contacts_unresolved": 0,
+      "svc_open_cases_at_cutoff": 0,
+      "svc_unresolved_complaint": false,
+      "svc_cases_opened_365d": 3
+    }
+  }
+}

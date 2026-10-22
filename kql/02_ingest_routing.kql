@@ -1,0 +1,23 @@
+// Ingestion routing: accept known accounts, quarantine the rest (T02).
+// Twin: data/hbdata/replay.py ingest_local(). Not yet run in Fabric.
+.execute database script <|
+.create-or-alter function with (folder = "context", docstring = "Latest copy of each account context row.")
+AccountContextLatest() {
+    AccountContext
+    | summarize arg_max(copied_at, *) by mortgage_id, cycle_id
+}
+.create-or-alter function with (folder = "ingest", docstring = "Landing rows with an ingestion time and a quarantine reason. An empty reason means accepted.")
+LandingChecked() {
+    let ctx = AccountContextLatest()
+        | summarize conflicts = countif(identity_status != "ok") by ctx_mortgage_id = mortgage_id;
+    RawEventsLanding
+    | extend ingested_at = coalesce(simulated_ingested_at, ingestion_time())
+    | join kind = leftouter ctx on $left.mortgage_id == $right.ctx_mortgage_id
+    | extend reason = case(
+        isempty(event_id) or isnull(occurred_at) or event_type !in ("transfer_request_event", "payment_support_requested", "payment_support_closed", "payment_entry_posted"), "schema_violation",
+        isempty(ctx_mortgage_id), "unknown_account",
+        conflicts > 0, "conflicting_borrower_mapping",
+        "")
+}
+.alter table RawEvents policy update @'[{"IsEnabled": true, "Source": "RawEventsLanding", "Query": "LandingChecked() | where isempty(reason) | project event_id, event_type, schema_version, source_system, mortgage_id, application_id, occurred_at, sent_at, payload, ingested_at", "IsTransactional": true, "PropagateIngestionProperties": false}]'
+.alter table QuarantinedEvents policy update @'[{"IsEnabled": true, "Source": "RawEventsLanding", "Query": "LandingChecked() | where isnotempty(reason) | project event_id, mortgage_id, reason, detail = reason, detected_at = ingested_at, envelope = bag_pack(\"event_id\", event_id, \"event_type\", event_type, \"mortgage_id\", mortgage_id, \"application_id\", application_id, \"occurred_at\", occurred_at, \"payload\", payload)", "IsTransactional": true, "PropagateIngestionProperties": false}]'
