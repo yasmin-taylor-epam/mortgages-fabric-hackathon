@@ -200,3 +200,47 @@ def test_cli_reads_the_local_eventhouse(tmp_path):
     assert summary["rejected_events"] == []
     assert all(c["store"] == "local" for c in summary["cases"])
     assert all(c["case_key"].startswith("HB-M-900001|") for c in summary["cases"])
+
+
+def test_models_scoring_run_flows_into_renewal_cases(tmp_path):
+    """End to end: Models and evaluation risk_outbox -> case writer with the candidate policy."""
+    pd = pytest.importorskip("pandas")
+    gold = DATA_DIR / "output" / "lakehouse" / "gold"
+    context_path = DATA_DIR / "output" / "eventhouse" / "account_context.parquet"
+    if not (gold / "risk_outbox.parquet").exists() or not context_path.exists():
+        pytest.skip("run the Data and replay chain and the Models and evaluation pipeline first")
+    policy_path = ACTION_DIR / "policy" / "routing-policy.candidate.json"
+    threshold = json.loads(policy_path.read_text(encoding="utf-8"))["risk_threshold"]
+
+    outbox = pd.read_parquet(gold / "risk_outbox.parquet")
+    runs = pd.read_parquet(gold / "score_runs.parquet")
+    completed = set(runs.loc[runs["status"] == "completed", "run_id"])
+    context = pd.read_parquet(context_path).set_index(["mortgage_id", "cycle_id"])
+    expected = set()
+    for payload in outbox.loc[outbox["status"] == "published", "payload"]:
+        event = json.loads(payload)
+        key = (event["mortgage_id"], event["cycle_id"])
+        if event["run_id"] not in completed or event["score"] < threshold or key not in context.index:
+            continue
+        row = context.loc[key]
+        if row["identity_status"] == "ok" and row["payment_support_status"] == "none" and row["owner_id"]:
+            expected.add(f"{key[0]}|{key[1]}|renewal")
+    now = max(json.loads(p)["scored_at"] for p in outbox["payload"])
+
+    db = tmp_path / "cases.sqlite"
+    command = [sys.executable, "-m", "homebridge_action.cli", "--hbdata-dir", str(DATA_DIR),
+               "--policy", str(policy_path), "--db", str(db), "--now", now]
+    first = json.loads(subprocess.run(command, cwd=ACTION_DIR, capture_output=True, text=True, check=True).stdout)
+    second = json.loads(subprocess.run(command, cwd=ACTION_DIR, capture_output=True, text=True, check=True).stdout)
+
+    renewal = {c["case_key"] for c in first["cases"] if c["case_key"].endswith("|renewal")}
+    assert renewal == expected
+    assert 0 < len(renewal) <= 10
+    assert first["rejected_events"] == []
+    assert not any(d["created"] for d in second["decisions"])
+    store = SQLiteCaseStore(str(db))
+    for key in renewal:
+        case = store.get_case(key)
+        assert case.run_id in completed and case.snapshot_id and case.model_version
+        assert case.routing_policy == "routing-policy-v0.2-candidate"
+    store.close()

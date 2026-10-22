@@ -79,6 +79,20 @@
                       "Entity": "feature_attributions"
                     }
                   },
+                  "Property": "contribution_unit"
+                }
+              },
+              "queryRef": "feature_attributions.contribution_unit",
+              "nativeQueryRef": "contribution_unit"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
                   "Property": "run_id"
                 }
               },

@@ -16,6 +16,7 @@ Alert routing and review-case creation: Activator rules, Power Automate flows an
 | `power_automate/review-case-writer.md` | The proposed flow. It follows the local reference step by step. |
 | `sharepoint/review-cases.list.json` | The three proposed lists: review cases, audit and routing exceptions. |
 | `sharepoint/provision-list.ps1` | A PnP.PowerShell script that creates the lists. It takes the site URL as a parameter. It holds no credentials. Nobody has run it yet. |
+| `policy/routing-policy.candidate.json` | Candidate routing policy. The threshold 0.5593 comes from Models and evaluation. It is illustrative and synthetic. The team has not confirmed it. |
 | `tests/` | pytest tests. `tests/fixtures/` holds hand-written synthetic events, context and an illustrative policy. |
 
 ## Routing order
@@ -84,10 +85,26 @@ Alex (`HB-M-900001`) gets one payment-support case and one technical case. Alex'
 
 `tests/test_action_data_integration.py` runs the Data and replay fixtures for T01, T04 and T06, and the Alex demo. These tests skip when `data/hbdata` is missing. Set `HOMEBRIDGE_DATA_DIR` to use another `data/` folder.
 
+### End to end with Models and evaluation
+
+The Models and evaluation pipeline writes Gold tables to `data/output/lakehouse/gold/`. When `risk_outbox.parquet` and `score_runs.parquet` exist, `--hbdata-dir` also replays the published `risk_updated` events in arrival order:
+
+```powershell
+..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --policy policy\routing-policy.candidate.json --now 2026-10-15T00:05:00Z
+```
+
+On 22 October 2026, a local checkpoint run had these results (synthetic data):
+- 303 `risk_updated` events gave 6 renewal cases and 1 payment-support case.
+- The payment-support case belongs to an account at or above the threshold that has active payment support.
+- 296 events were below the threshold.
+- The same replay also produced 428 technical cases, one for each mortgage and cycle with a verified portal fault in the synthetic history.
+
+`test_models_scoring_run_flows_into_renewal_cases` checks the renewal cases against an independent calculation. It also checks the 10-review capacity.
+
 ## Rules
 
 - INV-3: at most one open review case exists per `mortgage_id` + `cycle_id` + `action_family`. A duplicate write reads the existing case (T01, T06).
 - INV-6: the prototype sends no customer messages. It makes no rate or credit decisions. A test checks that the package imports no mail or network module.
 - Payment-support priority does not depend on refinancing risk or loan balance. The account context holds no balance.
-- The risk threshold in `tests/fixtures/policy.json` is illustrative. The Models and evaluation work package freezes the real threshold on validation data.
+- The risk threshold in `tests/fixtures/policy.json` is illustrative and used only by the tests. `policy/routing-policy.candidate.json` holds the candidate from Models and evaluation, 0.5593. The team still confirms it.
 - Never put credentials or connection secrets in an exported flow, rule or script.

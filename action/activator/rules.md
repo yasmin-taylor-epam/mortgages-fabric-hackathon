@@ -21,7 +21,7 @@ Source: blueprint section 03, routing view. Microsoft documents [Activator custo
 | --- | --- |
 | Source | `risk_updated` events. Only completed runs publish them (INV-5). |
 | Object | Mortgage cycle. Key: `mortgage_id` + `cycle_id`. |
-| Condition | Every event with `score` at or above the frozen threshold. The models work package freezes the threshold on validation data. |
+| Condition | Every event with `score` at or above the frozen threshold. Candidate: 0.5593, the ten-review capacity threshold from release `hb-refi-clf:1` on synthetic validation data (`../policy/routing-policy.candidate.json`). It is illustrative. The team has not confirmed it. |
 | Action | Custom action: start the review-case writer flow. |
 
 The flow checks the score age and payment-support status again. A rule never authorises a case by itself.

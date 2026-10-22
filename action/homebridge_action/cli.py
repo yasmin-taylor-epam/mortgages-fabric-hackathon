@@ -6,7 +6,10 @@ Two sources of candidates. Use one or both:
 - ``--hbdata-dir``: the Data and replay folder (``data/``). The command reads the local Eventhouse
   stand-in that ``python -m hbdata all`` and ``python -m hbdata replay`` write. It derives service
   events with ``hbdata.replay.service_events``, the Python twin of the KQL function ``ServiceEvents()``.
-  It reads the account context from ``output/eventhouse/account_context.parquet``. This mode needs pandas.
+  It reads the account context from ``output/eventhouse/account_context.parquet``. If the Models and
+  evaluation Gold tables exist, it also reads published ``risk_updated`` events from
+  ``output/lakehouse/gold/risk_outbox.parquet`` and run statuses from ``score_runs.parquet``.
+  This mode needs pandas and pyarrow.
 
 Examples:
     python -m homebridge_action.cli --events tests/fixtures/replay.jsonl \
@@ -42,12 +45,17 @@ def load_context(path: Path) -> tuple[dict[tuple[str, str], AccountContext], dic
     return accounts, {str(k): str(v) for k, v in data.get("runs", {}).items()}
 
 
-def load_hbdata(data_dir: Path, mortgages: Optional[set[str]]) -> tuple[dict[tuple[str, str], AccountContext], list[dict]]:
-    """Read account context and service events from the Data and replay local Eventhouse."""
+def load_hbdata(data_dir: Path, mortgages: Optional[set[str]]
+                ) -> tuple[dict[tuple[str, str], AccountContext], list[dict], dict[str, str]]:
+    """Read account context and service events from the Data and replay local Eventhouse.
+
+    If the Models and evaluation Gold tables exist, also read published risk_updated payloads from
+    risk_outbox and run statuses from score_runs. Candidates come back in arrival order.
+    """
     data_dir = data_dir.resolve()
     if str(data_dir) not in sys.path:
         sys.path.insert(0, str(data_dir))
-    import pandas as pd  # noqa: F401  (hbdata needs pandas)
+    import pandas as pd
     from hbdata import replay
 
     eventhouse = data_dir / "output" / "eventhouse"
@@ -61,12 +69,28 @@ def load_hbdata(data_dir: Path, mortgages: Optional[set[str]]) -> tuple[dict[tup
         raw = raw[raw["mortgage_id"].isin(mortgages)]
     else:
         context_rows = context
-    events = replay.service_events(raw, context).sort_values(["ingested_at", "event_id"])
+    events = replay.service_events(raw, context)
+    timed = [(e["ingested_at"], e["event_id"], e) for e in json.loads(events.to_json(orient="records", date_format="iso"))]
+
+    runs: dict[str, str] = {}
+    gold = data_dir / "output" / "lakehouse" / "gold"
+    if (gold / "risk_outbox.parquet").exists() and (gold / "score_runs.parquet").exists():
+        score_runs = pd.read_parquet(gold / "score_runs.parquet")
+        runs = dict(zip(score_runs["run_id"].astype(str), score_runs["status"].astype(str)))
+        outbox = pd.read_parquet(gold / "risk_outbox.parquet")
+        outbox = outbox[outbox["status"] == "published"]
+        if mortgages:
+            outbox = outbox[outbox["mortgage_id"].isin(mortgages)]
+        for published_at, payload in zip(outbox["published_at"], outbox["payload"]):
+            event = json.loads(payload)
+            timed.append((pd.Timestamp(published_at).tz_convert("UTC").isoformat(), event["event_id"], event))
+
     accounts = {}
     for row in json.loads(context_rows.to_json(orient="records", date_format="iso")):
         ctx = AccountContext.from_dict(row)
         accounts[(ctx.mortgage_id, ctx.cycle_id)] = ctx
-    return accounts, json.loads(events.to_json(orient="records", date_format="iso"))
+    ordered = [e for _, _, e in sorted(timed, key=lambda t: (parse_ts(t[0], "arrival time"), t[1]))]
+    return accounts, ordered, runs
 
 
 def read_jsonl(path: Path) -> Iterable[tuple[int, str]]:
@@ -82,8 +106,9 @@ def replay(events_path: Optional[Path], context_path: Optional[Path], policy_pat
     runs: dict[str, str] = {}
     sourced: list[tuple[str, Any]] = []
     if hbdata_dir:
-        hb_accounts, hb_events = load_hbdata(hbdata_dir, mortgages)
+        hb_accounts, hb_events, hb_runs = load_hbdata(hbdata_dir, mortgages)
         accounts.update(hb_accounts)
+        runs.update(hb_runs)
         sourced += [(f"hbdata:{e['event_id']}", e) for e in hb_events]
     if context_path:
         file_accounts, file_runs = load_context(context_path)

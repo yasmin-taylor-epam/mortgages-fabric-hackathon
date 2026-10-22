@@ -28,6 +28,11 @@ table feature_attributions
 		summarizeBy: none
 		sourceColumn: contribution
 
+	column contribution_unit
+		dataType: string
+		summarizeBy: none
+		sourceColumn: contribution_unit
+
 	column rank
 		dataType: int64
 		summarizeBy: none

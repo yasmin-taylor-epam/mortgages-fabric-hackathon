@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS feature_attributions (
     feature_name  VARCHAR NOT NULL,
     feature_value DOUBLE,
     contribution  DOUBLE NOT NULL,
+    contribution_unit VARCHAR NOT NULL,  -- log_odds (logistic regression) or probability_shap (tree)
     rank          INTEGER NOT NULL       -- 1 = largest absolute contribution
 );
 

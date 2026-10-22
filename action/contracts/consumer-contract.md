@@ -100,7 +100,7 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 | `servicing_contact` | One customer contact. | Data and replay | `contact_id`, `case_id`, `mortgage_id`, `occurred_at`, `ingested_at` |
 | `score_runs` | One scoring run. | Models and evaluation | See section 4. |
 | `account_scores` | One account, cycle and run. | Models and evaluation | `account_key`, `mortgage_id`, `cycle_id`, `run_id`, `snapshot_id`, `model_version`, `score`, `scored_at`, `cutoff_at` |
-| `feature_attributions` | One account, run and feature. | Models and evaluation | `account_key`, `run_id`, `feature_name`, `feature_value`, `contribution`, `rank` (1 = largest absolute contribution) |
+| `feature_attributions` | One account, run and feature. | Models and evaluation | `account_key`, `run_id`, `feature_name`, `feature_value`, `contribution`, `contribution_unit` (`log_odds` or `probability_shap`), `rank` (1 = largest absolute contribution) |
 | `segment_membership` | One account, cycle and run. Append only. | Models and evaluation | `account_key`, `mortgage_id`, `cycle_id`, `run_id`, `segment_id`, `cluster_model_version`, `assigned_at`, `valid_from`, `valid_to` |
 | `review_cases` | One review case. | Dashboard and action | The SharePoint list columns in `action/sharepoint/review-cases.list.json`. |
 | `report_calendar` | One row per date. **Proposed.** | Dashboard and action | `date` |

@@ -117,6 +117,38 @@ def generated():
     con.close()
 
 
+@pytest.fixture(scope="module")
+def generated_with_scores(generated):
+    con, _ = generated
+    if not all((GOLD / f"{t}.parquet").exists() for t in MODELS_TABLES):
+        pytest.skip("Models and evaluation Gold tables not found")
+    for table in MODELS_TABLES:
+        cols = ", ".join(gold_columns()[table])
+        con.execute(f"DELETE FROM {table}")
+        con.execute(f"INSERT INTO {table} ({cols}) SELECT {cols} FROM read_parquet(?)", [str(GOLD / f"{table}.parquet")])
+    as_of = con.execute("SELECT max(scored_at) + INTERVAL 1 HOUR FROM account_scores").fetchone()[0]
+    yield con, as_of
+    for table in MODELS_TABLES:
+        con.execute(f"DELETE FROM {table}")
+
+
+def test_account_view_shows_models_scores_and_segments(generated_with_scores):
+    con, as_of = generated_with_scores
+    scored = {r[0] for r in con.execute(
+        "SELECT DISTINCT a.account_key FROM account_scores a JOIN score_runs r USING (run_id) WHERE r.status = 'completed'").fetchall()}
+    assert scored
+    view = {r["account_key"]: r for r in rows(con, "SELECT * FROM account_view(?, 1440)", [as_of])}
+    failed_last = con.execute("SELECT max_by(status, started_at) FROM score_runs").fetchone()[0] == "failed"
+    for key in scored:
+        assert view[key]["score"] is not None
+        assert view[key]["score_status"] == ("stale_last_run_failed" if failed_last else "current")
+        assert view[key]["segment_id"] is not None
+    assert {view[k]["score_status"] for k in set(view) - scored} == {"no_score"}
+    assert con.execute("SELECT count(*) FROM segment_conflicts()").fetchone()[0] == 0
+    ranks = con.execute("SELECT min(rank), count(DISTINCT contribution_unit) FROM feature_attributions").fetchone()
+    assert ranks[0] == 1 and ranks[1] >= 1
+
+
 def test_account_view_runs_on_generated_data(generated):
     con, as_of = generated
     total = con.execute("SELECT count(*) FROM mortgage_account").fetchone()[0]
