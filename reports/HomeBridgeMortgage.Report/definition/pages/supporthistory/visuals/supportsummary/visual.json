@@ -1,0 +1,88 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "supportsummary",
+  "position": {
+    "x": 312,
+    "y": 16,
+    "z": 1,
+    "width": 952,
+    "height": 120,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "multiRowCard",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Unresolved Cases"
+                }
+              },
+              "queryRef": "mortgage_account.Unresolved Cases",
+              "nativeQueryRef": "Unresolved Cases"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Repeat Contacts On Unresolved"
+                }
+              },
+              "queryRef": "mortgage_account.Repeat Contacts On Unresolved",
+              "nativeQueryRef": "Repeat Contacts On Unresolved"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Contacts"
+                }
+              },
+              "queryRef": "mortgage_account.Contacts",
+              "nativeQueryRef": "Contacts"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Support summary'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

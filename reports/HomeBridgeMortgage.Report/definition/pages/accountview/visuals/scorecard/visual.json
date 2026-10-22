@@ -1,0 +1,116 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "scorecard",
+  "position": {
+    "x": 312,
+    "y": 152,
+    "z": 2,
+    "width": 460,
+    "height": 260,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "multiRowCard",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Score Status"
+                }
+              },
+              "queryRef": "mortgage_account.Score Status",
+              "nativeQueryRef": "Score Status"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Latest Score"
+                }
+              },
+              "queryRef": "mortgage_account.Latest Score",
+              "nativeQueryRef": "Latest Score"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Score Age Minutes"
+                }
+              },
+              "queryRef": "mortgage_account.Score Age Minutes",
+              "nativeQueryRef": "Score Age Minutes"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Latest Model Version"
+                }
+              },
+              "queryRef": "mortgage_account.Latest Model Version",
+              "nativeQueryRef": "Latest Model Version"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Segment As Of"
+                }
+              },
+              "queryRef": "mortgage_account.Segment As Of",
+              "nativeQueryRef": "Segment As Of"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Refinancing risk score (explains the score, not the borrower's motive)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

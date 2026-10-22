@@ -1,0 +1,102 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "requeststatus",
+  "position": {
+    "x": 16,
+    "y": 428,
+    "z": 4,
+    "width": 620,
+    "height": 276,
+    "tabOrder": 4
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "transfer_request_event"
+                    }
+                  },
+                  "Property": "application_id"
+                }
+              },
+              "queryRef": "transfer_request_event.application_id",
+              "nativeQueryRef": "application_id"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Current Request Stage"
+                }
+              },
+              "queryRef": "mortgage_account.Current Request Stage",
+              "nativeQueryRef": "Current Request Stage"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Days At Stage"
+                }
+              },
+              "queryRef": "mortgage_account.Days At Stage",
+              "nativeQueryRef": "Days At Stage"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Verified Portal Faults"
+                }
+              },
+              "queryRef": "mortgage_account.Verified Portal Faults",
+              "nativeQueryRef": "Verified Portal Faults"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Product-transfer request and renewal-portal faults'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

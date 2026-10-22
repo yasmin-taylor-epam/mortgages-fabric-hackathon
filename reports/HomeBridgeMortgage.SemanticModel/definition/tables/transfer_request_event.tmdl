@@ -1,0 +1,61 @@
+/// One product-transfer request state change.
+table transfer_request_event
+
+	column event_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: event_id
+
+	column application_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: application_id
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column occurred_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: occurred_at
+
+	column ingested_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: ingested_at
+
+	column stage
+		dataType: string
+		summarizeBy: none
+		sourceColumn: stage
+
+	column status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: status
+
+	column error_code
+		dataType: string
+		summarizeBy: none
+		sourceColumn: error_code
+
+	column error_class
+		dataType: string
+		summarizeBy: none
+		sourceColumn: error_class
+
+	column fault_verified
+		dataType: boolean
+		summarizeBy: none
+		sourceColumn: fault_verified
+
+	partition transfer_request_event = entity
+		mode: directLake
+		source
+			entityName: transfer_request_event
+			schemaName: dbo
+			expressionSource: DatabaseQuery

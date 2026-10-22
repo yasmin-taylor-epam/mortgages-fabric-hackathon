@@ -1,0 +1,88 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "segmentasof",
+  "position": {
+    "x": 312,
+    "y": 16,
+    "z": 1,
+    "width": 952,
+    "height": 300,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "mortgage_id"
+                }
+              },
+              "queryRef": "mortgage_account.mortgage_id",
+              "nativeQueryRef": "mortgage_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "cycle_id"
+                }
+              },
+              "queryRef": "mortgage_account.cycle_id",
+              "nativeQueryRef": "cycle_id"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Segment As Of"
+                }
+              },
+              "queryRef": "mortgage_account.Segment As Of",
+              "nativeQueryRef": "Segment As Of"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Segment on the selected date'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

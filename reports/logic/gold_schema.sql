@@ -135,3 +135,8 @@ CREATE TABLE IF NOT EXISTS review_cases (
     assigned_to     VARCHAR NOT NULL,
     case_created_at TIMESTAMP NOT NULL
 );
+
+-- Owned by Dashboard and action. One row per date for the segment-history date picker.
+CREATE TABLE IF NOT EXISTS report_calendar (
+    date  DATE PRIMARY KEY
+);

@@ -1,0 +1,36 @@
+/// One customer contact linked to a source case.
+table servicing_contact
+
+	column contact_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: contact_id
+
+	column case_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: case_id
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column occurred_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: occurred_at
+
+	column ingested_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: ingested_at
+
+	partition servicing_contact = entity
+		mode: directLake
+		source
+			entityName: servicing_contact
+			schemaName: dbo
+			expressionSource: DatabaseQuery

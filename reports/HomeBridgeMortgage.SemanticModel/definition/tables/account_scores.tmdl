@@ -1,0 +1,57 @@
+/// One account, cycle and scoring run. Producer: Models and evaluation.
+table account_scores
+
+	column account_key
+		dataType: string
+		summarizeBy: none
+		sourceColumn: account_key
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column cycle_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cycle_id
+
+	column run_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: run_id
+
+	column snapshot_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: snapshot_id
+
+	column model_version
+		dataType: string
+		summarizeBy: none
+		sourceColumn: model_version
+
+	column score
+		dataType: double
+		formatString: 0.000
+		summarizeBy: none
+		sourceColumn: score
+
+	column scored_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: scored_at
+
+	column cutoff_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: cutoff_at
+
+	partition account_scores = entity
+		mode: directLake
+		source
+			entityName: account_scores
+			schemaName: dbo
+			expressionSource: DatabaseQuery

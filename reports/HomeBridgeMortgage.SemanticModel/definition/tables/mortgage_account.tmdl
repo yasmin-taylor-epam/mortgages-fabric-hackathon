@@ -1,0 +1,286 @@
+/// One mortgage and fixed-rate deal cycle. Home table for report measures.
+table mortgage_account
+
+	measure 'Max Score Age Minutes' =
+			-- Illustrative policy value. Agree it with the models work package.
+			1440
+		formatString: 0
+		displayFolder: Score
+
+	measure 'Latest Score Time' =
+			CALCULATE ( MAX ( account_scores[scored_at] ), score_runs[status] = "completed" )
+		formatString: yyyy-mm-dd hh:nn
+		displayFolder: Score
+
+	measure 'Latest Score' =
+			VAR _t = [Latest Score Time]
+			RETURN
+			    IF (
+			        NOT ISBLANK ( _t ),
+			        CALCULATE (
+			            MAX ( account_scores[score] ),
+			            score_runs[status] = "completed",
+			            account_scores[scored_at] = _t
+			        )
+			    )
+		formatString: 0.00
+		displayFolder: Score
+
+	measure 'Latest Model Version' =
+			VAR _t = [Latest Score Time]
+			RETURN
+			    IF (
+			        NOT ISBLANK ( _t ),
+			        CALCULATE (
+			            MAX ( account_scores[model_version] ),
+			            score_runs[status] = "completed",
+			            account_scores[scored_at] = _t
+			        )
+			    )
+		displayFolder: Score
+
+	measure 'Score Age Minutes' =
+			VAR _t = [Latest Score Time]
+			RETURN IF ( NOT ISBLANK ( _t ), DATEDIFF ( _t, UTCNOW (), MINUTE ) )
+		formatString: 0
+		displayFolder: Score
+
+	measure 'Last Run Status' =
+			VAR _last = CALCULATE ( MAX ( score_runs[started_at] ), REMOVEFILTERS ( score_runs ) )
+			RETURN
+			    CALCULATE (
+			        MAX ( score_runs[status] ),
+			        REMOVEFILTERS ( score_runs ),
+			        score_runs[started_at] = _last
+			    )
+		displayFolder: Score
+
+	measure 'Score Status' =
+			-- INV-5, T05: a failed latest run marks the last good score stale.
+			SWITCH (
+			    TRUE (),
+			    ISBLANK ( [Latest Score] ), "No score",
+			    [Last Run Status] = "failed", "Stale: last scoring run failed",
+			    [Score Age Minutes] > [Max Score Age Minutes], "Stale: score too old",
+			    "Current"
+			)
+		displayFolder: Score
+
+	measure 'Score Is Stale' =
+			IF ( LEFT ( [Score Status], 5 ) = "Stale", 1, 0 )
+		formatString: 0
+		displayFolder: Score
+
+	measure 'Payment Feed State' =
+			-- T03: a missing or stale feed is never shown as zero arrears.
+			VAR _ingested = CALCULATE ( MAX ( feed_watermark[max_ingested_at] ), feed_watermark[dataset] = "payment" )
+			VAR _checked = CALCULATE ( MAX ( feed_watermark[checked_at] ), feed_watermark[dataset] = "payment" )
+			VAR _hours = CALCULATE ( MAX ( feed_watermark[stale_threshold_hours] ), feed_watermark[dataset] = "payment" )
+			VAR _flagged = CALCULATE ( COUNTROWS ( feed_watermark ), feed_watermark[dataset] = "payment", feed_watermark[is_stale] = TRUE () )
+			RETURN
+			    SWITCH (
+			        TRUE (),
+			        ISBLANK ( _ingested ), "Missing",
+			        _flagged > 0, "Stale",
+			        DATEDIFF ( _checked, UTCNOW (), HOUR ) > _hours, "Stale",
+			        DATEDIFF ( _ingested, UTCNOW (), HOUR ) > _hours, "Stale",
+			        "Current"
+			    )
+		displayFolder: Payment
+
+	measure Arrears =
+			VAR _now = UTCNOW ()
+			VAR _rows = CALCULATE ( COUNTROWS ( payment ), payment[due_at] <= _now, payment[ingested_at] <= _now )
+			VAR _due = CALCULATE ( SUM ( payment[amount_due] ), payment[due_at] <= _now, payment[ingested_at] <= _now )
+			VAR _received = CALCULATE ( SUM ( payment[amount_received] ), payment[due_at] <= _now, payment[ingested_at] <= _now )
+			RETURN IF ( [Payment Feed State] = "Current" && _rows > 0, MAX ( _due - _received, 0 ) )
+		formatString: #,0.00
+		displayFolder: Payment
+
+	measure 'Payment Position' =
+			SWITCH (
+			    [Payment Feed State],
+			    "Missing", "Payment feed missing: arrears unknown",
+			    "Stale", "Payment feed stale: arrears unknown",
+			    IF ( ISBLANK ( [Arrears] ), "No payment records", FORMAT ( [Arrears], "#,0.00" ) )
+			)
+		displayFolder: Payment
+
+	measure Reversals =
+			CALCULATE ( COUNTROWS ( payment ), payment[entry_type] = "reversal" )
+		formatString: 0
+		displayFolder: Payment
+
+	measure Contacts =
+			-- T07: count each contact once. Case state changes are not contacts.
+			VAR _now = UTCNOW ()
+			RETURN
+			    CALCULATE (
+			        DISTINCTCOUNT ( servicing_contact[contact_id] ),
+			        servicing_contact[occurred_at] <= _now,
+			        servicing_contact[ingested_at] <= _now
+			    )
+		formatString: 0
+		displayFolder: Support history
+
+	measure 'Case Status Now' =
+			VAR _now = UTCNOW ()
+			VAR _last =
+			    CALCULATE (
+			        MAX ( servicing_case_event[changed_at] ),
+			        servicing_case_event[changed_at] <= _now,
+			        servicing_case_event[recorded_at] <= _now
+			    )
+			RETURN
+			    CALCULATE (
+			        MAX ( servicing_case_event[status] ),
+			        servicing_case_event[changed_at] = _last,
+			        servicing_case_event[recorded_at] <= _now
+			    )
+		displayFolder: Support history
+
+	measure 'Case Resolution' =
+			-- Only 'resolved' counts as resolved. 'reopened' is unresolved.
+			VAR _s = [Case Status Now]
+			RETURN IF ( ISBLANK ( _s ), BLANK (), IF ( _s = "resolved", "Resolved", "Unresolved" ) )
+		displayFolder: Support history
+
+	measure 'Unresolved Cases' =
+			COUNTROWS ( FILTER ( VALUES ( servicing_case[case_id] ), [Case Resolution] = "Unresolved" ) )
+		formatString: 0
+		displayFolder: Support history
+
+	measure 'Repeat Contacts On Unresolved' =
+			SUMX (
+			    VALUES ( servicing_case[case_id] ),
+			    VAR _c = [Contacts]
+			    RETURN IF ( [Case Resolution] = "Unresolved" && _c > 1, _c - 1, 0 )
+			)
+		formatString: 0
+		displayFolder: Support history
+
+	measure 'Current Request Stage' =
+			VAR _last = MAX ( transfer_request_event[occurred_at] )
+			RETURN CALCULATE ( MAX ( transfer_request_event[stage] ), transfer_request_event[occurred_at] = _last )
+		displayFolder: Request
+
+	measure 'Days At Stage' =
+			VAR _stage = [Current Request Stage]
+			VAR _leftOther = CALCULATE ( MAX ( transfer_request_event[occurred_at] ), transfer_request_event[stage] <> _stage )
+			VAR _entered =
+			    CALCULATE (
+			        MIN ( transfer_request_event[occurred_at] ),
+			        transfer_request_event[stage] = _stage,
+			        transfer_request_event[occurred_at] > _leftOther
+			    )
+			RETURN IF ( NOT ISBLANK ( _entered ), DATEDIFF ( _entered, UTCNOW (), DAY ) )
+		formatString: 0
+		displayFolder: Request
+
+	measure 'Verified Portal Faults' =
+			-- Rejection and abandonment are not portal faults.
+			CALCULATE (
+			    COUNTROWS ( transfer_request_event ),
+			    transfer_request_event[error_class] = "software_fault",
+			    transfer_request_event[fault_verified] = TRUE ()
+			)
+		formatString: 0
+		displayFolder: Request
+
+	measure 'Segment As Of' =
+			-- Segment on the selected report_calendar date, or now. Rows are append-only.
+			VAR _d = IF ( HASONEVALUE ( report_calendar[date] ), VALUES ( report_calendar[date] ) + TIME ( 23, 59, 59 ), UTCNOW () )
+			VAR _rows =
+			    FILTER (
+			        segment_membership,
+			        segment_membership[valid_from] <= _d
+			            && segment_membership[assigned_at] <= _d
+			            && ( ISBLANK ( segment_membership[valid_to] ) || segment_membership[valid_to] > _d )
+			    )
+			VAR _start = MAXX ( _rows, segment_membership[valid_from] )
+			RETURN MAXX ( FILTER ( _rows, segment_membership[valid_from] = _start ), segment_membership[segment_id] )
+		displayFolder: Segment
+
+	measure 'Payment Support Priority' =
+			-- INV-1: shown whatever the score or balance.
+			VAR _open =
+			    CALCULATE (
+			        COUNTROWS ( review_cases ),
+			        review_cases[action_family] = "support",
+			        review_cases[status] IN { "open", "on_hold" }
+			    )
+			RETURN IF ( _open > 0, "Payment support first", "None" )
+		displayFolder: Review
+
+	measure 'Review Owner' =
+			VAR _owner = CALCULATE ( MAX ( review_cases[assigned_to] ), review_cases[action_family] = "renewal" )
+			RETURN IF ( ISBLANK ( _owner ), MAX ( mortgage_account[owner_id] ), _owner )
+		displayFolder: Review
+
+	measure 'Renewal Review Status' =
+			CALCULATE ( MAX ( review_cases[status] ), review_cases[action_family] = "renewal" )
+		displayFolder: Review
+
+	measure 'Checkpoint Date' =
+			-- Checkpoint: deal_end_at minus 90 days.
+			VAR _end = MAX ( mortgage_account[deal_end_at] )
+			RETURN IF ( NOT ISBLANK ( _end ), _end - 90 )
+		formatString: yyyy-mm-dd
+		displayFolder: Deal
+
+	measure 'Days To Deal End' =
+			VAR _end = MAX ( mortgage_account[deal_end_at] )
+			RETURN IF ( NOT ISBLANK ( _end ), DATEDIFF ( UTCNOW (), _end, DAY ) )
+		formatString: 0
+		displayFolder: Deal
+
+	column account_key
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: account_key
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column cycle_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cycle_id
+
+	column deal_end_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: deal_end_at
+
+	column balance
+		dataType: decimal
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: balance
+
+	column current_payment
+		dataType: decimal
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: current_payment
+
+	column product_type
+		dataType: string
+		summarizeBy: none
+		sourceColumn: product_type
+
+	column owner_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: owner_id
+
+	partition mortgage_account = entity
+		mode: directLake
+		source
+			entityName: mortgage_account
+			schemaName: dbo
+			expressionSource: DatabaseQuery

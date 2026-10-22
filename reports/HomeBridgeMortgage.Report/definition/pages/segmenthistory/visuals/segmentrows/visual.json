@@ -1,0 +1,130 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "segmentrows",
+  "position": {
+    "x": 312,
+    "y": 332,
+    "z": 2,
+    "width": 952,
+    "height": 372,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "mortgage_id"
+                }
+              },
+              "queryRef": "segment_membership.mortgage_id",
+              "nativeQueryRef": "mortgage_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "run_id"
+                }
+              },
+              "queryRef": "segment_membership.run_id",
+              "nativeQueryRef": "run_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "segment_id"
+                }
+              },
+              "queryRef": "segment_membership.segment_id",
+              "nativeQueryRef": "segment_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "cluster_model_version"
+                }
+              },
+              "queryRef": "segment_membership.cluster_model_version",
+              "nativeQueryRef": "cluster_model_version"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "valid_from"
+                }
+              },
+              "queryRef": "segment_membership.valid_from",
+              "nativeQueryRef": "valid_from"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "segment_membership"
+                    }
+                  },
+                  "Property": "valid_to"
+                }
+              },
+              "queryRef": "segment_membership.valid_to",
+              "nativeQueryRef": "valid_to"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Append-only segment rows'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

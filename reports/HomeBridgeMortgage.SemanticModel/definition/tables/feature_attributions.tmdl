@@ -1,0 +1,30 @@
+/// Per-account feature attributions. They explain the score, not the borrower's motive.
+table feature_attributions
+
+	column account_key
+		dataType: string
+		summarizeBy: none
+		sourceColumn: account_key
+
+	column run_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: run_id
+
+	column feature_name
+		dataType: string
+		summarizeBy: none
+		sourceColumn: feature_name
+
+	column contribution
+		dataType: double
+		formatString: 0.000
+		summarizeBy: none
+		sourceColumn: contribution
+
+	partition feature_attributions = entity
+		mode: directLake
+		source
+			entityName: feature_attributions
+			schemaName: dbo
+			expressionSource: DatabaseQuery

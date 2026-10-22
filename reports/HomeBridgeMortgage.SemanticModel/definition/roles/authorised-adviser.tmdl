@@ -1,0 +1,3 @@
+/// Sees payment-support routing. No row filters.
+role 'Authorised adviser'
+	modelPermission: read

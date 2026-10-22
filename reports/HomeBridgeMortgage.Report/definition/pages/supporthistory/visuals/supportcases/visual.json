@@ -1,0 +1,130 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "supportcases",
+  "position": {
+    "x": 312,
+    "y": 152,
+    "z": 2,
+    "width": 952,
+    "height": 552,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "servicing_case"
+                    }
+                  },
+                  "Property": "case_id"
+                }
+              },
+              "queryRef": "servicing_case.case_id",
+              "nativeQueryRef": "case_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "servicing_case"
+                    }
+                  },
+                  "Property": "category"
+                }
+              },
+              "queryRef": "servicing_case.category",
+              "nativeQueryRef": "category"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "servicing_case"
+                    }
+                  },
+                  "Property": "support_route"
+                }
+              },
+              "queryRef": "servicing_case.support_route",
+              "nativeQueryRef": "support_route"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Case Status Now"
+                }
+              },
+              "queryRef": "mortgage_account.Case Status Now",
+              "nativeQueryRef": "Case Status Now"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Case Resolution"
+                }
+              },
+              "queryRef": "mortgage_account.Case Resolution",
+              "nativeQueryRef": "Case Resolution"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Contacts"
+                }
+              },
+              "queryRef": "mortgage_account.Contacts",
+              "nativeQueryRef": "Contacts"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Source servicing cases: enquiry type, contacts per case and resolution'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
