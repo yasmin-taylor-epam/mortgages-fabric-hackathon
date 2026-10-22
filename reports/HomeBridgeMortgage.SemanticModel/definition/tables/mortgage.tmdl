@@ -12,10 +12,10 @@ table mortgage
 		summarizeBy: none
 		sourceColumn: product_type
 
-	column cycle_id
+	column current_cycle_id
 		dataType: string
 		summarizeBy: none
-		sourceColumn: cycle_id
+		sourceColumn: current_cycle_id
 
 	partition mortgage = entity
 		mode: directLake

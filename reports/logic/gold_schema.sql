@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS mortgage (
     mortgage_id   VARCHAR PRIMARY KEY,
     product_type  VARCHAR,
-    cycle_id      VARCHAR                 -- current deal cycle
+    current_cycle_id  VARCHAR             -- latest deal cycle by deal_start_at
 );
 
 CREATE TABLE IF NOT EXISTS mortgage_account (
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS mortgage_account (
 
 CREATE TABLE IF NOT EXISTS payment (
     entry_id         VARCHAR PRIMARY KEY,
-    entry_type       VARCHAR NOT NULL,    -- reversal rows: entry_type = reversal, amount_due = 0
+    entry_type       VARCHAR NOT NULL,    -- scheduled_collection, manual_payment or reversal. Reversal rows have amount_due = 0
     mortgage_id      VARCHAR NOT NULL,
     due_at           TIMESTAMP NOT NULL,
     posted_at        TIMESTAMP NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS feed_watermark (
     max_ingested_at        TIMESTAMP,
     max_event_at           TIMESTAMP,
     row_count              BIGINT,
-    stale_threshold_hours  INTEGER NOT NULL,
+    stale_threshold_hours  DOUBLE NOT NULL,
     is_stale               BOOLEAN NOT NULL  -- computed by the validation step
 );
 
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS transfer_request_event (
     occurred_at     TIMESTAMP NOT NULL,
     ingested_at     TIMESTAMP NOT NULL,
     stage           VARCHAR NOT NULL,
-    status          VARCHAR NOT NULL,
+    status          VARCHAR NOT NULL,    -- in_progress, error, rejected, abandoned, completed
     error_code      VARCHAR,
     error_class     VARCHAR,             -- software_fault marks a renewal-portal software error
     fault_verified  BOOLEAN

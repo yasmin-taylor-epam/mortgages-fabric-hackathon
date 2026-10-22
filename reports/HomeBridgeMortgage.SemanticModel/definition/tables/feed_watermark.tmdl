@@ -30,7 +30,8 @@ table feed_watermark
 		sourceColumn: row_count
 
 	column stale_threshold_hours
-		dataType: int64
+		dataType: double
+		formatString: 0.000
 		summarizeBy: none
 		sourceColumn: stale_threshold_hours
 

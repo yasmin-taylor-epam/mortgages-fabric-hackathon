@@ -58,6 +58,14 @@ python -m venv .venv
 
 The schema test downloads the Microsoft JSON schemas from `github.com/microsoft/json-schemas`. It skips when the network is not available. Set `HOMEBRIDGE_SCHEMA_CACHE` to choose the cache folder.
 
+`tests/test_report_data_integration.py` checks the report against the Data and replay package (PR #8):
+
+- Every column that the report reads exists in the producer contract in `data/contracts/`.
+- The T03 fixture scenarios (missing, stale and fresh payment feed) give the expected feed state and arrears.
+- The report rules run on the generated tables in `data/output/lakehouse/clean/`. Contacts per case and resolution agree with the producer's `servicing_case` summary for every case.
+
+These tests skip when the files are missing. Run `cd data; python -m hbdata all` first. Set `HOMEBRIDGE_DATA_DIR` to use another `data/` folder.
+
 To load the model with the Microsoft TOM library (needs the .NET SDK):
 
 ```powershell

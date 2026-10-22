@@ -173,14 +173,17 @@ class ServiceEvent:
 Candidate = Union[RiskUpdated, ServiceEvent]
 
 
+SERVICE_EVENT_TYPES = {t.value for t in ServiceEventType}
+
+
 def candidate_from_dict(data: Mapping[str, Any]) -> Candidate:
-    kind = data.get("kind")
-    payload = {k: v for k, v in data.items() if k != "kind"}
+    """Read one candidate in the contract shape. event_type selects risk_updated or a service event."""
+    kind = data.get("event_type")
     if kind == "risk_updated":
-        return RiskUpdated.from_dict(payload)
-    if kind == "service_event":
-        return ServiceEvent.from_dict(payload)
-    raise ContractError(f"unknown candidate kind {kind!r}")
+        return RiskUpdated.from_dict(data)
+    if kind in SERVICE_EVENT_TYPES:
+        return ServiceEvent.from_dict(data)
+    raise ContractError(f"unknown event_type {kind!r}")
 
 
 @dataclass(frozen=True)

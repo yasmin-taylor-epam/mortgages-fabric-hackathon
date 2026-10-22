@@ -33,21 +33,21 @@ INSERT INTO feed_watermark VALUES
 
 -- Sam: one reversed collection (T04). Jo: no payment rows.
 INSERT INTO payment VALUES
-    ('PAY-A1', 'instalment', 'MTG-ALEX', TIMESTAMP '2026-10-01 00:00:00', TIMESTAMP '2026-10-01 06:00:00', TIMESTAMP '2026-10-01 07:00:00', 1105.40, 1105.40, NULL),
-    ('PAY-A2', 'instalment', 'MTG-ALEX', TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-01 06:00:00', TIMESTAMP '2026-11-01 07:00:00', 1105.40,  500.00, NULL),
-    ('PAY-S1', 'instalment', 'MTG-SAM',  TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-01 06:00:00', TIMESTAMP '2026-11-01 07:00:00',  712.10,  712.10, NULL),
+    ('PAY-A1', 'scheduled_collection', 'MTG-ALEX', TIMESTAMP '2026-10-01 00:00:00', TIMESTAMP '2026-10-01 06:00:00', TIMESTAMP '2026-10-01 07:00:00', 1105.40, 1105.40, NULL),
+    ('PAY-A2', 'scheduled_collection', 'MTG-ALEX', TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-01 06:00:00', TIMESTAMP '2026-11-01 07:00:00', 1105.40,  500.00, NULL),
+    ('PAY-S1', 'scheduled_collection', 'MTG-SAM',  TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-01 06:00:00', TIMESTAMP '2026-11-01 07:00:00',  712.10,  712.10, NULL),
     ('PAY-S2', 'reversal',   'MTG-SAM',  TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-03 06:00:00', TIMESTAMP '2026-11-03 07:00:00',    0.00, -712.10, 'PAY-S1'),
-    ('PAY-S3', 'instalment', 'MTG-SAM',  TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-03 06:00:00', TIMESTAMP '2026-11-03 11:00:00',    0.00,  712.10, NULL);
+    ('PAY-S3', 'scheduled_collection', 'MTG-SAM',  TIMESTAMP '2026-11-01 00:00:00', TIMESTAMP '2026-11-03 06:00:00', TIMESTAMP '2026-11-03 11:00:00',    0.00,  712.10, NULL);
 
 -- Alex: request stalls at documents_outstanding with two portal software faults.
 INSERT INTO transfer_request_event VALUES
-    ('TR-1', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-20 10:00:00', TIMESTAMP '2026-10-20 10:01:00', 'submitted',             'received',     NULL,       NULL,             NULL),
-    ('TR-2', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-22 10:00:00', TIMESTAMP '2026-10-22 10:01:00', 'documents_outstanding', 'waiting',      NULL,       NULL,             NULL),
-    ('TR-3', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-25 10:00:00', TIMESTAMP '2026-10-25 10:01:00', 'documents_outstanding', 'error',        'PRT-500',  'software_fault', TRUE),
-    ('TR-4', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-26 10:00:00', TIMESTAMP '2026-10-26 10:01:00', 'documents_outstanding', 'error',        'PRT-500',  'software_fault', FALSE),
-    ('TR-5', 'APP-SAM-1',  'MTG-SAM',  TIMESTAMP '2026-10-10 10:00:00', TIMESTAMP '2026-10-10 10:01:00', 'submitted',             'received',     NULL,       NULL,             NULL),
+    ('TR-1', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-20 10:00:00', TIMESTAMP '2026-10-20 10:01:00', 'started',               'in_progress',     NULL,       NULL,             NULL),
+    ('TR-2', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-22 10:00:00', TIMESTAMP '2026-10-22 10:01:00', 'documents_outstanding', 'in_progress',      NULL,       NULL,             NULL),
+    ('TR-3', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-25 10:00:00', TIMESTAMP '2026-10-25 10:01:00', 'documents_outstanding', 'error',        'SYS-503',  'software_fault', TRUE),
+    ('TR-4', 'APP-ALEX-1', 'MTG-ALEX', TIMESTAMP '2026-10-26 10:00:00', TIMESTAMP '2026-10-26 10:01:00', 'documents_outstanding', 'error',        'SYS-503',  'software_fault', FALSE),
+    ('TR-5', 'APP-SAM-1',  'MTG-SAM',  TIMESTAMP '2026-10-10 10:00:00', TIMESTAMP '2026-10-10 10:01:00', 'started',               'in_progress',     NULL,       NULL,             NULL),
     ('TR-6', 'APP-SAM-1',  'MTG-SAM',  TIMESTAMP '2026-10-18 10:00:00', TIMESTAMP '2026-10-18 10:01:00', 'completed',             'completed',    NULL,       NULL,             NULL),
-    ('TR-7', 'APP-JO-1',   'MTG-JO',   TIMESTAMP '2026-10-28 10:00:00', TIMESTAMP '2026-10-28 10:01:00', 'offer_review',          'rejected',     'REJ-DOC',  'rejection',      NULL);
+    ('TR-7', 'APP-JO-1',   'MTG-JO',   TIMESTAMP '2026-10-28 10:00:00', TIMESTAMP '2026-10-28 10:01:00', 'offer_in_review',       'rejected',     'ELG-DOC',  'eligibility',      NULL);
 
 -- T07: Alex has one unresolved complaint with three contacts and three separate resolved enquiries.
 -- C-A4 resolution is recorded after the report time, so it is unresolved at 10:00.

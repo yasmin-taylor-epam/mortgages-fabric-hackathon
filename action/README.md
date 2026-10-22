@@ -31,7 +31,7 @@ Alert routing and review-case creation: Activator rules, Power Automate flows an
 | No account context, or `identity_status` is not `ok` | Quarantine (T02). |
 | Payment-support request, or a risk candidate while payment support is active | `support` case. Any open renewal case goes on hold. |
 | Verified portal fault | `technical` case. |
-| Payment reversed | No new case. Open cases are flagged for a recheck. Rescoring is requested (T04). |
+| Payment reversed | No new case. Open cases are flagged for a recheck. Rescoring is requested (T04). See `contracts/consumer-contract.md`, section 6. |
 | Payment-support request closed | No case. A person releases any hold. |
 | Risk candidate from a run that is not `completed` | No case (INV-5, T05). |
 | Score older than the policy limit | No case. |
@@ -66,6 +66,23 @@ cd action
 ```
 
 Add `--db cases.sqlite` to keep the store between runs. Do not commit that file.
+
+### Replay with Data and replay data
+
+After PR #8 merges, `data/` holds the Data and replay package. This replay reads its local Eventhouse stand-in. It derives the service events with `hbdata.replay.service_events`, the Python twin of `ServiceEvents()`. It needs `pandas` and `pyarrow` from `data/requirements.txt`.
+
+```powershell
+cd data
+..\.venv\Scripts\python -m hbdata all
+..\.venv\Scripts\python -m hbdata replay --fixture fixtures\replay\demo_alex.jsonl
+..\.venv\Scripts\python -m hbdata replay --fixture fixtures\replay\demo_alex_duplicate.jsonl
+cd ..\action
+..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --mortgage HB-M-900001 --policy tests\fixtures\policy.json --now 2026-10-16T12:00:00Z
+```
+
+Alex (`HB-M-900001`) gets one payment-support case and one technical case. Alex's earlier verified faults, the new fault and the duplicate fault event all map to that single technical case.
+
+`tests/test_action_data_integration.py` runs the Data and replay fixtures for T01, T04 and T06, and the Alex demo. These tests skip when `data/hbdata` is missing. Set `HOMEBRIDGE_DATA_DIR` to use another `data/` folder.
 
 ## Rules
 

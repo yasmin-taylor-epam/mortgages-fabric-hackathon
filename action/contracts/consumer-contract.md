@@ -1,18 +1,22 @@
 # Consumer contract: Dashboard and action
 
-**Status:** Draft. Data and replay agreed sections 2, 3 and the Data and replay rows of section 5 on 22 October 2026. Models and evaluation has not replied yet.
+**Status:** Draft. Data and replay agreed sections 2, 3 and the Data and replay rows of section 5 on 22 October 2026. Their schemas are in `data/contracts/*.schema.json` (PR #8). The tests in `action/tests/test_action_data_integration.py` and `reports/tests/test_report_data_integration.py` check this file against those schemas and fixtures. Models and evaluation has not replied yet.
 
 This file lists the data that `action/` and `reports/` read. The producing work packages own the schemas. If a producer schema differs from this file, the producer schema wins and this file changes.
 
 The source of every field is the blueprint (`site/index.html`, sections 02, 03 and 05). Items marked **Proposed** are not in the blueprint. They need agreement.
 
+IDs follow the Data and replay patterns: `mortgage_id` is `HB-M-` and six digits, and `cycle_id` is `C` and two digits.
+
 ## 1. `risk_updated` event
 
-**Producer:** Models and evaluation. **Consumer:** the Activator risk rule and the review-case writer.
+**Producer:** Models and evaluation. **Consumer:** the Activator risk rule and the review-case writer. `data/contracts/risk_updated.schema.json` holds the current schema.
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `event_id` | string | Stable. A publication retry reuses the same value. |
+| `event_type` | `risk_updated` | The case writer uses `event_type` to tell a `risk_updated` event from a service event. |
+| `schema_version` | `1.0` | |
 | `mortgage_id` | string | |
 | `cycle_id` | string | Identifies the fixed-rate deal, not the scoring run. |
 | `run_id` | string | The scoring run. Its status is in `score_runs`. |
@@ -84,7 +88,7 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 
 | Table | Grain | Producer | Fields the report reads |
 | --- | --- | --- | --- |
-| `mortgage` | One row per `mortgage_id`. | Data and replay | `mortgage_id`, `product_type`, `cycle_id` (current cycle) |
+| `mortgage` | One row per `mortgage_id`. | Data and replay | `mortgage_id`, `product_type`, `current_cycle_id` |
 | `mortgage_account` | One mortgage and deal cycle. | Data and replay | `account_key`, `mortgage_id`, `cycle_id`, `deal_end_at`, `balance`, `current_payment`, `product_type`, `owner_id` |
 | `payment` | One posted ledger change. | Data and replay | `entry_id`, `entry_type`, `mortgage_id`, `due_at`, `posted_at`, `ingested_at`, `amount_due`, `amount_received`, `reversal_of` |
 | `feed_watermark` | One row per dataset. | Data and replay | `dataset`, `checked_at`, `max_ingested_at`, `max_event_at`, `row_count`, `stale_threshold_hours`, `is_stale` |
@@ -102,9 +106,9 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 Conventions that the report relies on:
 
 - `account_key` is `mortgage_id + "|" + cycle_id`, stored as a column. Agreed for `mortgage_account`. **Proposed** for the Models and evaluation tables.
-- A reversal row has `entry_type = reversal`, `reversal_of` = the original `entry_id`, `amount_received` = minus the original amount and `amount_due = 0`. Manual payments also have `amount_due = 0`. Summing rows gives the position. Agreed.
+- A reversal row has `entry_type = reversal`, `reversal_of` = the original `entry_id`, `amount_received` = minus the original amount and `amount_due = 0`. The other entry types are `scheduled_collection` and `manual_payment`. Manual payments also have `amount_due = 0`. Summing rows gives the position. Agreed.
 - Case status is `opened`, `in_progress`, `resolved` or `reopened`. A case is resolved only when its latest state at the report time is `resolved`. Both `changed_at` and `recorded_at` must be at or before that time. `reopened` means unresolved. Agreed.
-- `feed_watermark.is_stale` comes from the validation step. The report also treats the feed as stale when `checked_at` or `max_ingested_at` is older than `stale_threshold_hours`. The `payment` dataset row drives the arrears display. **Proposed** dataset name.
+- `feed_watermark.is_stale` comes from the validation step. `stale_threshold_hours` is a number. The report also treats the feed as stale when `checked_at` or `max_ingested_at` is older than `stale_threshold_hours`. The `payment` dataset row drives the arrears display. Agreed.
 - `segment_membership` rows are never changed. The report takes the latest row that started at or before the chosen date.
 - Times are UTC.
 
@@ -113,3 +117,13 @@ Conventions that the report relies on:
 - Review cases with the key `mortgage_id + cycle_id + action_family`. `action_family` is `support`, `technical` or `renewal`.
 - An append-only audit log and an exception register. See `action/README.md`.
 - A rescoring request when a payment is reversed (T04). The scheduled scoring pipeline owns the rescoring itself.
+
+### T04: what "review starts" means here
+
+A `payment_reversed` event creates no new review case. A reversal is not proof of default. It is not an active payment-support request, so it cannot open a support case. It is not an eligible risk event, so it cannot open a renewal review. The writer does three things:
+
+1. It flags every open support or renewal case for the same mortgage and cycle as `needs_recheck`. The assigned person reviews it.
+2. It records a `rescore_requested` audit entry with the reversal evidence IDs.
+3. It leaves earlier audit entries unchanged.
+
+A new renewal review starts only if the rescoring run publishes an eligible `risk_updated` event.

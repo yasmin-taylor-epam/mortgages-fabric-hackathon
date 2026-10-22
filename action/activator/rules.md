@@ -10,7 +10,7 @@ Source: blueprint section 03, routing view. Microsoft documents [Activator custo
 
 | Setting | Value |
 | --- | --- |
-| Source | Service events from Eventstream (`portal_fault_verified`, `payment_support_requested`, `payment_support_closed`, `payment_reversed`). |
+| Source | Service events from the KQL function `ServiceEvents()` in `kql/04_service_and_360.kql` (Data and replay): `portal_fault_verified`, `payment_support_requested`, `payment_support_closed`, `payment_reversed`. |
 | Object | Mortgage cycle. Key: `mortgage_id` + `cycle_id`. |
 | Condition | Every event. No score and no threshold (INV-1). |
 | Action | Custom action: start the review-case writer flow. |
@@ -32,9 +32,9 @@ Activator passes these fields to the flow. Names match `../contracts/consumer-co
 
 | Flow input | Service rule | Risk rule |
 | --- | --- | --- |
-| `kind` | `service_event` | `risk_updated` |
 | `event_id` | yes | yes |
-| `event_type` | yes | — |
+| `event_type` | the service event type | `risk_updated` |
+| `schema_version` | — | yes |
 | `mortgage_id`, `cycle_id` | yes | yes |
 | `occurred_at`, `ingested_at` | yes | `ingested_at` |
 | `run_id`, `snapshot_id`, `model_version`, `cluster_model_version`, `segment_id` | — | yes |
