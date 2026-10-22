@@ -1,0 +1,8 @@
+{
+  "_note": "Illustrative policy for tests only. The models work package freezes the real threshold on validation data.",
+  "version": "routing-policy-v0.1-illustrative",
+  "risk_threshold": 0.6,
+  "max_score_age_minutes": 1440,
+  "support_queue": "payment-support-team",
+  "technical_queue": "renewal-portal-technical-support"
+}
