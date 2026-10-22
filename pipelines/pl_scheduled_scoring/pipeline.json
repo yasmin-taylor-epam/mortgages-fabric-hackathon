@@ -1,0 +1,73 @@
+{
+  "name": "pl_scheduled_scoring",
+  "x-status": "Draft. Written by hand for review. Not exported from Fabric and not run in Fabric. Replace the placeholder IDs after the notebooks are imported into the workspace.",
+  "x-owner": "Models and evaluation",
+  "x-blueprint-step": 9,
+  "properties": {
+    "description": "Scheduled scoring for the fictional lender HomeBridge: live snapshots, scoring and segment assignment with pinned model versions, then risk_updated publication. A failed scoring activity stops the run, so no risk_updated event fires (INV-5, T05). Synthetic data only.",
+    "parameters": {
+      "run_kind": {"type": "string", "defaultValue": "scheduled"},
+      "cutoff_at": {"type": "string", "defaultValue": ""},
+      "model_version": {"type": "string", "defaultValue": ""},
+      "cluster_model_version": {"type": "string", "defaultValue": ""}
+    },
+    "variables": {
+      "cutoff": {"type": "String"}
+    },
+    "activities": [
+      {
+        "name": "Set cutoff",
+        "type": "SetVariable",
+        "dependsOn": [],
+        "typeProperties": {
+          "variableName": "cutoff",
+          "value": {"value": "@if(empty(pipeline().parameters.cutoff_at), formatDateTime(pipeline().TriggerTime, 'yyyy-MM-ddTHH:mm:ssZ'), pipeline().parameters.cutoff_at)", "type": "Expression"}
+        }
+      },
+      {
+        "name": "Build snapshots (02_feature_snapshots)",
+        "type": "TridentNotebook",
+        "dependsOn": [{"activity": "Set cutoff", "dependencyConditions": ["Succeeded"]}],
+        "policy": {"timeout": "0.00:20:00", "retry": 0, "secureInput": false, "secureOutput": false},
+        "typeProperties": {
+          "notebookId": "<02_feature_snapshots notebook id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "MODE": {"value": {"value": "@if(equals(pipeline().parameters.run_kind, 'checkpoint'), 'checkpoint', 'live')", "type": "Expression"}, "type": "string"},
+            "CUTOFF": {"value": {"value": "@variables('cutoff')", "type": "Expression"}, "type": "string"}
+          }
+        }
+      },
+      {
+        "name": "Score and segment (04_score_and_segment)",
+        "type": "TridentNotebook",
+        "dependsOn": [{"activity": "Build snapshots (02_feature_snapshots)", "dependencyConditions": ["Succeeded"]}],
+        "policy": {"timeout": "0.00:20:00", "retry": 0, "secureInput": false, "secureOutput": false},
+        "typeProperties": {
+          "notebookId": "<04_score_and_segment notebook id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "RUN_KIND": {"value": {"value": "@pipeline().parameters.run_kind", "type": "Expression"}, "type": "string"},
+            "CUTOFF": {"value": {"value": "@variables('cutoff')", "type": "Expression"}, "type": "string"},
+            "MODEL_VERSION": {"value": {"value": "@if(empty(pipeline().parameters.model_version), null, pipeline().parameters.model_version)", "type": "Expression"}, "type": "string"},
+            "CLUSTER_MODEL_VERSION": {"value": {"value": "@if(empty(pipeline().parameters.cluster_model_version), null, pipeline().parameters.cluster_model_version)", "type": "Expression"}, "type": "string"},
+            "PUBLISH": {"value": "False", "type": "bool"}
+          }
+        }
+      },
+      {
+        "name": "Publish risk_updated (04_score_and_segment, publish only)",
+        "type": "TridentNotebook",
+        "dependsOn": [{"activity": "Score and segment (04_score_and_segment)", "dependencyConditions": ["Succeeded"]}],
+        "policy": {"timeout": "0.00:10:00", "retry": 3, "retryIntervalInSeconds": 60, "secureInput": false, "secureOutput": false},
+        "typeProperties": {
+          "notebookId": "<04_score_and_segment notebook id>",
+          "workspaceId": "<workspace id>",
+          "parameters": {
+            "PUBLISH_ONLY": {"value": "True", "type": "bool"}
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+-r ../../data/requirements.txt
+scikit-learn>=1.5
+shap>=0.46
+# MLflow tracking and model registry. Locally a SQLite store under data/output/mlflow/.
+mlflow-skinny>=2.16
+sqlalchemy>=2.0
+alembic>=1.13
