@@ -47,8 +47,8 @@ The build follows the three work packages in the blueprint (section 06). Each wo
 | `kql/` | Eventhouse tables, ingestion mappings and journey queries. | Data and replay |
 | `notebooks/` | Validation, feature snapshot, training, scoring and evaluation notebooks. | Shared. Each notebook has one owner. |
 | `pipelines/` | Fabric pipeline definitions. | Shared. Each pipeline has one owner. |
-
-The dashboard and action work package has no folder yet. It covers the Power BI report, Activator, Power Automate and the SharePoint review-case list.
+| `action/` | Activator rules, Power Automate flows and the SharePoint review-case list. | Dashboard and action |
+| `reports/` | Power BI semantic model and mortgage report. | Dashboard and action |
 
 Each folder README lists its planned items and the rules that apply. The Fabric workspace is not ready yet. Build items that run locally first.
 
@@ -57,7 +57,7 @@ This repository holds the build for now. The team may move the build to a separa
 ## Repository contents
 
 - `site/index.html` — current scenario page and proposal.
-- `data/`, `kql/`, `notebooks/`, `pipelines/` — build folders. See [Build layout](#build-layout).
+- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/` — build folders. See [Build layout](#build-layout).
 - `docs/archive/previous-readme.md` — previous repository overview.
 - `docs/archive/technical-blueprint.md` — earlier technical blueprint, retained for reference.
 

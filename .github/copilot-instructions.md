@@ -16,7 +16,7 @@ curl.exe -s -o NUL -w "%{http_code}" https://yasmin-taylor-epam.github.io/custom
 
 ## Build workspace
 
-- The build lives in `data/`, `kql/`, `notebooks/` and `pipelines/`. The README "Build layout" section names the owner of each folder.
+- The build lives in `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/` and `reports/`. The README "Build layout" section names the owner of each folder.
 - Each work package (data and replay, models and evaluation, dashboard and action) runs in its own session. Change only the files that your work package owns.
 - The invariants INV-1 to INV-6 and the failure cases T01 to T07 in `site/index.html` are the acceptance rules. Do not weaken them.
 - Use synthetic data only. Never commit real customer records, generated output in `data/output/`, credentials or connection secrets.
