@@ -1,6 +1,6 @@
 # Consumer contract: Dashboard and action
 
-**Status:** Draft. Sent to the Data and replay and the Models and evaluation sessions for agreement.
+**Status:** Draft. Data and replay agreed sections 2, 3 and the Data and replay rows of section 5 on 22 October 2026. Models and evaluation has not replied yet.
 
 This file lists the data that `action/` and `reports/` read. The producing work packages own the schemas. If a producer schema differs from this file, the producer schema wins and this file changes.
 
@@ -22,10 +22,11 @@ The source of every field is the blueprint (`site/index.html`, sections 02, 03 a
 | `segment_id` | string | |
 | `scored_at` | ISO 8601, UTC | |
 | `cutoff_at` | ISO 8601, UTC | |
-| `target` | string | For example `external_refinancing_90d`. |
+| `target` | string | `confirmed_external_refinancing` (fixed by the Data and replay contract). |
 | `score` | number, 0 to 1 | Refinancing risk. |
 | `evidence_ids` | array of string | References to evidence rows. No borrower notes. |
-| `ingested_at` | ISO 8601, UTC | **Proposed.** Time the event reached Eventhouse. The case writer records it. |
+
+The payload has no `ingested_at`. The Activator source passes the Eventhouse ingestion time to the flow as `ingested_at`.
 
 Rules that the consumer relies on:
 
@@ -34,9 +35,9 @@ Rules that the consumer relies on:
 
 ## 2. Service event
 
-**Producer:** Data and replay (Eventstream replay). **Consumer:** the Activator service rule and the review-case writer.
+**Producer:** Data and replay. The KQL function `ServiceEvents()` and `data/contracts/service_event.schema.json` output this shape. **Consumer:** the Activator service rule and the review-case writer.
 
-**Proposed** shape. The blueprint names the events but not the fields.
+**Agreed** with Data and replay on 22 October 2026.
 
 | Field | Type | Notes |
 | --- | --- | --- |
@@ -45,22 +46,24 @@ Rules that the consumer relies on:
 | `mortgage_id` | string | |
 | `cycle_id` | string | |
 | `occurred_at` | ISO 8601, UTC | Event time. |
-| `ingested_at` | ISO 8601, UTC | Ingestion time. |
+| `ingested_at` | ISO 8601, UTC | Eventhouse ingestion time. |
 | `evidence_ids` | array of string | Source references. No sensitive notes. |
 
-`portal_fault_verified` means a verified renewal-portal software fault. A request rejection or an abandoned request is not a portal fault.
+`portal_fault_verified` fires only for `error_class = software_fault` and `fault_verified = true`. A request rejection or an abandoned request never produces it.
 
 ## 3. Current account context (lookup at routing time)
 
-**Producer:** Data and replay (the account-context copy, blueprint step 7). **Consumer:** the review-case writer. The writer reads this on every delivery and every retry.
+**Producer:** Data and replay (`data/contracts/account_context.schema.json`, the account-context copy in blueprint step 7). **Consumer:** the review-case writer. The writer reads this on every delivery and every retry.
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `mortgage_id`, `cycle_id` | string | Key. |
-| `identity_status` | `ok`, `unknown`, `conflict` | Anything other than `ok` goes to quarantine (T02). |
-| `payment_support_status` | `active`, `none`, `unknown` | `unknown` holds a renewal review. |
+| `identity_status` | `ok`, `conflict` | `conflict` goes to quarantine (T02). |
+| `payment_support_status` | `active`, `none`, `unknown` | `unknown` holds a renewal review. It is `unknown` when the servicing feed is stale. |
 | `owner_id` | string | The servicing adviser who owns renewal reviews. |
 | `context_version` | string | The version of the copy. |
+
+An unknown account has no row. The writer treats a missing row as unknown and quarantines the candidate (T02). The copy also carries `deal_start_at`, `deal_end_at`, `checkpoint_at` and `copied_at`. The writer does not need them.
 
 The context holds no loan balance. Payment-support priority must not depend on balance or risk.
 
@@ -81,14 +84,14 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 
 | Table | Grain | Producer | Fields the report reads |
 | --- | --- | --- | --- |
-| `mortgage` | One row per `mortgage_id`. **Proposed.** | Data and replay | `mortgage_id`, `product_type` |
+| `mortgage` | One row per `mortgage_id`. | Data and replay | `mortgage_id`, `product_type`, `cycle_id` (current cycle) |
 | `mortgage_account` | One mortgage and deal cycle. | Data and replay | `account_key`, `mortgage_id`, `cycle_id`, `deal_end_at`, `balance`, `current_payment`, `product_type`, `owner_id` |
-| `payments` | One posted ledger change. | Data and replay | `entry_id`, `mortgage_id`, `due_at`, `posted_at`, `ingested_at`, `amount_due`, `amount_received`, `reversal_of` |
-| `feed_status` | One row per source feed. **Proposed.** | Data and replay | `feed_name`, `last_ingested_at`, `expected_interval_minutes` |
-| `transfer_request_events` | One request state change. | Data and replay | `event_id`, `application_id`, `mortgage_id`, `occurred_at`, `ingested_at`, `stage`, `error_code`, `status` |
-| `servicing_case` | One row per source `case_id`. **Proposed.** | Data and replay | `case_id`, `mortgage_id`, `category`, `support_route` |
-| `servicing_case_states` | One recorded case state change. | Data and replay | `case_id`, `mortgage_id`, `changed_at`, `recorded_at`, `category`, `status`, `support_route` |
-| `servicing_contacts` | One customer contact. | Data and replay | `contact_id`, `case_id`, `mortgage_id`, `occurred_at`, `ingested_at` |
+| `payment` | One posted ledger change. | Data and replay | `entry_id`, `entry_type`, `mortgage_id`, `due_at`, `posted_at`, `ingested_at`, `amount_due`, `amount_received`, `reversal_of` |
+| `feed_watermark` | One row per dataset. | Data and replay | `dataset`, `checked_at`, `max_ingested_at`, `max_event_at`, `row_count`, `stale_threshold_hours`, `is_stale` |
+| `transfer_request_event` | One request state change. | Data and replay | `event_id`, `application_id`, `mortgage_id`, `occurred_at`, `ingested_at`, `stage`, `status`, `error_code`, `error_class`, `fault_verified` |
+| `servicing_case` | One row per source `case_id`. | Data and replay | `case_id`, `mortgage_id`, `category`, `support_route`, `opened_at`, `latest_status`, `resolved_at` |
+| `servicing_case_event` | One recorded case state change. | Data and replay | `case_id`, `mortgage_id`, `changed_at`, `recorded_at`, `category`, `status`, `support_route` |
+| `servicing_contact` | One customer contact. | Data and replay | `contact_id`, `case_id`, `mortgage_id`, `occurred_at`, `ingested_at` |
 | `score_runs` | One scoring run. | Models and evaluation | See section 4. |
 | `account_scores` | One account, cycle and run. | Models and evaluation | `account_key`, `mortgage_id`, `cycle_id`, `run_id`, `snapshot_id`, `model_version`, `score`, `scored_at`, `cutoff_at` |
 | `feature_attributions` | One account, run and feature. | Models and evaluation | `account_key`, `run_id`, `feature_name`, `contribution` |
@@ -98,10 +101,11 @@ Direct Lake does not allow calculated columns on Lakehouse tables. Each table th
 
 Conventions that the report relies on:
 
-- `account_key` is `mortgage_id + "|" + cycle_id`, stored as a column. **Proposed.**
-- A reversal row sets `reversal_of` to the original `entry_id`. It negates the original `amount_received`. **Proposed.** The report then sums rows to get the position.
-- A case `status` of `resolved` or `closed` means the problem is resolved. Any other status means unresolved. **Proposed.**
-- `segment_membership.valid_to` is null for the current row. Earlier rows never change.
+- `account_key` is `mortgage_id + "|" + cycle_id`, stored as a column. Agreed for `mortgage_account`. **Proposed** for the Models and evaluation tables.
+- A reversal row has `entry_type = reversal`, `reversal_of` = the original `entry_id`, `amount_received` = minus the original amount and `amount_due = 0`. Manual payments also have `amount_due = 0`. Summing rows gives the position. Agreed.
+- Case status is `opened`, `in_progress`, `resolved` or `reopened`. A case is resolved only when its latest state at the report time is `resolved`. Both `changed_at` and `recorded_at` must be at or before that time. `reopened` means unresolved. Agreed.
+- `feed_watermark.is_stale` comes from the validation step. The report also treats the feed as stale when `checked_at` or `max_ingested_at` is older than `stale_threshold_hours`. The `payment` dataset row drives the arrears display. **Proposed** dataset name.
+- `segment_membership` rows are never changed. The report takes the latest row that started at or before the chosen date.
 - Times are UTC.
 
 ## 6. What this package produces

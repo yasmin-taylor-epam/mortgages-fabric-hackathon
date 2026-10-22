@@ -28,7 +28,7 @@ def make_risk(event_id="EVT-R-1", mortgage_id="MTG-1", cycle_id="CYC-1", score=0
     return RiskUpdated(
         event_id=event_id, mortgage_id=mortgage_id, cycle_id=cycle_id, run_id=run_id, snapshot_id="SNP-1",
         model_version="clf-test", cluster_model_version="clu-test", segment_id="SEG-1", scored_at=scored_at,
-        cutoff_at=scored_at - timedelta(minutes=5), target="external_refinancing_90d", score=score,
+        cutoff_at=scored_at - timedelta(minutes=5), target="confirmed_external_refinancing", score=score,
         evidence_ids=tuple(evidence), ingested_at=scored_at + timedelta(minutes=1),
     )
 
