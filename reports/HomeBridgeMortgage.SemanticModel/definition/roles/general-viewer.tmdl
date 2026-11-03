@@ -1,0 +1,7 @@
+/// Payment-support cases and their routing are hidden.
+role 'General viewer'
+	modelPermission: read
+
+	tablePermission servicing_case = [support_route] <> "payment_support"
+
+	tablePermission review_cases = [action_family] <> "support"

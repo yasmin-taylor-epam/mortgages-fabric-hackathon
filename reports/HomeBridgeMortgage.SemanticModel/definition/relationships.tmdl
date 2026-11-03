@@ -1,0 +1,43 @@
+relationship mortgage_account_mortgage_id__mortgage
+	fromColumn: mortgage_account.mortgage_id
+	toColumn: mortgage.mortgage_id
+
+relationship payment_mortgage_id__mortgage
+	fromColumn: payment.mortgage_id
+	toColumn: mortgage.mortgage_id
+
+relationship transfer_request_event_mortgage_id__mortgage
+	fromColumn: transfer_request_event.mortgage_id
+	toColumn: mortgage.mortgage_id
+
+relationship servicing_case_mortgage_id__mortgage
+	fromColumn: servicing_case.mortgage_id
+	toColumn: mortgage.mortgage_id
+
+relationship servicing_case_event_case_id__servicing_case
+	fromColumn: servicing_case_event.case_id
+	toColumn: servicing_case.case_id
+
+relationship servicing_contact_case_id__servicing_case
+	fromColumn: servicing_contact.case_id
+	toColumn: servicing_case.case_id
+
+relationship account_scores_account_key__mortgage_account
+	fromColumn: account_scores.account_key
+	toColumn: mortgage_account.account_key
+
+relationship account_scores_run_id__score_runs
+	fromColumn: account_scores.run_id
+	toColumn: score_runs.run_id
+
+relationship segment_membership_account_key__mortgage_account
+	fromColumn: segment_membership.account_key
+	toColumn: mortgage_account.account_key
+
+relationship feature_attributions_account_key__mortgage_account
+	fromColumn: feature_attributions.account_key
+	toColumn: mortgage_account.account_key
+
+relationship review_cases_account_key__mortgage_account
+	fromColumn: review_cases.account_key
+	toColumn: mortgage_account.account_key

@@ -1,0 +1,25 @@
+/// One row per mortgage. Producer: Data and replay.
+table mortgage
+
+	column mortgage_id
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column product_type
+		dataType: string
+		summarizeBy: none
+		sourceColumn: product_type
+
+	column current_cycle_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: current_cycle_id
+
+	partition mortgage = entity
+		mode: directLake
+		source
+			entityName: mortgage
+			schemaName: dbo
+			expressionSource: DatabaseQuery

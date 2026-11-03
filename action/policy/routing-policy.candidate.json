@@ -1,0 +1,8 @@
+{
+  "_note": "Candidate routing policy. Illustrative and synthetic. The team has not confirmed these values. risk_threshold is the ten-review capacity threshold (the 10th-highest validation score) from release hb-refi-clf:1 (logistic regression), frozen on synthetic validation data by Models and evaluation. The max-F1 candidate was 0.1982. max_score_age_minutes is a placeholder.",
+  "version": "routing-policy-v0.2-candidate",
+  "risk_threshold": 0.5593,
+  "max_score_age_minutes": 1440,
+  "support_queue": "payment-support-team",
+  "technical_queue": "renewal-portal-technical-support"
+}

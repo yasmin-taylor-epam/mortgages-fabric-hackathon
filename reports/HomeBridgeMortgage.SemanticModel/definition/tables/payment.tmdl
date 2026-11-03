@@ -1,0 +1,59 @@
+/// One posted ledger change. Reversals keep the original row.
+table payment
+
+	column entry_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: entry_id
+
+	column entry_type
+		dataType: string
+		summarizeBy: none
+		sourceColumn: entry_type
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column due_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: due_at
+
+	column posted_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: posted_at
+
+	column ingested_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: ingested_at
+
+	column amount_due
+		dataType: decimal
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: amount_due
+
+	column amount_received
+		dataType: decimal
+		formatString: #,0.00
+		summarizeBy: none
+		sourceColumn: amount_received
+
+	column reversal_of
+		dataType: string
+		summarizeBy: none
+		sourceColumn: reversal_of
+
+	partition payment = entity
+		mode: directLake
+		source
+			entityName: payment
+			schemaName: dbo
+			expressionSource: DatabaseQuery

@@ -1,0 +1,46 @@
+/// One recorded source case state change.
+table servicing_case_event
+
+	column case_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: case_id
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column changed_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: changed_at
+
+	column recorded_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: recorded_at
+
+	column category
+		dataType: string
+		summarizeBy: none
+		sourceColumn: category
+
+	column status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: status
+
+	column support_route
+		dataType: string
+		summarizeBy: none
+		sourceColumn: support_route
+
+	partition servicing_case_event = entity
+		mode: directLake
+		source
+			entityName: servicing_case_event
+			schemaName: dbo
+			expressionSource: DatabaseQuery

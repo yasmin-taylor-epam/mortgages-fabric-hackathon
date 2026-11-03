@@ -1,0 +1,37 @@
+/// One scoring run. Only completed runs are valid.
+table score_runs
+
+	column run_id
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: run_id
+
+	column run_kind
+		dataType: string
+		summarizeBy: none
+		sourceColumn: run_kind
+
+	column status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: status
+
+	column started_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: started_at
+
+	column completed_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: completed_at
+
+	partition score_runs = entity
+		mode: directLake
+		source
+			entityName: score_runs
+			schemaName: dbo
+			expressionSource: DatabaseQuery

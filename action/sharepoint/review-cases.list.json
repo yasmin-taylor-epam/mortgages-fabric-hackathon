@@ -1,0 +1,63 @@
+{
+  "_note": "Proposed SharePoint lists for HomeBridge internal review cases. Not yet provisioned. Holds no credentials.",
+  "lists": [
+    {
+      "title": "HomeBridge Review Cases",
+      "purpose": "One internal review case per case_key. A case authorises no customer contact, rate or credit decision (INV-6).",
+      "write_access": "The flow identity can add and edit items. Advisers can edit reviewer_decision only. No one can delete items.",
+      "columns": [
+        {"name": "case_key", "type": "Text", "required": true, "indexed": true, "unique": true, "description": "mortgage_id|cycle_id|action_family (INV-3)."},
+        {"name": "mortgage_id", "type": "Text", "required": true, "indexed": true},
+        {"name": "cycle_id", "type": "Text", "required": true},
+        {"name": "action_family", "type": "Choice", "required": true, "choices": ["support", "technical", "renewal"]},
+        {"name": "status", "type": "Choice", "required": true, "choices": ["open", "on_hold", "closed"]},
+        {"name": "assigned_to", "type": "Text", "required": true, "description": "Owner ID or queue name. Payment support goes to trained servicing staff."},
+        {"name": "routing_policy", "type": "Text", "required": true},
+        {"name": "decision_reason", "type": "Text", "required": true},
+        {"name": "source_event_id", "type": "Text", "required": true},
+        {"name": "evidence_ids", "type": "Note", "required": true, "description": "JSON array of evidence references. No borrower notes."},
+        {"name": "alert_received_at", "type": "DateTime", "required": true},
+        {"name": "case_created_at", "type": "DateTime", "required": true},
+        {"name": "ingested_at", "type": "DateTime", "required": false},
+        {"name": "scored_at", "type": "DateTime", "required": false},
+        {"name": "model_version", "type": "Text", "required": false},
+        {"name": "cluster_model_version", "type": "Text", "required": false},
+        {"name": "run_id", "type": "Text", "required": false},
+        {"name": "snapshot_id", "type": "Text", "required": false},
+        {"name": "needs_recheck", "type": "Boolean", "required": false},
+        {"name": "store", "type": "Text", "required": true, "description": "Always 'sharepoint' in this list. The local reference writes 'local'."},
+        {"name": "reviewer_decision", "type": "Choice", "required": false, "choices": ["pending", "action_agreed", "no_action", "referred"], "description": "Set by the assigned person."},
+        {"name": "reviewer_decision_at", "type": "DateTime", "required": false}
+      ]
+    },
+    {
+      "title": "HomeBridge Review Case Audit",
+      "purpose": "Append-only audit log. One row per routing decision and per case action.",
+      "write_access": "The flow identity can add items only. No one can edit or delete items.",
+      "columns": [
+        {"name": "recorded_at", "type": "DateTime", "required": true},
+        {"name": "event_id", "type": "Text", "required": true, "indexed": true},
+        {"name": "case_key", "type": "Text", "required": false, "indexed": true},
+        {"name": "action", "type": "Text", "required": true},
+        {"name": "reason", "type": "Text", "required": true},
+        {"name": "routing_policy", "type": "Text", "required": true},
+        {"name": "details", "type": "Note", "required": true, "description": "JSON. Evidence IDs, model and run references, times. No borrower notes."}
+      ]
+    },
+    {
+      "title": "HomeBridge Routing Exceptions",
+      "purpose": "Exception register: quarantine, held reviews and failed writes. An operator reads this list.",
+      "write_access": "The flow identity can add items. Operators can edit resolution fields.",
+      "columns": [
+        {"name": "recorded_at", "type": "DateTime", "required": true},
+        {"name": "event_id", "type": "Text", "required": true, "indexed": true},
+        {"name": "case_key", "type": "Text", "required": false},
+        {"name": "kind", "type": "Choice", "required": true, "choices": ["quarantine", "renewal_review_held", "case_write_failed", "case_write_retries_exhausted"]},
+        {"name": "message", "type": "Note", "required": true},
+        {"name": "attempt", "type": "Number", "required": false},
+        {"name": "resolved_by", "type": "Text", "required": false},
+        {"name": "resolved_at", "type": "DateTime", "required": false}
+      ]
+    }
+  ]
+}

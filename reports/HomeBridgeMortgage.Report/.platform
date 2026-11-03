@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "HomeBridgeMortgage",
+    "description": "HomeBridge mortgage report. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "94682215-bb7b-4d70-afdc-398bef02e037"
+  }
+}

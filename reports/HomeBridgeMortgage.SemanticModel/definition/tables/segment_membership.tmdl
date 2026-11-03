@@ -1,0 +1,57 @@
+/// Append-only segment history. One row per account, cycle and run.
+table segment_membership
+
+	column account_key
+		dataType: string
+		summarizeBy: none
+		sourceColumn: account_key
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column cycle_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cycle_id
+
+	column run_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: run_id
+
+	column segment_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: segment_id
+
+	column cluster_model_version
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cluster_model_version
+
+	column assigned_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: assigned_at
+
+	column valid_from
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: valid_from
+
+	column valid_to
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: valid_to
+
+	partition segment_membership = entity
+		mode: directLake
+		source
+			entityName: segment_membership
+			schemaName: dbo
+			expressionSource: DatabaseQuery

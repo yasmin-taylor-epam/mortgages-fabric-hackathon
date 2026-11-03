@@ -1,0 +1,47 @@
+/// One source servicing case. Routing information only. No notes.
+table servicing_case
+
+	column case_id
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: case_id
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column category
+		dataType: string
+		summarizeBy: none
+		sourceColumn: category
+
+	column support_route
+		dataType: string
+		summarizeBy: none
+		sourceColumn: support_route
+
+	column opened_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: opened_at
+
+	column latest_status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: latest_status
+
+	column resolved_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: resolved_at
+
+	partition servicing_case = entity
+		mode: directLake
+		source
+			entityName: servicing_case
+			schemaName: dbo
+			expressionSource: DatabaseQuery

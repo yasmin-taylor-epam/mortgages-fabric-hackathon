@@ -4,14 +4,20 @@ Alert routing and review-case creation: Activator rules, Power Automate flows an
 
 **Owner:** Dashboard and action work package.
 
-## Proposed contents
+**Status:** The routing and the case writer run and pass tests locally. They use a SQLite file in place of SharePoint. Nobody has built the Activator rules, the Power Automate flow or the SharePoint lists yet. Power Automate licences and connector permissions are not confirmed. The Fabric workspace is not ready.
 
-The blueprint (`site/index.html`, sections 03 and 05) defines the design.
+## Contents
 
-- Activator rule definitions that react to `risk_updated` events.
-- Power Automate flow exports for the review-case writer.
-- The SharePoint review-case list schema.
-- Routing tests and sample audit records.
+| Path | Contents |
+| --- | --- |
+| `contracts/consumer-contract.md` | The data that `action/` and `reports/` read from the other work packages. |
+| `homebridge_action/` | Local reference: routing (`router.py`), the idempotent case writer (`case_writer.py`), the SQLite case store (`store.py`) and a replay command (`cli.py`). |
+| `activator/rules.md` | The proposed service rule and risk rule, and the custom-action field map. |
+| `power_automate/review-case-writer.md` | The proposed flow. It follows the local reference step by step. |
+| `sharepoint/review-cases.list.json` | The three proposed lists: review cases, audit and routing exceptions. |
+| `sharepoint/provision-list.ps1` | A PnP.PowerShell script that creates the lists. It takes the site URL as a parameter. It holds no credentials. Nobody has run it yet. |
+| `policy/routing-policy.candidate.json` | Candidate routing policy. The threshold 0.5593 comes from Models and evaluation. It is illustrative and synthetic. The team has not confirmed it. |
+| `tests/` | pytest tests. `tests/fixtures/` holds hand-written synthetic events, context and an illustrative policy. |
 
 ## Routing order
 
@@ -19,11 +25,86 @@ The blueprint (`site/index.html`, sections 03 and 05) defines the design.
 2. A verified renewal-portal software fault goes to technical support.
 3. An eligible external-refinancing risk candidate goes to a servicing adviser for a renewal review.
 
+`router.py` applies these checks in order. The first match wins.
+
+| Check | Result |
+| --- | --- |
+| No account context, or `identity_status` is not `ok` | Quarantine (T02). |
+| Payment-support request, or a risk candidate while payment support is active | `support` case. Any open renewal case goes on hold. |
+| Verified portal fault | `technical` case. |
+| Payment reversed | No new case. Open cases are flagged for a recheck. Rescoring is requested (T04). See `contracts/consumer-contract.md`, section 6. |
+| Payment-support request closed | No case. A person releases any hold. |
+| Risk candidate from a run that is not `completed` | No case (INV-5, T05). |
+| Score older than the policy limit | No case. |
+| Payment-support status unknown | Renewal review held. |
+| Score below the threshold | No case. |
+| No review owner | Renewal review held. |
+| Otherwise | `renewal` case for the servicing adviser. |
+
+## Case writer
+
+- The case key is `mortgage_id|cycle_id|action_family`. The store rejects a second row for a key (INV-3).
+- A duplicate key reads the existing case (T01). A replay into the same store adds no case.
+- A transient write failure retries with the same key. Each failure goes to the exception register. After the last attempt, the error stays visible and no case exists (T06).
+- The writer reads the account context and run status on every delivery and before every retry. A change in payment-support status between attempts changes the route.
+- The audit log is append-only. The store rejects updates and deletes. Every decision is audited, including decisions that create no case.
+- Every case records evidence IDs, routing policy, assigned owner, decision reason and separate ingestion, scoring, alert and creation times. Score-based cases also record model version, cluster model version, run and snapshot.
+- Every local case has `store = local`. A local run never claims that SharePoint wrote a case.
+
+## Run the tests and the demo replay
+
+```powershell
+python -m venv .venv
+.venv\Scripts\pip install -r action\requirements.txt
+.venv\Scripts\python -m pytest action
+```
+
+The demo replay uses illustrative fictional accounts. It shows payment-support-first routing, a replayed event, a failed scoring run, quarantine and a reversal:
+
+```powershell
+cd action
+..\.venv\Scripts\python -m homebridge_action.cli --events tests\fixtures\replay.jsonl --context tests\fixtures\context.json --policy tests\fixtures\policy.json --now 2026-11-03T10:00:00Z
+```
+
+Add `--db cases.sqlite` to keep the store between runs. Do not commit that file.
+
+### Replay with Data and replay data
+
+After PR #8 merges, `data/` holds the Data and replay package. This replay reads its local Eventhouse stand-in. It derives the service events with `hbdata.replay.service_events`, the Python twin of `ServiceEvents()`. It needs `pandas` and `pyarrow` from `data/requirements.txt`.
+
+```powershell
+cd data
+..\.venv\Scripts\python -m hbdata all
+..\.venv\Scripts\python -m hbdata replay --fixture fixtures\replay\demo_alex.jsonl
+..\.venv\Scripts\python -m hbdata replay --fixture fixtures\replay\demo_alex_duplicate.jsonl
+cd ..\action
+..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --mortgage HB-M-900001 --policy tests\fixtures\policy.json --now 2026-10-16T12:00:00Z
+```
+
+Alex (`HB-M-900001`) gets one payment-support case and one technical case. Alex's earlier verified faults, the new fault and the duplicate fault event all map to that single technical case.
+
+`tests/test_action_data_integration.py` runs the Data and replay fixtures for T01, T04 and T06, and the Alex demo. These tests skip when `data/hbdata` is missing. Set `HOMEBRIDGE_DATA_DIR` to use another `data/` folder.
+
+### End to end with Models and evaluation
+
+The Models and evaluation pipeline writes Gold tables to `data/output/lakehouse/gold/`. When `risk_outbox.parquet` and `score_runs.parquet` exist, `--hbdata-dir` also replays the published `risk_updated` events in arrival order:
+
+```powershell
+..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --policy policy\routing-policy.candidate.json --now 2026-10-15T00:05:00Z
+```
+
+On 22 October 2026, a local checkpoint run had these results (synthetic data):
+- 303 `risk_updated` events gave 6 renewal cases and 1 payment-support case.
+- The payment-support case belongs to an account at or above the threshold that has active payment support.
+- 296 events were below the threshold.
+- The same replay also produced 428 technical cases, one for each mortgage and cycle with a verified portal fault in the synthetic history.
+
+`test_models_scoring_run_flows_into_renewal_cases` checks the renewal cases against an independent calculation. It also checks the 10-review capacity.
+
 ## Rules
 
 - INV-3: at most one open review case exists per `mortgage_id` + `cycle_id` + `action_family`. A duplicate write reads the existing case (T01, T06).
-- INV-6: the prototype sends no customer messages. It makes no rate or credit decisions.
-- Payment-support priority does not depend on refinancing risk or loan balance.
-- Every review case records evidence IDs, routing policy, assigned owner and decision. Score-based cases also record model version, run and snapshot.
-- Power Automate licences and connector permissions are not confirmed yet.
-- Never put credentials or connection secrets in an exported flow.
+- INV-6: the prototype sends no customer messages. It makes no rate or credit decisions. A test checks that the package imports no mail or network module.
+- Payment-support priority does not depend on refinancing risk or loan balance. The account context holds no balance.
+- The risk threshold in `tests/fixtures/policy.json` is illustrative and used only by the tests. `policy/routing-policy.candidate.json` holds the candidate from Models and evaluation, 0.5593. The team still confirms it.
+- Never put credentials or connection secrets in an exported flow, rule or script.

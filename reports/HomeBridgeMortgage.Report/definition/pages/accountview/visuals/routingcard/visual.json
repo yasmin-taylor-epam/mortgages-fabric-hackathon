@@ -1,0 +1,116 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "routingcard",
+  "position": {
+    "x": 788,
+    "y": 152,
+    "z": 3,
+    "width": 476,
+    "height": 260,
+    "tabOrder": 3
+  },
+  "visual": {
+    "visualType": "multiRowCard",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Payment Support Priority"
+                }
+              },
+              "queryRef": "mortgage_account.Payment Support Priority",
+              "nativeQueryRef": "Payment Support Priority"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Review Owner"
+                }
+              },
+              "queryRef": "mortgage_account.Review Owner",
+              "nativeQueryRef": "Review Owner"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Renewal Review Status"
+                }
+              },
+              "queryRef": "mortgage_account.Renewal Review Status",
+              "nativeQueryRef": "Renewal Review Status"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Payment Position"
+                }
+              },
+              "queryRef": "mortgage_account.Payment Position",
+              "nativeQueryRef": "Payment Position"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Reversals"
+                }
+              },
+              "queryRef": "mortgage_account.Reversals",
+              "nativeQueryRef": "Reversals"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Routing and payment position'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
