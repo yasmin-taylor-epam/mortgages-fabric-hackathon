@@ -12,13 +12,14 @@ The names are proposals. The blueprint (`site/index.html`, section 03) defines t
 | --- | --- | --- |
 | `01_validate_histories` | Step 2: validate keys and ledger history. Build clean account histories. | Data and replay. Built; runs locally. |
 | `02_feature_snapshots` | Step 2: build frozen feature snapshots at each checkpoint. | Data and replay. Built; runs locally. |
-| `03_train_models` | Step 3: train the classifier, the rules baseline and the clusters. Record them in MLflow. | Models and evaluation |
-| `04_score_and_segment` | Steps 4 and 9: score accounts, assign segments and write the completed-run marker. | Models and evaluation |
-| `05_evaluate` | Section 04: later-cohort evaluation report. | Models and evaluation |
+| `03_train_models` | Step 3: train the classifier, the rules baseline and the clusters. Record them in MLflow. | Models and evaluation. Built; runs locally. |
+| `04_score_and_segment` | Steps 4 and 9: score accounts, assign segments and write the completed-run marker. Publish `risk_updated`. | Models and evaluation. Built; runs locally. |
+| `05_evaluate` | Section 04: later-cohort evaluation report. | Models and evaluation. Built; runs locally. |
 
 ## Rules
 
 - The Data and replay notebooks call the `hbdata` package in `data/`. Models notebooks can call `hbdata.snapshots.build_snapshots` for live scoring snapshots, so that training and scoring use the same feature code.
+- The Models and evaluation notebooks call the `models_eval` package in `notebooks/models_eval/`. Its README has the setup steps, the inputs and outputs, and the tests. `MODEL_CARD.md` describes the models.
 - INV-2: features use only data known at the checkpoint. Both `occurred_at` and `ingested_at` must be at or before `cutoff_at`.
 - INV-4: an unknown or incomplete refinancing outcome gets no model label. It never counts as retained.
 - INV-5: `risk_updated` fires only after a scoring run succeeds. A failed run leaves the last score marked stale.
