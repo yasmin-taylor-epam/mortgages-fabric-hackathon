@@ -1,0 +1,16 @@
+// HomeBridge (fictional) Eventhouse tables. Synthetic data only.
+// Run once per KQL database, in file order: 01, 02, 03, 04.
+// Not yet run in Fabric. The Fabric workspace is not ready.
+.execute database script <|
+// Landing table for the Eventstream replay. Each envelope keeps its original event_id and occurred_at.
+.create-merge table RawEventsLanding (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, simulated_ingested_at: datetime, payload: dynamic)
+// Accepted events. Duplicates stay here; queries deduplicate by event_id (T01).
+.create-merge table RawEvents (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, payload: dynamic, ingested_at: datetime)
+// Rejected events stay visible (T02).
+.create-merge table QuarantinedEvents (event_id: string, mortgage_id: string, reason: string, detail: string, detected_at: datetime, envelope: dynamic)
+// Versioned copies written by pl_copy_context (blueprint step 7). No balance.
+.create-merge table AccountContext (mortgage_id: string, cycle_id: string, deal_start_at: datetime, deal_end_at: datetime, checkpoint_at: datetime, identity_status: string, payment_support_status: string, owner_id: string, context_version: string, copied_at: datetime)
+.create-merge table ScoreContext (mortgage_id: string, cycle_id: string, run_id: string, snapshot_id: string, model_version: string, score: real, scored_at: datetime, cutoff_at: datetime, score_state: string, copied_at: datetime)
+.create-merge table SourceWatermarks (dataset: string, checked_at: datetime, max_ingested_at: datetime, max_event_at: datetime, row_count: long, stale_threshold_hours: real, is_stale: bool)
+.create-or-alter table RawEventsLanding ingestion json mapping "RawEventsLanding_json" '[{"column":"event_id","Properties":{"Path":"$.event_id"}},{"column":"event_type","Properties":{"Path":"$.event_type"}},{"column":"schema_version","Properties":{"Path":"$.schema_version"}},{"column":"source_system","Properties":{"Path":"$.source_system"}},{"column":"mortgage_id","Properties":{"Path":"$.mortgage_id"}},{"column":"application_id","Properties":{"Path":"$.application_id"}},{"column":"occurred_at","Properties":{"Path":"$.occurred_at"}},{"column":"sent_at","Properties":{"Path":"$.sent_at"}},{"column":"simulated_ingested_at","Properties":{"Path":"$.simulated_ingested_at"}},{"column":"payload","Properties":{"Path":"$.payload"}}]'
+.alter-merge table RawEventsLanding policy retention softdelete = 7d

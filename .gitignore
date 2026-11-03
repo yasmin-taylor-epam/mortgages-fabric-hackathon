@@ -4,3 +4,8 @@ apm_modules/
 
 # Generated synthetic data
 data/output/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/

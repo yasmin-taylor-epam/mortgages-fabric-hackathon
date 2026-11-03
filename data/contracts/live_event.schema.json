@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/live_event.schema.json",
+  "title": "live_event",
+  "description": "Envelope for live events that Eventstream replays into Eventhouse. Each event keeps its original event_id and occurred_at. Eventhouse records ingested_at on arrival. A replay fixture can set simulated_ingested_at to fix the ingestion time in a test.",
+  "x-grain": "One envelope per event_id. A replay of the same event_id is a duplicate, not a new event.",
+  "x-primary-key": ["event_id"],
+  "x-event-time": "occurred_at",
+  "x-ingestion-time": "ingested_at (set by Eventhouse)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "event_type", "schema_version", "source_system", "mortgage_id", "occurred_at", "sent_at", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "pattern": "^(PTE|PSE|PAY)-[0-9]{9}$", "description": "PTE = request event, PSE = payment-support event, PAY = ledger entry."},
+    "event_type": {"type": "string", "enum": ["transfer_request_event", "payment_support_requested", "payment_support_closed", "payment_entry_posted"]},
+    "schema_version": {"const": "1.0"},
+    "source_system": {"type": "string", "enum": ["renewal_portal", "servicing", "payment_ledger"]},
+    "mortgage_id": {"type": "string", "minLength": 1, "description": "Not pattern-checked here. Unknown accounts go to quarantine (T02)."},
+    "application_id": {"type": ["string", "null"]},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "sent_at": {"type": "string", "format": "date-time"},
+    "simulated_ingested_at": {"type": ["string", "null"], "format": "date-time", "description": "Test and replay only. Production ingestion uses the Eventhouse ingestion time."},
+    "payload": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"event_type": {"const": "transfer_request_event"}}}, "then": {"required": ["application_id"], "properties": {"application_id": {"type": "string", "pattern": "^PTR-[0-9]{7}$"}, "payload": {"type": "object", "required": ["stage", "status", "error_code", "error_class", "fault_verified", "channel"], "additionalProperties": false, "properties": {"stage": {"enum": ["started", "product_selected", "documents_outstanding", "documents_received", "offer_in_review", "offer_issued", "offer_accepted", "completed"]}, "status": {"enum": ["in_progress", "error", "rejected", "abandoned", "completed"]}, "error_code": {"type": ["string", "null"]}, "error_class": {"enum": ["software_fault", "customer_input", "eligibility", null]}, "fault_verified": {"type": ["boolean", "null"]}, "channel": {"enum": ["portal", "adviser"]}}}}}},
+    {"if": {"properties": {"event_type": {"enum": ["payment_support_requested", "payment_support_closed"]}}}, "then": {"properties": {"payload": {"type": "object", "required": ["case_id", "support_route", "channel"], "additionalProperties": false, "properties": {"case_id": {"type": "string", "pattern": "^CASE-[0-9]{7}$"}, "support_route": {"const": "payment_support"}, "channel": {"enum": ["phone", "email", "webchat", "secure_message"]}}}}}},
+    {"if": {"properties": {"event_type": {"const": "payment_entry_posted"}}}, "then": {"properties": {"payload": {"type": "object", "required": ["entry_type", "due_at", "amount_due", "amount_received", "reversal_of", "reason_code"], "additionalProperties": false, "properties": {"entry_type": {"enum": ["scheduled_collection", "manual_payment", "reversal"]}, "due_at": {"type": "string", "format": "date-time"}, "amount_due": {"type": "number"}, "amount_received": {"type": "number"}, "reversal_of": {"type": ["string", "null"]}, "reason_code": {"type": ["string", "null"]}}}}}}
+  ]
+}

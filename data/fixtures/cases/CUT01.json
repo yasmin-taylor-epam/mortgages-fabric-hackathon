@@ -1,0 +1,159 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "CUT01",
+  "title": "Inputs known only after the cutoff are excluded (INV-2).",
+  "rule": "Both occurred_at and ingested_at must be at or before cutoff_at. A resolution recorded after the cutoff is not an input.",
+  "behaviour_owner": [
+    "Data and replay"
+  ],
+  "cutoff_at": "2026-10-01T00:00:00Z",
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800801|C02",
+        "mortgage_id": "HB-M-800801",
+        "cycle_id": "C02",
+        "cohort_id": "2026-12",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2024-12-30T00:00:00Z",
+        "deal_end_at": "2026-12-30T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2024-12-30T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2024-12-30T02:00:00Z",
+        "ingested_at": "2024-12-30T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800801",
+        "party_id": "HB-P-8008011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ],
+    "transfer_request_event": [
+      {
+        "event_id": "PTE-900000801",
+        "application_id": "PTR-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-09-20T09:00:00Z",
+        "ingested_at": "2026-09-20T09:00:10Z",
+        "stage": "started",
+        "status": "in_progress",
+        "error_code": null,
+        "error_class": null,
+        "fault_verified": null,
+        "channel": "portal"
+      },
+      {
+        "event_id": "PTE-900000802",
+        "application_id": "PTR-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-09-21T09:00:00Z",
+        "ingested_at": "2026-09-21T09:00:10Z",
+        "stage": "product_selected",
+        "status": "in_progress",
+        "error_code": null,
+        "error_class": null,
+        "fault_verified": null,
+        "channel": "portal"
+      },
+      {
+        "event_id": "PTE-900000803",
+        "application_id": "PTR-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-09-30T20:00:00Z",
+        "ingested_at": "2026-10-02T08:00:00Z",
+        "stage": "documents_outstanding",
+        "status": "error",
+        "error_code": "SYS-503",
+        "error_class": "software_fault",
+        "fault_verified": true,
+        "channel": "portal"
+      },
+      {
+        "event_id": "PTE-900000804",
+        "application_id": "PTR-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-10-03T09:00:00Z",
+        "ingested_at": "2026-10-03T09:00:10Z",
+        "stage": "documents_outstanding",
+        "status": "in_progress",
+        "error_code": null,
+        "error_class": null,
+        "fault_verified": null,
+        "channel": "portal"
+      }
+    ],
+    "servicing_case_event": [
+      {
+        "case_event_id": "SCE-900000801",
+        "case_id": "CASE-9000801",
+        "mortgage_id": "HB-M-800801",
+        "changed_at": "2026-09-10T09:00:00Z",
+        "recorded_at": "2026-09-10T09:05:00Z",
+        "category": "complaint",
+        "status": "opened",
+        "owner_id": "ADV-001",
+        "support_route": "complaints_team"
+      },
+      {
+        "case_event_id": "SCE-900000802",
+        "case_id": "CASE-9000801",
+        "mortgage_id": "HB-M-800801",
+        "changed_at": "2026-09-29T09:00:00Z",
+        "recorded_at": "2026-10-03T09:00:00Z",
+        "category": "complaint",
+        "status": "resolved",
+        "owner_id": "ADV-001",
+        "support_route": "complaints_team"
+      }
+    ],
+    "servicing_contact": [
+      {
+        "contact_id": "CON-90000801",
+        "case_id": "CASE-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-09-10T09:00:00Z",
+        "ingested_at": "2026-09-10T09:01:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      },
+      {
+        "contact_id": "CON-90000802",
+        "case_id": "CASE-9000801",
+        "mortgage_id": "HB-M-800801",
+        "occurred_at": "2026-09-30T15:00:00Z",
+        "ingested_at": "2026-10-01T06:00:00Z",
+        "channel": "phone",
+        "direction": "inbound"
+      }
+    ]
+  },
+  "expected": {
+    "pt_request_count": 1,
+    "pt_latest_stage": "product_selected",
+    "pt_software_errors_90d": 0,
+    "svc_unresolved_complaint": true,
+    "svc_open_cases_at_cutoff": 1,
+    "svc_contacts_90d": 1,
+    "excluded_event_ids": [
+      "PTE-900000803",
+      "PTE-900000804",
+      "SCE-900000802",
+      "CON-90000802"
+    ]
+  }
+}

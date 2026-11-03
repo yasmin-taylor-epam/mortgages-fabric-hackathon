@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/transfer_request_event.schema.json",
+  "title": "transfer_request_event",
+  "description": "One product-transfer request state change from the renewal portal. application_id identifies the product-transfer request. error_class separates verified portal software faults from customer input errors, eligibility rejections and abandonment.",
+  "x-grain": "One row per event_id.",
+  "x-primary-key": ["event_id"],
+  "x-event-time": "occurred_at",
+  "x-ingestion-time": "ingested_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "application_id", "mortgage_id", "occurred_at", "ingested_at", "stage", "status", "error_code", "error_class", "fault_verified", "channel"],
+  "properties": {
+    "event_id": {"type": "string", "pattern": "^PTE-[0-9]{9}$"},
+    "application_id": {"type": "string", "pattern": "^PTR-[0-9]{7}$"},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"},
+    "stage": {"type": "string", "enum": ["started", "product_selected", "documents_outstanding", "documents_received", "offer_in_review", "offer_issued", "offer_accepted", "completed"]},
+    "status": {"type": "string", "enum": ["in_progress", "error", "rejected", "abandoned", "completed"], "description": "in_progress also marks a retry after an error at the same stage."},
+    "error_code": {"type": ["string", "null"], "pattern": "^(SYS|USR|ELG)-[A-Z0-9-]+$"},
+    "error_class": {"type": ["string", "null"], "enum": ["software_fault", "customer_input", "eligibility", null]},
+    "fault_verified": {"type": ["boolean", "null"], "description": "True when technical support verified a software fault. Null for other rows."},
+    "channel": {"type": "string", "enum": ["portal", "adviser"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "error"}}}, "then": {"properties": {"error_code": {"type": "string"}, "error_class": {"type": "string"}}}},
+    {"if": {"properties": {"error_class": {"const": "software_fault"}}, "required": ["error_class"]}, "then": {"properties": {"fault_verified": {"type": "boolean"}}}, "else": {"properties": {"fault_verified": {"type": "null"}}}}
+  ]
+}
