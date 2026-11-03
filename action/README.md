@@ -70,7 +70,7 @@ Add `--db cases.sqlite` to keep the store between runs. Do not commit that file.
 
 ### Replay with Data and replay data
 
-After PR #8 merges, `data/` holds the Data and replay package. This replay reads its local Eventhouse stand-in. It derives the service events with `hbdata.replay.service_events`, the Python twin of `ServiceEvents()`. It needs `pandas` and `pyarrow` from `data/requirements.txt`.
+`data/` holds the Data and replay package. This replay reads its local Eventhouse stand-in. It derives the service events with `hbdata.replay.service_events`, the Python twin of `ServiceEvents()`. It needs `pandas` and `pyarrow` from `data/requirements.txt`.
 
 ```powershell
 cd data

@@ -1,6 +1,6 @@
 # Consumer contract: Dashboard and action
 
-**Status:** Agreed by both producers on 22 October 2026. Data and replay agreed sections 2, 3 and their rows of section 5. Their schemas are in `data/contracts/*.schema.json` (PR #8). Models and evaluation agreed sections 1, 4 and their rows of section 5. They write the Gold tables to `data/output/lakehouse/gold/`. The tests in `action/tests/test_action_data_integration.py` and `reports/tests/test_report_data_integration.py` check this file against the producer schemas, fixtures and generated tables.
+**Status:** Agreed by both producers on 22 October 2026. Data and replay agreed sections 2, 3 and their rows of section 5. Their schemas are in `data/contracts/*.schema.json`. Models and evaluation agreed sections 1, 4 and their rows of section 5. They write the Gold tables to `data/output/lakehouse/gold/`. The tests in `action/tests/test_action_data_integration.py` and `reports/tests/test_report_data_integration.py` check this file against the producer schemas, fixtures and generated tables.
 
 This file lists the data that `action/` and `reports/` read. The producing work packages own the schemas. If a producer schema differs from this file, the producer schema wins and this file changes.
 

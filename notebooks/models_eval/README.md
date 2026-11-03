@@ -58,7 +58,7 @@ The schemas in `data/contracts/` define the inputs. Data and replay owns them.
 
 ## Outputs
 
-Gold tables go in `lakehouse/gold/`. Each table stores `account_key = mortgage_id|cycle_id`. The Dashboard and action consumer contract (`action/contracts/consumer-contract.md` on its branch) lists the columns that the report reads.
+Gold tables go in `lakehouse/gold/`. Each table stores `account_key = mortgage_id|cycle_id`. The Dashboard and action consumer contract (`action/contracts/consumer-contract.md`) lists the columns that the report reads.
 
 | Table | Grain | Write rule |
 | --- | --- | --- |
