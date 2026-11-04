@@ -2,7 +2,7 @@
 
 **Status:** Written and tested offline only. Nobody has run any of this in Fabric. Every claim that a step "works in Fabric" is a target, not a result. Items are labelled **untested** until someone runs them in a real workspace.
 
-This page answers one question: can the team deploy the build with config-as-code, or must it click through Fabric? The answer is **mostly code**. A short list of steps stays manual. Each one has a reason and a way to shrink the list.
+This page answers one question: can the team deploy the build with config-as-code, or must it click through Fabric? The answer is **mostly code**. Five steps stay manual. Each one has a reason and a Microsoft source in [Item by item](#item-by-item).
 
 All data is synthetic. HomeBridge is a fictional lender.
 
@@ -25,21 +25,42 @@ All data is synthetic. HomeBridge is a fictional lender.
 
 | Step | What happens | Tool |
 | --- | --- | --- |
+| `capacity` | **Opt-in.** Creates a Fabric capacity in Azure. | Azure Resource Manager |
 | `workspace` | Finds the workspace by name or ID. Creates it when missing. Assigns the capacity. | Fabric REST API |
+| `roles` | **Opt-in.** Assigns workspace roles from the settings. | Fabric REST API |
 | `core` | Publishes the Lakehouse, Environment, Eventhouse, KQL database, 7 notebooks, the scoring pipeline and the Eventstream. | fabric-cicd |
+| `retention` | **Opt-in.** Sets the 7-day soft-delete retention of `RawEventsLanding`. | Kusto management endpoint |
 | `upload` | Generates the synthetic exports. Uploads them and the Python code (`hbdata`, `models_eval`) to the Lakehouse Files area. | OneLake (ADLS Gen2) API |
 | `notebooks` | Runs notebooks 00 to 05 in order, then 06 (Parquet to Delta tables). | Fabric Job Scheduler API |
 | `pipeline` | Runs `pl_scheduled_scoring` once, then notebook 06 again. | Fabric Job Scheduler API |
+| `schedule` | **Opt-in.** Schedules `pl_scheduled_scoring` (default every 15 minutes). | Fabric Job Scheduler API |
 | `model` | Publishes the semantic model and the report. Fills the Direct Lake placeholders with the real SQL endpoint. | fabric-cicd |
+| `rls` | **Opt-in.** Adds group members to the two semantic model roles. | XMLA endpoint (PowerShell and TOM) |
 | `labels` | Sets a Purview sensitivity label on the model and report. Needs a Fabric administrator. Off unless `sensitivity_label_id` is set. | Fabric Admin REST API |
+| `sharepoint` | **Opt-in.** Creates the review-case lists. | Microsoft Graph |
+| `eventstream` | **Opt-in, `--only` only.** Reads the custom endpoint details of the Eventstream and prints names, never a key. | Fabric REST API |
+| `replay` | **Opt-in.** Sends the replay events to the Eventstream with the connection read at run time. | Fabric REST API, `hbdata replay` |
+| `git` | **Opt-in.** Connects the workspace to a GitHub branch. | Fabric REST API |
+
+An **opt-in** step does nothing unless its section in the settings file has `enabled: true`, or you name the step with `--only`. A default run is the same as before. Every opt-in step is **untested** in Fabric.
 
 Three modes:
 
-- `--validate` runs offline checks. No sign-in. It builds the staging folder and checks every item file.
-- `--dry-run` signs in, reads the tenant, and prints what it would do. It changes nothing.
+- `--validate` runs offline checks. No sign-in. It builds the staging folder, checks every item file, checks the settings of every enabled section, and converts the SharePoint schema to Graph request bodies.
+- `--dry-run` signs in, reads the tenant, and prints what it would do. It changes nothing. The Kusto `.show` command is a read. The retention `.alter-merge` command is never sent in a dry run.
 - No flag applies the changes.
 
-Settings come from `fabric/config/fabric.config.yml` (workspace name or ID, capacity, run times), then from `HB_FABRIC_*` environment variables, then from command-line options. The file holds no secrets. The script refuses a file that has keys such as `password`, `token` or `tenant_id`.
+Every opt-in step is **idempotent**. It reads the current state first and changes only what differs.
+
+Settings come from `fabric/config/fabric.config.yml` (workspace name or ID, capacity, run times, opt-in sections), then from `HB_FABRIC_*` environment variables, then from command-line options. The file holds no secrets. The script refuses a file that has keys such as `password`, `token`, `pat`, `connection_string`, `email` or `tenant_id`. It also refuses a value that looks like a GitHub PAT, a connection string or an e-mail address.
+
+Secrets come from environment variables at run time. The script reads them and passes them on in memory. It never writes them to a file or prints them.
+
+| Variable | Used by | Holds |
+| --- | --- | --- |
+| `HB_FABRIC_CAPACITY_ADMINS` | `capacity` | Comma-separated capacity admins (user principal names or app IDs). |
+| `HB_GITHUB_PAT` | `git` | A GitHub personal access token. Not needed when `git.connection_id` is set or a connection with that name exists. |
+| `HB_GRAPH_CLIENT_ID`, `HB_GRAPH_CLIENT_SECRET`, `HB_GRAPH_TENANT_ID` | `sharepoint` | An app registration for app-only Graph access. Without all three, the step uses your own sign-in. |
 
 ### Order, and why
 
@@ -84,6 +105,13 @@ powershell -File scripts\deploy_fabric.ps1 --only notebooks pipeline
 
 # Re-use an existing az login instead of the browser sign-in
 powershell -File scripts\deploy_fabric.ps1 --auth azcli
+
+# Opt-in steps. Set the section in the settings file first (see fabric.config.example.yml), or just name the step.
+powershell -File scripts\deploy_fabric.ps1 --dry-run --only roles retention schedule
+powershell -File scripts\deploy_fabric.ps1 --only retention schedule
+$env:HB_GITHUB_PAT = '<paste for this session only>'; powershell -File scripts\deploy_fabric.ps1 --only git
+powershell -File scripts\deploy_fabric.ps1 --only eventstream replay    # needs data\output and: pip install azure-eventhub
+powershell -File scripts\deploy_fabric.ps1 --only model rls             # run rls again after every model deploy
 ```
 
 Notes:
@@ -91,55 +119,70 @@ Notes:
 - The first run takes a long time. The Environment publish and the model training are the slow parts.
 - Re-running is safe for publishing and uploading. Re-running `notebooks` trains the models again and registers new model versions.
 - The script never deletes items unless `prune: true` is set. Even then, fabric-cicd keeps Lakehouses and other data items unless a feature flag allows deletion.
+- A model deploy can reset the role members. Run `rls` again after each `model` step.
 - After the run, do the [manual steps](#manual-steps-that-remain).
 
 ## Item by item
 
-Legend: **Full** = deployed by the script from files in this repository. **Partly** = some of it is automated. **Manual** = a person must do it.
+Checked against Microsoft pages on 4 November 2026. **Every step that is marked automated is untested until someone has run it in Fabric.** Nobody has.
 
-| Item | Status | What is automated | Why the rest is manual, or the limit |
-| --- | --- | --- | --- |
-| Workspace | **Full** | Create by name. | The caller needs the "create workspaces" right from a Fabric admin. |
-| Capacity | **Manual** (use an existing one) | The script assigns the workspace to a capacity that you name. | Creating a capacity is an Azure step. It needs rights on an Azure subscription. The Fabric CLI documents `fab mkdir <name>.Capacity` with SKU, admin, location, resource group and subscription. **Untested.** The script does not create capacities. |
-| Lakehouse | **Full** | Create. | Git and fabric-cicd carry only the metadata. Tables and files are never in Git. The script fills the Lakehouse with data instead. |
-| Notebooks (7) | **Full** | Publish with the default Lakehouse and Environment bound by logical ID. Run in order. | The notebook Resources folder is not supported by the public API. The code is not stored there. |
-| Environment and Python packages | **Full** for public libraries. **Partly** for the project code. | `shap`, `rfc3339-validator` and `jsonschema` install through `environment.yml`. The script uploads `hbdata` and `models_eval` to Lakehouse Files. Notebooks add that folder to `sys.path`. | An Environment can also hold custom wheels. Whether fabric-cicd uploads them is **unverified**, so the build does not depend on it. The Environment publish is asynchronous. fabric-cicd waits for it. |
-| Data pipeline `pl_scheduled_scoring` | **Full** | Publish. Run once. | The 15-minute schedule is not set. The Job Scheduler API can create schedules. This is not built, so the pipeline never runs by itself. |
-| Data pipelines `pl_load_raw`, `pl_copy_context`, `pl_export_journeys` | **Manual** (not built) | Notebook `00_load_raw` replaces `pl_load_raw`. | The other two need Copy activities with a KQL database connection. Nobody has verified a hand-written definition. Build them once in the portal, sync to Git, and commit the exported files. |
-| Eventstream | **Partly**. **Untested.** | Publish a custom-endpoint source that routes to `RawEventsLanding` in the KQL database. | The custom endpoint connection string appears only after creation. Nothing reads it yet, so `replay.send_eventstream` has no endpoint. A Direct Ingestion destination needs a manual connection after import. This build uses processed ingestion to avoid that. |
-| Eventhouse | **Full** | Create. | None. |
-| KQL database and KQL scripts | **Full**, one command manual | Tables, functions, update policies and the ingestion mapping come from `DatabaseSchema.kql`, generated from `kql/*.kql`. | A KQL database Git item holds only a fixed list of command types. The 7-day retention policy on `RawEventsLanding` is not in the list. Run it by hand. See [manual steps](#manual-steps-that-remain). |
-| Activator rules | **Manual** | Nothing. | The Git file `ReflexEntities.json` has no published schema. Microsoft says the schemas are coming. A hand-written file would be a guess. fabric-cicd can publish an Activator that someone exported. Build the two rules once, sync to Git, commit the files. |
-| Semantic model | **Full**. **Untested.** | Publish. Fill the SQL endpoint and endpoint ID in `expressions.tmdl`. | The model is a Git preview item. Members of the two roles are assigned in the portal. The README of `reports/` says the same. The second Direct Lake placeholder is named `LAKEHOUSE-ID`. Direct Lake on SQL expects the SQL endpoint ID, and the script uses that. **Unverified.** If the model fails to load, try the Lakehouse ID. |
-| Report | **Full**. **Untested.** | Publish. fabric-cicd rewrites the path to the model into a link to the deployed model. | The report is a Git preview item. |
-| MLflow experiment and models | **Full by running notebook 03** | Notebook 03 creates the experiment `homebridge-refinancing-risk` and registers `hb-refi-clf` and `hb-segments`. | fabric-cicd and Git track only experiment metadata. Runs and model versions are never in Git. fabric-cicd has no ML model item type. The models exist only after the training run. |
-| SharePoint review-case lists | **Partly**. **Untested.** | `action/sharepoint/provision-list.ps1` creates the lists. | It is not part of Fabric. It needs a SharePoint site, an Entra app registration, the PnP.PowerShell module and a second sign-in. The script is not in the deploy run. A site owner must secure the lists. |
-| Power Automate flow | **Manual** | Nothing. | Design only. Flows need connections that a person authorises. The Activator action link is made in the portal. Licences and connector rights are not confirmed. Exporting a flow as a solution may help. That is **unverified** here. |
-| Purview sensitivity labels | **Partly**. **Untested.** | The `labels` step sets a label on the model and report. | Only a Fabric administrator can use the bulk-set-labels API. It does not accept a service principal. The label must be in the administrator's label policy. |
-| Upload of data to OneLake | **Full**. **Untested.** | Exports and code go to `Files/hb/`. | None. The Fabric CLI can do the same with `fab cp`. |
-| Run notebooks and the pipeline | **Full**. **Untested.** | Job Scheduler API with the signed-in user. | Whether notebook jobs accept a service principal is **unverified**. The script uses a user sign-in. |
-| Git connection to the team repository | **Manual** | Nothing. | A workspace admin connects the workspace to a branch in the portal. The Git REST API may allow this in code. That is **unverified** here. |
+Legend:
+
+- **Automated**: the script does it from files or settings in this repository.
+- **Partly**: the script does one part. A person does the rest.
+- **Manual**: no supported API exists, or the API needs a person who signs in interactively.
+- **Opt-in**: the step is off. Switch it on in the settings file (`enabled: true`) or name it with `--only`.
+- **UNVERIFIED**: the sources do not settle the point. The code or text says what it assumes.
+
+| Item | Status | What the script does | Why the rest is manual, or the limit | Source |
+| --- | --- | --- | --- | --- |
+| Workspace | **Automated** | Creates it by name. Assigns the capacity. | The caller needs the right to create workspaces. | [Create Workspace](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/create-workspace), [Assign To Capacity](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/assign-to-capacity) |
+| Capacity (paid F SKU) | **Automated**, opt-in step `capacity` | Creates `Microsoft.Fabric/capacities` in Azure. Skips it when it exists. Capacity admins come from `HB_FABRIC_CAPACITY_ADMINS` at run time. | The caller needs Contributor on an Azure resource group. Azure holds the subscription and quota. | [Capacities - Create Or Update (ARM, 2023-11-01)](https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/create-or-update) |
+| Capacity (free trial) | **Manual** | Nothing. | A trial is started in the portal. I found no API for it in the pages I read. I did not confirm with Microsoft that none exists. | Not found. **UNVERIFIED.** |
+| Workspace roles | **Automated**, opt-in step `roles` | Adds or updates role assignments from the settings (Entra object IDs). Keeps the ones that match. | The tenant setting that lets service principals call Fabric APIs is on only after a Fabric administrator turns it on. That matters only if CI runs the script. | [Add Workspace Role Assignment](https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/add-workspace-role-assignment) (user and service principal: yes) |
+| Lakehouse | **Automated** | Creates it. Fills it with data (step `upload`). | Git and fabric-cicd carry the metadata only. Tables and files are never in Git. | [Lakehouse Git](https://learn.microsoft.com/en-us/fabric/data-engineering/lakehouse-git-deployment-pipelines) |
+| Notebooks (7) | **Automated** | Publishes them with the default Lakehouse and Environment bound by logical ID. Runs them in order. | The notebook Resources folder is not supported by the public API. The code is not stored there. | [Notebook definition](https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/notebook-definition) |
+| Environment and Python packages | **Automated** for public libraries. **Partly** for project code. | `shap`, `rfc3339-validator` and `jsonschema` install through `environment.yml`. The script uploads `hbdata` and `models_eval` to Lakehouse Files. | Whether fabric-cicd uploads custom wheels is **UNVERIFIED**. The build does not depend on it. | [Environment Git](https://learn.microsoft.com/en-us/fabric/data-engineering/environment-git-and-deployment-pipeline) |
+| Pipeline `pl_scheduled_scoring`: publish and run once | **Automated** | Publishes it. Runs it once. | None. | [Run On Demand Item Job](https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/run-on-demand-item-job) |
+| Pipeline schedule (every 15 minutes) | **Automated**, opt-in step `schedule` | Creates a Cron schedule (`interval` in minutes, 1 to 5,270,400). Changes the interval when it differs. The interval is a setting. | 15 minutes is a proposal to test. Microsoft does not promise that a run finishes inside the interval. | [Create Item Schedule](https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/create-item-schedule) (user and service principal: yes), [pipeline REST capabilities](https://learn.microsoft.com/en-us/fabric/data-factory/pipeline-rest-api-capabilities) |
+| Pipelines `pl_load_raw`, `pl_copy_context`, `pl_export_journeys` | **Manual** (not built) | Notebook `00_load_raw` replaces `pl_load_raw`. | The other two need Copy activities with a KQL database connection. Nobody has verified a hand-written definition. Build them once in the portal, sync to Git, commit the files. | Not applicable |
+| Eventstream: publish | **Automated** | Publishes a custom-endpoint source that routes to `RawEventsLanding`. | The processed ingestion mapping is untested. | [Eventstream definition](https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/eventstream-definition) |
+| Eventstream: connection details for replay | **Automated**, opt-in steps `eventstream` and `replay` | Reads the custom endpoint connection with the Fabric API. Runs `python -m hbdata replay --target eventstream` with the connection in the child process environment only. The key is never printed or written. | The API supports custom endpoint, Cribl and SAP Datasphere sources only. Replay needs the local data in `data/output` and `pip install azure-eventhub`. | [Get Eventstream Source Connection](https://learn.microsoft.com/en-us/rest/api/fabric/eventstream/topology/get-eventstream-source-connection) (user and service principal: yes), [Get Eventstream Topology](https://learn.microsoft.com/en-us/rest/api/fabric/eventstream/topology/get-eventstream-topology) |
+| Eventhouse | **Automated** | Creates it. | None. | [Real-Time Intelligence Git](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/git-deployment-pipelines) |
+| KQL database: tables, functions, update policies, mapping | **Automated** | Deploys `DatabaseSchema.kql`, generated from `kql/*.kql`. | A KQL database Git item holds a fixed list of command types. | [KQL database Git](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/git-eventhouse-kql-database) |
+| KQL table retention (7 days on `RawEventsLanding`) | **Automated**, opt-in step `retention` | Reads the policy with `.show table ... policy retention`. Runs `.alter-merge table ... policy retention softdelete = 7d` only when the value differs. Uses the Kusto management endpoint `/v1/rest/mgmt` on the KQL database query URI. | `DatabaseSchema.kql` cannot hold this command. `DatabaseProperties.json` holds only `oneLakeCachingPeriod` and `oneLakeStandardStoragePeriod`, so it cannot hold a table retention either. The access token audience for a Fabric eventhouse is **UNVERIFIED**. The code asks for `https://api.kusto.windows.net/.default`. | [Retention policy command](https://learn.microsoft.com/en-us/kusto/management/retention-policy?view=microsoft-fabric), [Kusto REST request](https://learn.microsoft.com/en-us/kusto/api/rest/request?view=microsoft-fabric), [KQL database definition](https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/kql-database-definition) |
+| Activator rules | **Manual** | Nothing. | The definition schema is now published. It lists sources (simulator, KQL, Real-time Hub, Eventstream), a Fabric item action and time series views for events, objects, attributes and rules. The entity list has no Power Automate custom action. The two designed rules start a Power Automate flow, so I cannot express them in a definition that validates against the published schema. A rule that runs a Fabric item (for example a pipeline) would validate. That changes the design, so I did not build it. I read the entity list and the source and action sections. I did not read every rule payload section. | [Reflex definition](https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/reflex-definition) |
+| Semantic model and report: publish | **Automated** | Publishes both. Fills the SQL endpoint and endpoint ID in `expressions.tmdl`. | Git preview items. The second Direct Lake placeholder is named `LAKEHOUSE-ID`. Direct Lake on SQL expects the SQL endpoint ID, and the script uses that. **UNVERIFIED.** If the model fails to load, try the Lakehouse ID. | [Semantic model Git](https://learn.microsoft.com/en-us/fabric/cicd/git-integration/intro-to-git-integration) |
+| Semantic model role members (RLS) | **Partly**, opt-in step `rls` | Runs `scripts/fabric/set_rls_members.ps1`. The script connects to the XMLA endpoint with TOM and adds group object IDs to the two roles. It only adds. It skips members that exist. The token goes to the child process environment only. | The REST API cannot set role members. TMDL, Git and fabric-cicd deploy roles with empty members, so run the step again after each model deploy. The capacity needs XMLA read-write. Whether TOM accepts a group by object ID is **UNVERIFIED**. Reports say a group that is not mail-enabled can fail with "invalid rolememberships". If it fails, add the members in the portal. The script could not be run here. Only its syntax and its call from Python are tested. | [XMLA endpoint](https://learn.microsoft.com/en-us/fabric/enterprise/powerbi/service-premium-connect-tools), [RLS role membership](https://learn.microsoft.com/en-us/fabric/security/service-admin-row-level-security) |
+| MLflow experiment and models | **Automated** by running notebook 03 | Notebook 03 creates the experiment `homebridge-refinancing-risk` and registers `hb-refi-clf` and `hb-segments`. | fabric-cicd and Git track only experiment metadata. Runs and model versions are never in Git. | [ML experiments Git](https://learn.microsoft.com/en-us/fabric/data-science/machine-learning-artifacts-git-deployment-pipelines) |
+| SharePoint review-case lists | **Partly**, opt-in step `sharepoint` | Reads `action/sharepoint/review-cases.list.json`. Creates each missing list with its columns through Microsoft Graph. Adds missing columns to a list that exists. Signs in as you, or app-only when `HB_GRAPH_CLIENT_ID`, `HB_GRAPH_CLIENT_SECRET` and `HB_GRAPH_TENANT_ID` are set. | The site must exist. Creating a site needs the SharePoint site-creation REST API (SPSiteManager). I did not build or verify that. Granting users and groups access needs PnP or SharePoint REST. The step does not set permissions. A site owner must secure the lists. Whether Graph keeps `enforceUniqueValues` on `case_key` (INV-3) is **UNVERIFIED**. Check it after the first run. `action/sharepoint/provision-list.ps1` (PnP) stays as the alternative. | [Create list (Graph)](https://learn.microsoft.com/en-us/graph/api/list-create?view=graph-rest-1.0): application permission `Sites.Manage.All` or `Sites.ReadWrite.All` |
+| Power Automate flow | **Partly** | Nothing in this script. | A solution can be exported and imported with the Power Platform CLI (`pac solution`). I did not verify that here. The first creation of a connection (SharePoint, Outlook, Teams) needs a person to sign in. The flow design is in `action/power_automate/review-case-writer.md`. | [Power Platform CLI solution](https://learn.microsoft.com/en-us/power-platform/developer/cli/reference/solution). **UNVERIFIED** here. |
+| Link from Activator to the flow | **Manual** | Nothing. | Microsoft documents this as a portal feature. The Reflex schema has no entity for it. | [Activator custom actions with Power Automate](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/data-activator/activator-trigger-power-automate-flows) |
+| Purview sensitivity labels | **Partly** | The `labels` step sets a label on the model and report when `sensitivity_label_id` is set. | The API needs a Fabric administrator who signs in as a user. It does not support a service principal. It allows 25 requests an hour. The label must be in that administrator's label policy. A Purview default-label policy may cover new items. I did not verify that. | [Bulk Set Labels](https://learn.microsoft.com/en-us/rest/api/fabric/admin/labels/bulk-set-labels) |
+| Data upload to OneLake | **Automated** | Sends exports and code to `Files/hb/`. | None. | [OneLake and Python](https://learn.microsoft.com/en-us/fabric/onelake/onelake-access-python) |
+| Run notebooks and the pipeline | **Automated** with a user sign-in | Job Scheduler API. | A service principal can call the job API. Some notebook features have limits under a service principal (for example semantic link functions, and `notebookutils.runtime.context` in fabric-cicd issue 202). I did not verify either. | [Run On Demand Item Job](https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/run-on-demand-item-job) |
+| Git connection to GitHub | **Automated**, opt-in step `git` | Creates a Fabric connection from a PAT in `HB_GITHUB_PAT`, or uses an existing one. Connects. Initialises. Runs Update From Git when asked. Does nothing when the workspace is already connected. | A GitHub connection needs a PAT. Fabric has no GitHub service principal credential. Connect needs a workspace admin. A service principal can connect only with a configured connection. The step never commits workspace changes to the branch. The repository keeps items in `fabric/items/` and `reports/`. Fabric Git reads one folder, so set `git.directory` to a folder that holds all items, or move them first. | [Git - Connect](https://learn.microsoft.com/en-us/rest/api/fabric/core/git/connect), [Initialize Connection](https://learn.microsoft.com/en-us/rest/api/fabric/core/git/initialize-connection), [Update From Git](https://learn.microsoft.com/en-us/rest/api/fabric/core/git/update-from-git), [Automate Git integration](https://learn.microsoft.com/en-us/fabric/cicd/git-integration/git-automation), [Create Connection](https://learn.microsoft.com/en-us/rest/api/fabric/core/connections/create-connection) |
+| Tenant setting: service principals can call Fabric APIs | **Manual**, once | Nothing. | Only a Fabric administrator can turn it on. | [Developer settings](https://learn.microsoft.com/en-us/fabric/admin/service-admin-portal-developer) |
 
 ## Manual steps that remain
 
-Do these once per workspace, after a successful run.
+This is the short list of what stays manual. Each has a reason.
 
-1. **Check the capacity.** If `workspace` failed, ask a capacity admin to add you as contributor. Or ask an Azure owner for a capacity.
-2. **Set the KQL retention policy.** Open the KQL database `HomeBridgeEvents`. Run this command in a KQL queryset or the explorer:
+| # | Step | Why it stays manual |
+| --- | --- | --- |
+| 1 | **Start a Fabric trial capacity** (only if you use a trial) | I found no API for a trial. A paid F SKU can be created by the `capacity` step. |
+| 2 | **Set the Purview sensitivity label** (`bulkSetLabels`) | The API needs an interactive Fabric administrator. It rejects a service principal. |
+| 3 | **Authorise connections for Power Automate the first time** | A person must sign in to SharePoint, Outlook or Teams once. |
+| 4 | **Link the Activator rules to the Power Automate flow** | The link is a portal action. The published Reflex schema has no entity for it. The rules themselves cannot be expressed in a definition either. See the Activator row above. |
+| 5 | **Turn on the tenant setting "Service principals can call Fabric public APIs"** (CI only) | Only a Fabric administrator can change it. A person who runs the script with their own sign-in does not need it. |
 
-   ```kusto
-   .alter-merge table RawEventsLanding policy retention softdelete = 7d
-   ```
+Also manual, and outside this list because they are not about Fabric itself:
 
-   Why: a KQL database Git item cannot hold this command type.
-3. **Assign the two report roles.** Open the semantic model security settings. Add members to `General viewer` and `Authorised adviser`. Why: the TMDL holds the roles. It does not hold the members.
-4. **Apply a sensitivity label** if the `labels` step did not. Confirm the label name with the tenant admin. Every item with personal data needs a label (blueprint section 06). Why: labels are service metadata, not file content, and only an admin can bulk-set them.
-5. **Build the Activator rules** from `action/activator/rules.md`. Sync the item to Git and commit it. After that, the deploy can publish it.
-6. **Build the Power Automate flow** from `action/power_automate/review-case-writer.md`. Why: it needs a person to authorise connections.
-7. **Provision the SharePoint lists.** Run `action/sharepoint/provision-list.ps1 -WhatIf` first. Why: it is outside Fabric and needs SharePoint rights.
-8. **Read the Eventstream custom endpoint** connection details in the portal when you want to send replay events. Set `HB_EVENTSTREAM_CONNECTION` and `HB_EVENTSTREAM_NAME` in your shell. Install `azure-eventhub`. Then run `python -m hbdata replay --target eventstream`. Never commit these values.
-9. **Set the pipeline schedule** (proposed: every 15 minutes) on `pl_scheduled_scoring`. It is a target to test, not a platform guarantee.
-10. **Measure the 60-second view target.** It is not a Direct Lake guarantee.
+- **Build the Activator rules and the Power Automate flow** from `action/activator/rules.md` and `action/power_automate/review-case-writer.md`. Build the two rules once, sync the item to Git and commit it. After that, the deploy can publish the Activator item. (The research notes say fabric-cicd lists Reflex as a supported type. I did not re-check that.)
+- **Create the SharePoint site and secure the lists.** The `sharepoint` step creates the lists only.
+- **Build `pl_copy_context` and `pl_export_journeys`** in the portal and commit the export.
+- **Check the opt-in steps by hand once.** They are untested. If `rls` fails, add the group members in the portal (semantic model, Security).
+- **Measure the 60-second view target.** It is not a Direct Lake guarantee.
 
 If the model fails on first load, wait a few minutes and refresh. The SQL analytics endpoint can lag behind new Delta tables. **Unverified.**
 
@@ -157,24 +200,32 @@ Ask for these so that the manual list shrinks. The first group is enough for the
 | Real-Time Intelligence, data science and Activator items not blocked in the tenant | Fabric administrator | Eventhouse, KQL database, Eventstream, ML items | **Unverified.** Check in the tenant settings. |
 | Fabric administrator role (one person) | Tenant admin | `labels` step. Also needed to read the label list. | REST: Bulk Set Labels |
 | A Purview sensitivity label in that person's label policy | Compliance admin | Which label can be applied | REST: Bulk Set Labels |
+| Workspace role Member or higher | Workspace admin | `roles` step (adds members and lower roles only) | REST: Add Workspace Role Assignment |
+| Workspace role Admin | Workspace admin | `git` step (Connect and Initialize need Admin) | REST: Git - Connect |
+| Contributor on an Azure resource group | Azure owner | `capacity` step | ARM: Capacities - Create Or Update |
+| Read and write permission on the Eventstream | Workspace admin | `eventstream` and `replay` steps | REST: Get Eventstream Source Connection |
+| XMLA endpoint set to read-write on the capacity, and Build permission on the model | Capacity admin | `rls` step | XMLA endpoint page |
+| Application permission `Sites.Manage.All` or `Sites.ReadWrite.All` (app-only), or the matching delegated right | Entra admin | `sharepoint` step | Graph: Create list |
 
 ### For a service principal (CI/CD later)
 
 | Permission | What it unlocks | Source |
 | --- | --- | --- |
-| Tenant setting **Service principals can use Fabric APIs** | Any Fabric REST call from a service principal or managed identity | REST: identity support |
-| Tenant setting **Service principals can create workspaces, connections, and deployment pipelines** | Create a workspace in code | REST: Create Workspace |
+| Tenant setting **Service principals can call Fabric public APIs** | Any Fabric REST call from a service principal or managed identity | REST: identity support, Developer settings |
+| Tenant setting **Service principals can create workspaces, connections, and deployment pipelines** | Create a workspace or a connection in code (`workspace` and `git` steps) | REST: Create Workspace, Create Connection |
 | Capacity contributor for the service principal | Assign a workspace to a capacity | REST: Assign To Capacity |
 | A workspace role for the service principal | Publish items and run jobs | Fabric docs |
 
 Limits to know:
 
 - The bulk-set-labels API does not support a service principal. Labels need a human Fabric administrator, or a manual step.
+- Git Connect works for a service principal only with a configured connection (`myGitCredentials.source` = `ConfiguredConnection`). A GitHub connection needs a PAT.
 - Each API page says whether it supports a service principal. An item type or job type can refuse one. Check before you move a step to CI.
+- The `rls` step runs with the signed-in identity. A service principal on the XMLA endpoint is **UNVERIFIED** here.
 
 ### For the items outside Fabric
 
-- **SharePoint:** site owner rights, and an Entra app registration for PnP.PowerShell.
+- **SharePoint:** site owner rights, and either your own sign-in with the Graph rights above or an Entra app registration (the three `HB_GRAPH_*` variables). The PnP script needs an app registration too.
 - **Power Automate:** a licence, and the right to use the connectors that the flow needs. The README of `action/` says these are not confirmed.
 - **Azure:** Contributor on a resource group, to create a Fabric capacity.
 
@@ -246,18 +297,24 @@ Verified offline (see `scripts/fabric/tests/`):
 - The fabric-cicd config validator accepts the generated configs. The parameter file filters match the staged items.
 - The deploy steps run in the right order against a fake Fabric API. A dry run sends no change request. A failed job stops the run.
 - Notebook 00 runs locally and is idempotent. The set of Delta tables in notebook 06 equals the set of tables in the semantic model. The source Parquet files exist.
-- No secret patterns appear in the item files. The config loader rejects secret keys.
+- No secret patterns appear in the item files. The config loader rejects secret keys and values that look like a PAT, a connection string or an e-mail address.
+- Each opt-in step (`capacity`, `roles`, `retention`, `schedule`, `rls`, `sharepoint`, `eventstream`, `replay`, `git`) runs against a fake HTTP session. The tests check the request bodies, the idempotence (a second run sends no change), the dry run (no change request, no retention `.alter-merge`), and that no key, PAT or token appears in the log or in a file. `scripts/fabric/set_rls_members.ps1` passes a PowerShell syntax check.
 
 **Not verified. Treat all of this as untested in Fabric:**
 
-- Any call to a real Fabric, OneLake or Entra endpoint.
+- Any call to a real Fabric, OneLake, Azure Resource Manager, Kusto, Graph, SharePoint or Entra endpoint. This includes every opt-in step.
 - That Fabric accepts the notebook, pipeline, Eventstream, Eventhouse and Environment files as written.
 - The Spark behaviour of notebook 06. The Python 3.11 compatibility of the packages (they were tested on 3.13).
 - The shape of the job parameters for notebooks and pipelines. It follows the Fabric CLI source and the pipeline REST docs.
 - That the Eventstream processed ingestion maps the JSON envelope to `RawEventsLanding`.
 - The semantic model on Direct Lake, the SQL endpoint ID, and the model refresh timing.
 - Service principal support for notebook jobs.
-- Sensitivity labels, SharePoint provisioning, and anything in Power Automate or Activator.
+- The Kusto token audience for a Fabric eventhouse (`https://api.kusto.windows.net/.default` is assumed).
+- That TOM accepts a group by object ID (`rls`). The script has never run. XMLA read-write on a capacity is a precondition.
+- The result URL that the code reads after a long-running Initialize Connection call (`git`).
+- That Graph keeps `enforceUniqueValues` and the index on `case_key` (`sharepoint`).
+- Whether a trial capacity has an API. SharePoint site creation (SPSiteManager), `pac solution` and Purview default-label policies were taken from research notes and not re-checked.
+- Sensitivity labels, and anything in Power Automate or Activator.
 
 ## Fabric CLI equivalents
 
@@ -288,5 +345,7 @@ Checked on 4 November 2026. The Learn pages are the authority. Where this page s
 - Real-Time Intelligence Git (Eventstream, Eventhouse, KQL database, Activator): <https://learn.microsoft.com/en-us/fabric/real-time-intelligence/git-deployment-pipelines> and the pages linked from it. Eventstream definition: <https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/eventstream-definition> and <https://github.com/microsoft/fabric-event-streams/blob/main/API%20Templates/eventstream-definition.json>
 - Machine learning experiments and models, Git (preview): <https://learn.microsoft.com/en-us/fabric/data-science/machine-learning-artifacts-git-deployment-pipelines>
 - REST: Create Workspace <https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/create-workspace>, Assign To Capacity <https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/assign-to-capacity>, Run On Demand Item Job <https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/run-on-demand-item-job>, Bulk Set Labels <https://learn.microsoft.com/en-us/rest/api/fabric/admin/labels/bulk-set-labels>, identity support <https://learn.microsoft.com/en-us/rest/api/fabric/articles/identity-support>
+- Added for the opt-in steps (read on 4 November 2026): Create Item Schedule <https://learn.microsoft.com/en-us/rest/api/fabric/core/job-scheduler/create-item-schedule>, Add Workspace Role Assignment <https://learn.microsoft.com/en-us/rest/api/fabric/core/workspaces/add-workspace-role-assignment>, Git Connect, Initialize Connection and Update From Git <https://learn.microsoft.com/en-us/rest/api/fabric/core/git/connect>, Create Connection <https://learn.microsoft.com/en-us/rest/api/fabric/core/connections/create-connection>, Automate Git integration <https://learn.microsoft.com/en-us/fabric/cicd/git-integration/git-automation>, Get Eventstream Source Connection <https://learn.microsoft.com/en-us/rest/api/fabric/eventstream/topology/get-eventstream-source-connection>, KQL retention policy <https://learn.microsoft.com/en-us/kusto/management/retention-policy?view=microsoft-fabric>, Kusto REST request <https://learn.microsoft.com/en-us/kusto/api/rest/request?view=microsoft-fabric>, KQL database definition <https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/kql-database-definition>, Capacities Create Or Update (ARM) <https://learn.microsoft.com/en-us/rest/api/microsoftfabric/fabric-capacities/create-or-update>, XMLA endpoint <https://learn.microsoft.com/en-us/fabric/enterprise/powerbi/service-premium-connect-tools>, RLS membership <https://learn.microsoft.com/en-us/fabric/security/service-admin-row-level-security>, Graph Create list <https://learn.microsoft.com/en-us/graph/api/list-create?view=graph-rest-1.0>, Reflex definition <https://learn.microsoft.com/en-us/rest/api/fabric/articles/item-management/definitions/reflex-definition>, Developer tenant settings <https://learn.microsoft.com/en-us/fabric/admin/service-admin-portal-developer>.
+- Community report on RLS by group object ID (not a Microsoft source): <https://github.com/microsoft/semantic-link-labs/discussions/948>
 - Fabric CLI source (job parameter shape): <https://github.com/microsoft/fabric-cli>
 - Copilot skills for Fabric: <https://github.com/microsoft/skills-for-fabric>

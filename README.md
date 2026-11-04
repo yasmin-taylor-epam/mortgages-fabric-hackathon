@@ -70,7 +70,7 @@ This repository holds the build for now. The team may move the build to a separa
 
 ## Deploy to Fabric as code
 
-`scripts/deploy_fabric.ps1` creates or targets a workspace, deploys the items, uploads the synthetic data, and runs the notebooks and the scoring pipeline. You sign in once. It has an offline `--validate` mode and a read-only `--dry-run` mode. It is tested offline only. Nobody has run it in Fabric.
+`scripts/deploy_fabric.ps1` creates or targets a workspace, deploys the items, uploads the synthetic data, and runs the notebooks and the scoring pipeline. Opt-in steps (off by default) can also create a capacity, assign workspace roles, set the KQL retention, schedule the pipeline, add role members, create the SharePoint lists, read the Eventstream endpoint for replay, and connect the workspace to GitHub. You sign in once. It has an offline `--validate` mode and a read-only `--dry-run` mode. It is tested offline only. Nobody has run it in Fabric.
 
 ```powershell
 powershell -File scripts\deploy_fabric.ps1 --validate   # offline, no sign-in

@@ -1,20 +1,31 @@
 """Deploy the HomeBridge build to a Microsoft Fabric workspace.
 
 Steps, in order (select with --only or --skip):
+  capacity    OPTIONAL. Create a Fabric capacity through Azure Resource Manager.
   workspace   find or create the workspace, assign the capacity
+  roles       OPTIONAL. Assign workspace roles from the settings.
   core        deploy Lakehouse, Environment, Eventhouse, KQL database, notebooks, pipeline and Eventstream (fabric-cicd)
+  retention   OPTIONAL. Set the soft-delete retention of RawEventsLanding (Kusto management endpoint).
   upload      generate the synthetic exports, upload them and the Python code to the Lakehouse Files area
   notebooks   run 00 to 05 in order, then 06 (Parquet to Delta tables)
   pipeline    run pl_scheduled_scoring once, then 06 again
+  schedule    OPTIONAL. Schedule pl_scheduled_scoring (default 15 minutes).
   model       deploy the semantic model and report (fabric-cicd). Needs the Delta tables from step "notebooks".
+  rls         OPTIONAL. Add members to the semantic model roles through the XMLA endpoint.
   labels      set a Purview sensitivity label on the model and report (Fabric administrator only)
+  sharepoint  OPTIONAL. Create the review-case lists through Microsoft Graph.
+  eventstream OPTIONAL. Read the Eventstream custom endpoint details (names only).
+  replay      OPTIONAL. Send the replay events to the Eventstream. Reads the connection at run time.
+  git         OPTIONAL. Connect the workspace to a GitHub branch. The PAT comes from HB_GITHUB_PAT.
 
+An OPTIONAL step runs when its settings section has `enabled: true`, or when you name it with --only.
 Modes: --validate checks everything offline. --dry-run signs in, reads, and prints what it would do. The default applies.
 Not yet run against a real Fabric tenant. Nothing here claims otherwise.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -22,12 +33,22 @@ from pathlib import Path
 import yaml
 
 from . import config as cfgmod
-from . import ids, onelake, stage
+from . import ids, onelake, payloads, stage
 from .api import FabricClient, FabricError
+from .extra_steps import ExtraSteps, default_runner, make_graph_credential
 
 REPO = stage.REPO
 BUILD = REPO / "build" / "fabric"
-STEPS = ["workspace", "core", "upload", "notebooks", "pipeline", "model", "labels"]
+STEPS = ["capacity", "workspace", "roles", "core", "retention", "upload", "notebooks", "pipeline", "schedule", "model",
+         "rls", "labels", "sharepoint", "eventstream", "replay", "git"]
+# Optional steps and the settings section that switches each on. eventstream has no section: use --only.
+OPTIONAL = {"capacity": "capacity_create", "roles": "roles", "retention": "retention", "schedule": "schedule", "rls": "rls",
+            "sharepoint": "sharepoint", "eventstream": None, "replay": "replay", "git": "git"}
+NO_WORKSPACE_NEEDED = {"capacity", "workspace", "sharepoint"}
+
+
+def default_steps(cfg: cfgmod.EnvSettings) -> list[str]:
+    return [s for s in STEPS if s not in OPTIONAL or (OPTIONAL[s] and getattr(cfg, OPTIONAL[s]).enabled)]
 
 
 def model_parameters(environment: str) -> dict:
@@ -80,17 +101,22 @@ def generate_exports(cfg: cfgmod.EnvSettings, out_dir: Path) -> Path:
     return out_dir / "exports"
 
 
-class Deployer:
+class Deployer(ExtraSteps):
     def __init__(self, cfg: cfgmod.EnvSettings, credential=None, client: FabricClient | None = None, dry_run: bool = False,
-                 steps: list[str] | None = None, log=print, cicd=None, uploader=None, build_dir: Path = BUILD):
+                 steps: list[str] | None = None, log=print, cicd=None, uploader=None, build_dir: Path = BUILD,
+                 env: dict | None = None, runner=None, graph_credential=None, repo: Path = REPO):
         self.cfg, self.credential, self.dry_run, self.log = cfg, credential, dry_run, log
         self.client = client or (FabricClient(credential) if credential else None)
-        self.steps = steps or list(STEPS)
+        self.steps = steps or default_steps(cfg)
         self.cicd = cicd or self._deploy_with_config
         self.uploader = uploader or onelake.upload
         self.build_dir = Path(build_dir)
         self.workspace_id = cfg.workspace_id
         self.stage_dir = self.build_dir / "stage"
+        self.env = dict(os.environ if env is None else env)
+        self.runner = runner or default_runner
+        self.repo = Path(repo)
+        self.graph_credential = graph_credential or (make_graph_credential(self.env, credential) if credential else None)
 
     # ----- helpers
     def say(self, text: str) -> None:
@@ -119,6 +145,19 @@ class Deployer:
             raise FabricError("Offline checks failed:\n  " + "\n  ".join(problems))
         self.say(f"Staged and checked {len(stage.item_dirs(self.stage_dir))} items in {self.stage_dir}.")
 
+    def _capacity_id(self) -> str | None:
+        cfg = self.cfg
+        if cfg.capacity_id:
+            return cfg.capacity_id
+        if not cfg.capacity_name:
+            return None
+        try:
+            return self.client.find_capacity(cfg.capacity_name)["id"]
+        except FabricError:
+            if self.dry_run and "capacity" in self.steps:  # the capacity step would create it
+                return f"<new capacity {cfg.capacity_name}>"
+            raise
+
     def workspace(self) -> None:
         c, cfg = self.client, self.cfg
         if cfg.workspace_id:
@@ -133,7 +172,7 @@ class Deployer:
             elif not cfg.create_workspace:
                 raise FabricError(f"Workspace '{cfg.workspace_name}' does not exist and create_workspace is false.")
             else:
-                cap = cfg.capacity_id or (c.find_capacity(cfg.capacity_name)["id"] if cfg.capacity_name else None)
+                cap = self._capacity_id()
                 if self.dry_run:
                     self.say(f"Would create workspace '{cfg.workspace_name}' on capacity {cap}.")
                     self.workspace_id = "<new workspace>"
@@ -143,7 +182,7 @@ class Deployer:
                 self.say(f"Created workspace '{cfg.workspace_name}' ({ws['id']}).")
                 return
         if cfg.capacity_name or cfg.capacity_id:
-            cap = cfg.capacity_id or c.find_capacity(cfg.capacity_name)["id"]
+            cap = self._capacity_id()
             if ws.get("capacityId") != cap:
                 if self.dry_run:
                     self.say(f"Would assign workspace to capacity {cap}.")
@@ -223,7 +262,7 @@ class Deployer:
         self.prepare()
         for name in STEPS:
             if name in self.steps:
-                if name != "workspace" and not self.workspace_id:
+                if name not in NO_WORKSPACE_NEEDED and not self.workspace_id:
                     raise FabricError("No workspace ID. Run the 'workspace' step or set workspace_id.")
                 getattr(self, name)()
         self.say("Finished." if not self.dry_run else "Dry run finished. Nothing was changed.")
@@ -253,18 +292,24 @@ def main(argv=None) -> int:
     try:
         cfg_path = a.config if a.config.exists() else None
         if a.validate and cfg_path is None:
-            cfg = None
+            cfg = cfgmod.EnvSettings(environment="dev", workspace_name="validate-only")
+            checked = False
         else:
             cfg = cfgmod.load(cfg_path or a.config, a.environment, overrides)
-            problems = cfg.problems()
-            if problems:
-                raise cfgmod.ConfigError("; ".join(problems))
-        steps = [s for s in (a.only or STEPS) if s not in a.skip]
+            checked = True
+        for step in a.only or []:  # naming an optional step with --only switches it on
+            if OPTIONAL.get(step):
+                getattr(cfg, OPTIONAL[step]).enabled = True
+        problems = (cfg.problems() if checked else cfg.section_problems()) + payloads.validate_offline(cfg, REPO)
+        if problems:
+            raise cfgmod.ConfigError("; ".join(problems))
+        steps = [s for s in (a.only or default_steps(cfg)) if s not in a.skip]
         if a.validate:
             with tempfile.TemporaryDirectory() as tmp:
-                d = Deployer(cfg or cfgmod.EnvSettings(environment="dev", workspace_name="validate-only"), build_dir=Path(tmp), steps=[])
+                d = Deployer(cfg, build_dir=Path(tmp), steps=["workspace"])
                 d.prepare()
             print("Offline checks passed. Nothing was sent to Fabric.")
+            print("Steps that a run with these settings would do: " + ", ".join(steps))
             return 0
         credential = make_credential(a.auth, a.tenant)
         Deployer(cfg, credential=credential, dry_run=a.dry_run, steps=steps).run()
