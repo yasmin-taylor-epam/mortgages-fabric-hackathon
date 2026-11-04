@@ -1,0 +1,39 @@
+# Copy this file to fabric/config/fabric.config.yml. Git ignores that copy.
+# Put names and IDs here. Never put a password, token, client secret, user name or tenant ID here.
+# The deploy script refuses a file that has such keys. You sign in with a browser when the script runs.
+
+default_environment: dev
+
+environments:
+  dev:
+    # The workspace to deploy into. Set workspace_id to use an existing workspace.
+    # Otherwise the script looks for workspace_name and creates it when it does not exist.
+    workspace_name: HomeBridge-Dev
+    workspace_id: ""
+
+    # A new workspace needs a Fabric capacity (F SKU, trial or Power BI Premium).
+    # Set the display name or the ID of a capacity that you can use. Leave both empty for an existing workspace.
+    capacity_name: ""
+    capacity_id: ""
+    create_workspace: true
+
+    # Optional. The ID of a Purview sensitivity label. Needs a Fabric administrator. See docs/fabric-deployment.md.
+    sensitivity_label_id: ""
+
+    # true: delete items from the workspace that are not in the repository. Leave false while others share the workspace.
+    prune: false
+
+    run:
+      # Same cut-off and start time as scripts/run_local_flow.ps1 uses for its checkpoint run.
+      checkpoint_cutoff: "2026-10-15T00:00:00Z"
+      checkpoint_started_at: "2026-10-15T00:05:00Z"
+      # Run pl_scheduled_scoring once after the notebooks (a scheduled run at pipeline_cutoff).
+      run_pipeline: true
+      pipeline_cutoff: "2026-10-15T00:15:00Z"
+      notebook_timeout_minutes: 60
+
+    data:
+      # Leave empty for the generator defaults (the same data as the local flow).
+      seed:
+      per_cohort:
+      open_cohort_size:

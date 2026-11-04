@@ -2,7 +2,9 @@
 
 Fabric notebooks that validate data, build feature snapshots, train models, score accounts and evaluate results.
 
-Store notebooks as `.ipynb` files. The team decides on Fabric Git integration when the workspace is ready.
+Store notebooks as `.ipynb` files. The `.ipynb` files stay the source. `scripts/fabric/build_fabric_items.py` converts them to the Fabric Git notebook format in `fabric/items/`. A test fails when the two differ. See [docs/fabric-deployment.md](../docs/fabric-deployment.md).
+
+Each notebook runs locally and, in a Fabric notebook with the HomeBridge Lakehouse attached, in Fabric. It checks whether `/lakehouse/default/Files` exists and then reads the code and data from `Files/hb/`. The Fabric run is untested.
 
 ## Proposed notebooks
 
@@ -10,11 +12,13 @@ The names are proposals. The blueprint (`site/index.html`, section 03) defines t
 
 | Notebook | Blueprint step | Owner |
 | --- | --- | --- |
+| `00_load_raw` | Step 1: load dated exports into append-only raw tables. Stand-in for the `pl_load_raw` pipeline. | Data and replay. Built; runs locally. |
 | `01_validate_histories` | Step 2: validate keys and ledger history. Build clean account histories. | Data and replay. Built; runs locally. |
 | `02_feature_snapshots` | Step 2: build frozen feature snapshots at each checkpoint. | Data and replay. Built; runs locally. |
 | `03_train_models` | Step 3: train the classifier, the rules baseline and the clusters. Record them in MLflow. | Models and evaluation. Built; runs locally. |
 | `04_score_and_segment` | Steps 4 and 9: score accounts, assign segments and write the completed-run marker. Publish `risk_updated`. | Models and evaluation. Built; runs locally. |
 | `05_evaluate` | Section 04: later-cohort evaluation report. | Models and evaluation. Built; runs locally. |
+| `06_publish_delta_tables` | Step 5: copy the Parquet tables that the semantic model reads into Delta tables. | Integration. Fabric only. Written, not yet run. |
 
 ## Rules
 

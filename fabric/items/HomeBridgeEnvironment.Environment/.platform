@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Environment",
+    "displayName": "HomeBridgeEnvironment",
+    "description": "Python libraries that the HomeBridge notebooks need on top of the Fabric runtime. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "966d2136-aa45-5f03-8f16-91f83e9bdef5"
+  }
+}

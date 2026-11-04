@@ -1,0 +1,170 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "name": "Set cutoff",
+        "type": "SetVariable",
+        "dependsOn": [],
+        "policy": {
+          "secureOutput": false,
+          "secureInput": false
+        },
+        "typeProperties": {
+          "variableName": "cutoff",
+          "value": {
+            "value": "@if(empty(pipeline().parameters.cutoff_at), formatDateTime(pipeline().TriggerTime, 'yyyy-MM-ddTHH:mm:ssZ'), pipeline().parameters.cutoff_at)",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "Build snapshots (02_feature_snapshots)",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "Set cutoff",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:20:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "typeProperties": {
+          "notebookId": "41868149-dc70-5d28-9d66-3c1fe1b8c955",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "MODE": {
+              "value": {
+                "value": "@if(equals(pipeline().parameters.run_kind, 'checkpoint'), 'checkpoint', 'live')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "CUTOFF": {
+              "value": {
+                "value": "@variables('cutoff')",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "Score and segment (04_score_and_segment)",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "Build snapshots (02_feature_snapshots)",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:20:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "typeProperties": {
+          "notebookId": "443c7664-549a-5cb7-b94b-8977d6657339",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "RUN_KIND": {
+              "value": {
+                "value": "@pipeline().parameters.run_kind",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "CUTOFF": {
+              "value": {
+                "value": "@variables('cutoff')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "MODEL_VERSION": {
+              "value": {
+                "value": "@pipeline().parameters.model_version",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "CLUSTER_MODEL_VERSION": {
+              "value": {
+                "value": "@pipeline().parameters.cluster_model_version",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "PUBLISH": {
+              "value": false,
+              "type": "bool"
+            }
+          }
+        }
+      },
+      {
+        "name": "Publish risk_updated (04_score_and_segment, publish only)",
+        "type": "TridentNotebook",
+        "dependsOn": [
+          {
+            "activity": "Score and segment (04_score_and_segment)",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:10:00",
+          "retry": 3,
+          "retryIntervalInSeconds": 60,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "typeProperties": {
+          "notebookId": "443c7664-549a-5cb7-b94b-8977d6657339",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "PUBLISH_ONLY": {
+              "value": true,
+              "type": "bool"
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "run_kind": {
+        "type": "string",
+        "defaultValue": "scheduled"
+      },
+      "cutoff_at": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "model_version": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "cluster_model_version": {
+        "type": "string",
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "cutoff": {
+        "type": "String"
+      }
+    }
+  }
+}

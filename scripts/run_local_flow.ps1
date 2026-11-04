@@ -5,7 +5,7 @@ Runs the whole HomeBridge build locally, from synthetic data to report inputs.
 .DESCRIPTION
 Nothing here runs in Fabric. The script deletes data/output/ and rebuilds it. It uses synthetic data only.
 Steps: generate and validate data, train, evaluate, score one checkpoint run, copy context, replay into the
-case writer, then run the test suite of each work package.
+case writer, then run the test suite of each work package and of the Fabric deploy tooling (scripts/fabric).
 
 .PARAMETER SkipTests
 Run the flow but not the pytest suites.
@@ -30,7 +30,7 @@ function Step($name, [scriptblock]$body) {
 if (-not (Test-Path .venv)) { python -m venv .venv }
 $py = Join-Path $root '.venv\Scripts\python.exe'
 Step 'Install dependencies' {
-    & $py -m pip install -q -r data\requirements.txt -r notebooks\models_eval\requirements.txt -r action\requirements.txt -r reports\requirements.txt
+    & $py -m pip install -q -r data\requirements.txt -r notebooks\models_eval\requirements.txt -r action\requirements.txt -r reports\requirements.txt -r scripts\fabric\requirements.txt
 }
 
 if (Test-Path data\output) { Remove-Item data\output -Recurse -Force }
@@ -62,7 +62,7 @@ function Replay {
 Step 'Action: replay events into the local case writer' { Replay; $global:LASTEXITCODE = 0 }
 
 if (-not $SkipTests) {
-    foreach ($suite in 'data', 'notebooks\models_eval', 'action', 'reports') {
+    foreach ($suite in 'data', 'notebooks\models_eval', 'action', 'reports', 'scripts\fabric') {
         Push-Location $suite
         Step "Tests: $suite" { & $py -m pytest -q -rs }
         Pop-Location

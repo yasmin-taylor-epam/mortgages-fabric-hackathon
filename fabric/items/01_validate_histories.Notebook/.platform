@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "01_validate_histories",
+    "description": "Validates keys and ledger history. Builds clean histories. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c5de8629-5db5-5db5-9904-953d1a515ee5"
+  }
+}

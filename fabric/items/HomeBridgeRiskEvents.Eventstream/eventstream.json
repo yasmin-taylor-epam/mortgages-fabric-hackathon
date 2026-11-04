@@ -1,0 +1,47 @@
+{
+  "sources": [
+    {
+      "name": "HomeBridgeLiveEvents",
+      "type": "CustomEndpoint",
+      "properties": {}
+    }
+  ],
+  "destinations": [
+    {
+      "name": "RawEventsLanding",
+      "type": "Eventhouse",
+      "properties": {
+        "dataIngestionMode": "ProcessedIngestion",
+        "workspaceId": "00000000-0000-0000-0000-000000000000",
+        "itemId": "589f41df-ff41-5795-a365-aa1e7fc656d6",
+        "databaseName": "HomeBridgeEvents",
+        "tableName": "RawEventsLanding",
+        "inputSerialization": {
+          "type": "Json",
+          "properties": {
+            "encoding": "UTF8"
+          }
+        }
+      },
+      "inputNodes": [
+        {
+          "name": "HomeBridgeRiskEvents-stream"
+        }
+      ]
+    }
+  ],
+  "streams": [
+    {
+      "name": "HomeBridgeRiskEvents-stream",
+      "type": "DefaultStream",
+      "properties": {},
+      "inputNodes": [
+        {
+          "name": "HomeBridgeLiveEvents"
+        }
+      ]
+    }
+  ],
+  "operators": [],
+  "compatibilityLevel": "1.0"
+}

@@ -25,6 +25,10 @@ Run the files in order on a new KQL database. Each file is one `.execute databas
 | `StageDwell(cutoff)` | Days that a request stays at one stage. An open stage runs to the cutoff. |
 | `RetriesAfterError(cutoff)` | Retries after a renewal-portal software error, and whether the request moved on. |
 
+## Run the files in Fabric
+
+`fabric/items/HomeBridgeEventhouse.Eventhouse/.children/HomeBridgeEvents.KQLDatabase/DatabaseSchema.kql` is generated from these files by `scripts/fabric/build_fabric_items.py`. The deploy script publishes it, and Fabric runs it. A KQL database Git item cannot hold every command type. The generator leaves out the 7-day retention policy on `RawEventsLanding`. Run that one command by hand. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). Nobody has run this in Fabric.
+
 ## Rules
 
 - Each event keeps its original ID and timestamps. `ingested_at` is the Eventhouse ingestion time. A replay fixture can set `simulated_ingested_at` for repeatable tests.

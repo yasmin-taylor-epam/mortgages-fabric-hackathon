@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "03_train_models",
+    "description": "Trains the classifier, the rules baseline and the clusters. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "325ee6d6-24ab-5d29-8003-c628ebda0287"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "00_load_raw",
+    "description": "Loads the synthetic exports into append-only raw tables. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f598cd9c-2a6d-5e69-a812-afb41105007a"
+  }
+}
