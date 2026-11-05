@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "02_feature_snapshots",
+    "description": "Builds frozen feature snapshots at each checkpoint or live cutoff. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "41868149-dc70-5d28-9d66-3c1fe1b8c955"
+  }
+}

@@ -1,0 +1,111 @@
+# Copy this file to fabric/config/fabric.config.yml. Git ignores that copy.
+# Put names and IDs here. Never put a password, token, client secret, user name or tenant ID here.
+# The deploy script refuses a file that has such keys. You sign in with a browser when the script runs.
+
+default_environment: dev
+
+environments:
+  dev:
+    # The workspace to deploy into. Set workspace_id to use an existing workspace.
+    # Otherwise the script looks for workspace_name and creates it when it does not exist.
+    workspace_name: HomeBridge-Dev
+    workspace_id: ""
+
+    # A new workspace needs a Fabric capacity (F SKU, trial or Power BI Premium).
+    # Set the display name or the ID of a capacity that you can use. Leave both empty for an existing workspace.
+    capacity_name: ""
+    capacity_id: ""
+    create_workspace: true
+
+    # Optional. The ID of a Purview sensitivity label. Needs a Fabric administrator. See docs/fabric-deployment.md.
+    sensitivity_label_id: ""
+
+    # true: delete items from the workspace that are not in the repository. Leave false while others share the workspace.
+    prune: false
+
+    run:
+      # Same cut-off and start time as scripts/run_local_flow.ps1 uses for its checkpoint run.
+      checkpoint_cutoff: "2026-10-15T00:00:00Z"
+      checkpoint_started_at: "2026-10-15T00:05:00Z"
+      # Run pl_scheduled_scoring once after the notebooks (a scheduled run at pipeline_cutoff).
+      run_pipeline: true
+      pipeline_cutoff: "2026-10-15T00:15:00Z"
+      notebook_timeout_minutes: 60
+
+    data:
+      # Leave empty for the generator defaults (the same data as the local flow).
+      seed:
+      per_cohort:
+      open_cohort_size:
+
+    # ----- Optional steps. All are off. Each runs when enabled is true, or when you name it with --only.
+    # Never put a password, token, PAT, connection string, e-mail address or user name in this file.
+    # The script refuses such keys and values. Secrets come from environment variables at run time (named below).
+    # All of these steps are UNTESTED in Fabric.
+
+    # Step "capacity": create a Fabric capacity in Azure. Uses capacity_name above as the capacity name
+    # (3 to 63 lower-case letters or digits). Capacity admins come from HB_FABRIC_CAPACITY_ADMINS (comma-separated).
+    capacity_create:
+      enabled: false
+      subscription_id: ""
+      resource_group: ""
+      location: ""        # an Azure region, for example westeurope
+      sku: F2
+
+    # Step "roles": workspace role assignments. principal_id is the Entra object ID of a user, group or service principal.
+    roles:
+      enabled: false
+      assignments: []
+      #  - principal_id: 00000000-0000-0000-0000-000000000000
+      #    type: Group    # User, Group or ServicePrincipal
+      #    role: Member   # Admin, Member, Contributor or Viewer
+
+    # Step "retention": soft-delete retention of the raw landing table. The KQL database Git item cannot hold this command.
+    retention:
+      enabled: false
+      table: RawEventsLanding
+      softdelete: 7d
+
+    # Step "schedule": run pl_scheduled_scoring on a fixed interval. Off by default. The interval is a proposal to test.
+    schedule:
+      enabled: false
+      interval_minutes: 15
+      time_zone: UTC
+      start: ""           # UTC, for example 2026-11-05T00:00:00Z. Empty: starts when the step runs.
+      end: ""
+
+    # Step "rls": members of the semantic model roles. Group object IDs only. Needs XMLA read-write on the capacity.
+    rls:
+      enabled: false
+      member_type: Group
+      members: {}
+      #  General viewer:
+      #    - 00000000-0000-0000-0000-000000000000
+      #  Authorised adviser:
+      #    - 00000000-0000-0000-0000-000000000000
+
+    # Step "git": connect the workspace to a GitHub branch. The GitHub PAT comes from HB_GITHUB_PAT at run time.
+    # Or set connection_id to an existing Fabric connection and no PAT is needed.
+    git:
+      enabled: false
+      owner: ""
+      repository: ""
+      branch: ""
+      directory: ""
+      connection_name: HomeBridge-GitHub
+      connection_id: ""
+      initialization_strategy: PreferWorkspace   # None, PreferRemote or PreferWorkspace
+
+    # Step "sharepoint": create the review-case lists through Microsoft Graph. Signs in as you, or app-only when
+    # HB_GRAPH_CLIENT_ID, HB_GRAPH_CLIENT_SECRET and HB_GRAPH_TENANT_ID are set. The site must exist already.
+    sharepoint:
+      enabled: false
+      site_url: ""        # https://<tenant>.sharepoint.com/sites/<site>
+      schema_path: action/sharepoint/review-cases.list.json
+
+    # Step "replay": send live events to the Eventstream. The script reads the endpoint connection from the Fabric API.
+    # Needs the local data in data/output (run scripts/run_local_flow.ps1) and: pip install azure-eventhub
+    replay:
+      enabled: false
+      backfill: true
+      fixture: ""

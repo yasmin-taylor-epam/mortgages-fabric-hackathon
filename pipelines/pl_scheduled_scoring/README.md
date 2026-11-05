@@ -1,12 +1,12 @@
 # pl_scheduled_scoring
 
-**Owner:** Models and evaluation. **Blueprint step:** 9. **Status:** Draft definition and local runner. Not yet built or run in Fabric.
+**Owner:** Models and evaluation. **Blueprint step:** 9. **Status:** Draft definition (Fabric Git format, see `fabric/items/`) and local runner. Not yet run in Fabric.
 
 Runs scoring and segment assignment on a schedule for the fictional lender HomeBridge. For the replay demo, the team also starts one run by hand (`run_kind = manual`). Synthetic data only.
 
 ## Fabric design (proposed)
 
-`pipeline.json` is a hand-written draft for review. It is not a Fabric export. Replace the placeholder notebook and workspace IDs after import.
+The definition lives in [`fabric/items/pl_scheduled_scoring.DataPipeline/`](../../fabric/items/pl_scheduled_scoring.DataPipeline/pipeline-content.json) in Fabric Git format. It replaces the earlier hand-written draft. It is not a Fabric export and it has not run in Fabric. The notebook activities point to the notebooks by logical ID. fabric-cicd replaces those IDs and the workspace ID on deploy (see [docs/fabric-deployment.md](../../docs/fabric-deployment.md)). The pipeline passes an empty string for "no value". The notebooks turn it into `None`.
 
 | Item | Setting |
 | --- | --- |

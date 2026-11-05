@@ -1,0 +1,12 @@
+# Deploy tooling. Install into the repository virtual environment:
+#   python -m pip install -r scripts/fabric/requirements.txt
+fabric-cicd>=1.4        # deploys the Git-format items (publish order, logical IDs, parameter replacement)
+azure-identity>=1.17    # one browser sign-in for the whole run
+azure-storage-file-datalake>=12.16  # OneLake upload
+azure-eventhub>=5.11    # replay step: send events to the Eventstream custom endpoint
+requests>=2.31
+pyyaml>=6
+# The deploy script generates the synthetic exports with the Data and replay package.
+-r ../../data/requirements.txt
+# Optional. The Fabric CLI for manual work (sign in with: fab auth login). The script does not need it.
+# ms-fabric-cli>=1.9

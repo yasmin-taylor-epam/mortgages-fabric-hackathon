@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from nbclient import NotebookClient
 
-from hbdata import generator, pipelines_local
+from hbdata import generator
 
 NB_DIR = Path(__file__).resolve().parents[2] / "notebooks"
 
@@ -25,8 +25,11 @@ def test_notebooks_run_end_to_end(tmp_path):
     cfg = generator.GenConfig(per_cohort=60, open_cohort_size=40)
     frames, manifest = generator.generate(cfg)
     generator.write_exports(frames, manifest, tmp_path / "exports")
-    pipelines_local.load_raw(tmp_path / "exports", tmp_path / "lakehouse", cfg.as_of)
     out = json.dumps(str(tmp_path))
+    _run("00_load_raw.ipynb", f"OUTPUT_ROOT = {out}\nLOADED_AT = None", NB_DIR)
+    assert len(list((tmp_path / "lakehouse" / "raw" / "payment").glob("*.parquet"))) == 1
+    _run("00_load_raw.ipynb", f"OUTPUT_ROOT = {out}\nLOADED_AT = '2026-10-16T00:00:00Z'", NB_DIR)  # same files: skipped, not appended
+    assert len(list((tmp_path / "lakehouse" / "raw" / "payment").glob("*.parquet"))) == 1
     _run("01_validate_histories.ipynb", f"OUTPUT_ROOT = {out}\nRUN_AT = None", NB_DIR)
     assert (tmp_path / "lakehouse" / "clean" / "payment.parquet").exists()
     _run("02_feature_snapshots.ipynb", f"OUTPUT_ROOT = {out}\nMODE = 'checkpoint'\nCUTOFF = None\nMORTGAGE_IDS = None", NB_DIR)

@@ -1,0 +1,148 @@
+// Generated from kql/*.kql by scripts/fabric/build_fabric_items.py. Do not edit here.
+// Fabric runs this script when the KQL database is synced or deployed.
+
+// HomeBridge (fictional) Eventhouse tables. Synthetic data only.
+// Run once per KQL database, in file order: 01, 02, 03, 04.
+// Not yet run in Fabric. The Fabric workspace is not ready.
+.create-merge table RawEventsLanding (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, simulated_ingested_at: datetime, payload: dynamic)
+// Accepted events. Duplicates stay here; queries deduplicate by event_id (T01).
+.create-merge table RawEvents (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, payload: dynamic, ingested_at: datetime)
+// Rejected events stay visible (T02).
+.create-merge table QuarantinedEvents (event_id: string, mortgage_id: string, reason: string, detail: string, detected_at: datetime, envelope: dynamic)
+// Versioned copies written by pl_copy_context (blueprint step 7). No balance.
+.create-merge table AccountContext (mortgage_id: string, cycle_id: string, deal_start_at: datetime, deal_end_at: datetime, checkpoint_at: datetime, identity_status: string, payment_support_status: string, owner_id: string, context_version: string, copied_at: datetime)
+.create-merge table ScoreContext (mortgage_id: string, cycle_id: string, run_id: string, snapshot_id: string, model_version: string, score: real, scored_at: datetime, cutoff_at: datetime, score_state: string, copied_at: datetime)
+.create-merge table SourceWatermarks (dataset: string, checked_at: datetime, max_ingested_at: datetime, max_event_at: datetime, row_count: long, stale_threshold_hours: real, is_stale: bool)
+.create-or-alter table RawEventsLanding ingestion json mapping "RawEventsLanding_json" '[{"column":"event_id","Properties":{"Path":"$.event_id"}},{"column":"event_type","Properties":{"Path":"$.event_type"}},{"column":"schema_version","Properties":{"Path":"$.schema_version"}},{"column":"source_system","Properties":{"Path":"$.source_system"}},{"column":"mortgage_id","Properties":{"Path":"$.mortgage_id"}},{"column":"application_id","Properties":{"Path":"$.application_id"}},{"column":"occurred_at","Properties":{"Path":"$.occurred_at"}},{"column":"sent_at","Properties":{"Path":"$.sent_at"}},{"column":"simulated_ingested_at","Properties":{"Path":"$.simulated_ingested_at"}},{"column":"payload","Properties":{"Path":"$.payload"}}]'
+// Ingestion routing: accept known accounts, quarantine the rest (T02).
+// Twin: data/hbdata/replay.py ingest_local(). Not yet run in Fabric.
+.create-or-alter function with (folder = "context", docstring = "Latest copy of each account context row.")
+AccountContextLatest() {
+    AccountContext
+    | summarize arg_max(copied_at, *) by mortgage_id, cycle_id
+}
+.create-or-alter function with (folder = "ingest", docstring = "Landing rows with an ingestion time and a quarantine reason. An empty reason means accepted.")
+LandingChecked() {
+    let ctx = AccountContextLatest()
+        | summarize conflicts = countif(identity_status != "ok") by ctx_mortgage_id = mortgage_id;
+    RawEventsLanding
+    | extend ingested_at = coalesce(simulated_ingested_at, ingestion_time())
+    | join kind = leftouter ctx on $left.mortgage_id == $right.ctx_mortgage_id
+    | extend reason = case(
+        isempty(event_id) or isnull(occurred_at) or event_type !in ("transfer_request_event", "payment_support_requested", "payment_support_closed", "payment_entry_posted"), "schema_violation",
+        isempty(ctx_mortgage_id), "unknown_account",
+        conflicts > 0, "conflicting_borrower_mapping",
+        "")
+}
+.alter table RawEvents policy update @'[{"IsEnabled": true, "Source": "RawEventsLanding", "Query": "LandingChecked() | where isempty(reason) | project event_id, event_type, schema_version, source_system, mortgage_id, application_id, occurred_at, sent_at, payload, ingested_at", "IsTransactional": true, "PropagateIngestionProperties": false}]'
+.alter table QuarantinedEvents policy update @'[{"IsEnabled": true, "Source": "RawEventsLanding", "Query": "LandingChecked() | where isnotempty(reason) | project event_id, mortgage_id, reason, detail = reason, detected_at = ingested_at, envelope = bag_pack(\"event_id\", event_id, \"event_type\", event_type, \"mortgage_id\", mortgage_id, \"application_id\", application_id, \"occurred_at\", occurred_at, \"payload\", payload)", "IsTransactional": true, "PropagateIngestionProperties": false}]'
+// Journey queries (blueprint section 03, step 6). Each takes a cutoff.
+// INV-2: only events with occurred_at and ingested_at at or before the cutoff.
+// T01: one row per event_id (earliest ingestion).
+// Twin: data/hbdata/journeys.py. Keep both in step. Not yet run in Fabric.
+// Null versus empty: tostring() of a missing payload value gives "". The twin uses null.
+.create-or-alter function with (folder = "journeys", docstring = "Accepted product-transfer request events known at the cutoff, one row per event_id.")
+TransferEventsAt(cutoff: datetime) {
+    RawEvents
+    | where event_type == "transfer_request_event"
+    | where occurred_at <= cutoff and ingested_at <= cutoff
+    | summarize arg_min(ingested_at, *) by event_id
+    | extend stage = tostring(payload.stage), status = tostring(payload.status), error_code = tostring(payload.error_code),
+             error_class = tostring(payload.error_class), fault_verified = tobool(payload.fault_verified), channel = tostring(payload.channel)
+    | project event_id, application_id, mortgage_id, occurred_at, ingested_at, stage, status, error_code, error_class, fault_verified, channel
+}
+.create-or-alter function with (folder = "journeys", docstring = "Event-level flags: sequence, stage visit, software fault and retry.")
+JourneyFlags(cutoff: datetime) {
+    TransferEventsAt(cutoff)
+    | order by application_id asc, occurred_at asc, ingested_at asc, event_id asc
+    | extend seq = row_number(1, prev(application_id) != application_id)
+    | extend new_visit = iff(prev(application_id) != application_id or prev(stage) != stage, 1, 0)
+    | extend visit = row_cumsum(new_visit, prev(application_id) != application_id)
+    | extend is_software_fault = error_class == "software_fault"
+    | extend faults_so_far = row_cumsum(toint(is_software_fault), prev(application_id) != application_id or prev(visit) != visit)
+    | extend fault_before = (faults_so_far - toint(is_software_fault)) > 0
+    | extend is_retry = status == "in_progress" and fault_before
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 1: each request's stages and portal errors in time order.")
+JourneyTimeline(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | project application_id, mortgage_id, seq, event_id, occurred_at, ingested_at, stage, status, error_code, error_class, fault_verified, channel
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 2: days that a request remains at one stage. An open stage visit runs to the cutoff.")
+StageDwell(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | extend is_last = next(application_id) != application_id or next(visit) != visit
+    | summarize mortgage_id = take_any(mortgage_id), stage = take_any(stage), entered_at = min(occurred_at), last_event_at = max(occurred_at),
+                last_status = take_anyif(status, is_last), events = count(), errors = countif(status == "error")
+                by application_id, visit
+    | order by application_id asc, visit asc
+    | extend next_entered_at = iff(next(application_id) == application_id, next(entered_at), datetime(null))
+    | extend terminal = last_status in ("completed", "abandoned", "rejected")
+    | extend is_open = isnull(next_entered_at) and not(terminal)
+    | extend left_at = case(isnotnull(next_entered_at), next_entered_at, terminal, last_event_at, cutoff)
+    | extend dwell_days = (left_at - entered_at) / 1d
+    | project application_id, mortgage_id, visit, stage, entered_at, left_at, dwell_days, is_open, events, errors
+}
+.create-or-alter function with (folder = "journeys", docstring = "Query 3: retries after a renewal-portal software error, per request.")
+RetriesAfterError(cutoff: datetime) {
+    JourneyFlags(cutoff)
+    | summarize mortgage_id = take_any(mortgage_id), software_errors = countif(is_software_fault),
+                verified_faults = countif(is_software_fault and fault_verified == true), retries_after_error = countif(is_retry),
+                last_software_error_at = maxif(occurred_at, is_software_fault), last_fault_visit = maxif(visit, is_software_fault),
+                max_visit = max(visit)
+                by application_id
+    | where software_errors > 0
+    | extend recovered = max_visit > last_fault_visit
+    | project application_id, mortgage_id, software_errors, verified_faults, retries_after_error, last_software_error_at, recovered
+}
+// Service events and the live Customer 360 view.
+// ServiceEvents() output follows data/contracts/service_event.schema.json.
+// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Not yet run in Fabric.
+.create-or-alter function with (folder = "service", docstring = "Service events for Activator and the review-case writer. They do not depend on scoring (T05).")
+ServiceEvents() {
+    let ctx = AccountContextLatest() | project mortgage_id, cycle_id, deal_start_at, deal_end_at;
+    RawEvents
+    | summarize arg_min(ingested_at, *) by event_id
+    | extend service_type = case(
+        event_type == "transfer_request_event" and tostring(payload.error_class) == "software_fault" and tobool(payload.fault_verified) == true, "portal_fault_verified",
+        event_type in ("payment_support_requested", "payment_support_closed"), event_type,
+        event_type == "payment_entry_posted" and tostring(payload.entry_type) == "reversal", "payment_reversed",
+        "")
+    | where isnotempty(service_type)
+    | extend evidence_ids = case(
+        service_type == "portal_fault_verified", pack_array(event_id, application_id),
+        service_type == "payment_reversed", pack_array(event_id, tostring(payload.reversal_of)),
+        pack_array(event_id, tostring(payload.case_id)))
+    | join kind = inner ctx on mortgage_id
+    | where occurred_at >= deal_start_at and occurred_at < deal_end_at + 30d
+    | summarize arg_max(deal_start_at, *) by event_id
+    | project event_id, event_type = service_type, mortgage_id, cycle_id, occurred_at, ingested_at, evidence_ids
+}
+.create-or-alter function with (folder = "service", docstring = "Live Customer 360 view: account context, live service signals, latest valid score, and feed and score age.")
+Customer360() {
+    let now_ = now();
+    let payment_feed_stale = toscalar(SourceWatermarks | summarize arg_max(checked_at, is_stale) by dataset | where dataset == "payment" | project is_stale);
+    let support = ServiceEvents()
+        | where event_type in ("payment_support_requested", "payment_support_closed")
+        | summarize arg_max(occurred_at, event_type) by mortgage_id, cycle_id
+        | project mortgage_id, cycle_id, live_payment_support = event_type == "payment_support_requested";
+    let faults = ServiceEvents()
+        | where event_type == "portal_fault_verified"
+        | summarize verified_faults_30d = countif(occurred_at > now_ - 30d), last_fault_at = max(occurred_at) by mortgage_id, cycle_id;
+    let score = ScoreContext
+        | summarize arg_max(copied_at, *) by mortgage_id, cycle_id
+        | project mortgage_id, cycle_id, run_id, model_version, score, scored_at, score_state;
+    let activity = RawEvents
+        | summarize last_event_at = max(occurred_at), last_ingested_at = max(ingested_at) by mortgage_id;
+    AccountContextLatest()
+    | join kind = leftouter support on mortgage_id, cycle_id
+    | join kind = leftouter faults on mortgage_id, cycle_id
+    | join kind = leftouter score on mortgage_id, cycle_id
+    | join kind = leftouter activity on mortgage_id
+    | extend payment_support_priority = payment_support_status == "active" or live_payment_support == true
+    | extend score_age_hours = (now_ - scored_at) / 1h, last_event_age_minutes = (now_ - last_ingested_at) / 1m
+    | extend payment_feed_stale = coalesce(payment_feed_stale, true)
+    | project mortgage_id, cycle_id, deal_end_at, checkpoint_at, owner_id, identity_status, payment_support_status, live_payment_support,
+              payment_support_priority, verified_faults_30d, last_fault_at, run_id, model_version, score, scored_at, score_state,
+              score_age_hours, last_event_at, last_event_age_minutes, payment_feed_stale, context_version
+}

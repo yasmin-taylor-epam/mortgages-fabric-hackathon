@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "pl_scheduled_scoring",
+    "description": "Scheduled scoring for HomeBridge (fictional lender): live snapshots, scoring and segment assignment, then risk_updated publication. A failed scoring activity stops the run (INV-5, T05). Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "edcadb00-a175-521d-b9a2-6458afe6bec2"
+  }
+}

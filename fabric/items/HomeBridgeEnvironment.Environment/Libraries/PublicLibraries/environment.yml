@@ -1,0 +1,5 @@
+dependencies:
+  - pip:
+      - shap
+      - rfc3339-validator
+      - jsonschema

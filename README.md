@@ -50,6 +50,8 @@ The build follows the three work packages in the blueprint (section 06). Each wo
 | `action/` | Activator rules, Power Automate flows and the SharePoint review-case list. | Dashboard and action |
 | `reports/` | Power BI semantic model and mortgage report. | Dashboard and action |
 | `scripts/` | Local runner for the whole flow. | Integration |
+| `fabric/` | Fabric Git-format items, and the settings file for the deploy script. Notebooks and the KQL schema in it are generated. | Integration |
+| `scripts/fabric/` | Deploy script for Microsoft Fabric (fabric-cicd and the Fabric REST API) and its tests. | Integration |
 
 Each folder README lists its contents, status and rules. The Fabric workspace is not ready yet. Every item runs locally first. Do not claim that an item runs in Fabric until someone has run it there.
 
@@ -66,10 +68,22 @@ Run `-Demo` last. Its extra live runs flag more accounts than the capacity of te
 
 This repository holds the build for now. The team may move the build to a separate repository later.
 
+## Deploy to Fabric as code
+
+`scripts/deploy_fabric.ps1` creates or targets a workspace, deploys the items, uploads the synthetic data, and runs the notebooks and the scoring pipeline. Opt-in steps (off by default) can also create a capacity, assign workspace roles, set the KQL retention, schedule the pipeline, add role members, create the SharePoint lists, read the Eventstream endpoint for replay, and connect the workspace to GitHub. You sign in once. It has an offline `--validate` mode and a read-only `--dry-run` mode. It is tested offline only. Nobody has run it in Fabric.
+
+```powershell
+powershell -File scripts\deploy_fabric.ps1 --validate   # offline, no sign-in
+```
+
+[docs/fabric-deployment.md](docs/fabric-deployment.md) lists what is automated, what stays manual and why, the exact steps, and the permissions to request.
+
 ## Repository contents
 
 - `site/index.html` — current scenario page and proposal.
-- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/`, `scripts/` — build folders. See [Build layout](#build-layout).
+- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/`, `scripts/`, `fabric/` — build folders. See [Build layout](#build-layout).
+- `docs/fabric-deployment.md` — Fabric deployment as code: what is automated, what is manual, steps and permissions.
+- `docs/overview/homebridge-flow.html` — three-page explainer: the flow, the local run outputs, and the deploy to Fabric.
 - `docs/archive/previous-readme.md` — previous repository overview.
 - `docs/archive/technical-blueprint.md` — earlier technical blueprint, retained for reference.
 

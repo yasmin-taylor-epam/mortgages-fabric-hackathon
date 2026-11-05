@@ -75,7 +75,9 @@ dotnet run --project reports\tools\tmdl-check -- reports\HomeBridgeMortgage.Sema
 
 ## Deploy when the Fabric workspace is ready
 
-1. Make sure the Gold tables in `logic/gold_schema.sql` exist in the Lakehouse.
+`scripts/deploy_fabric.ps1` deploys this model and report after the Gold tables exist. It fills the two placeholders for you. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). Untested in Fabric. The manual steps below describe the same work.
+
+1. Make sure the Gold tables in `logic/gold_schema.sql` exist in the Lakehouse. Notebook `06_publish_delta_tables` creates them from the Parquet files.
 2. Replace the two placeholders in `HomeBridgeMortgage.SemanticModel/definition/expressions.tmdl` with the Lakehouse SQL analytics endpoint and its ID.
 3. Sync the folder through Fabric Git integration, or open `HomeBridgeMortgage.pbip` in Power BI Desktop and publish.
 4. Apply the sensitivity label. Assign the two roles.

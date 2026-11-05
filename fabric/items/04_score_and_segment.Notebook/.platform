@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "04_score_and_segment",
+    "description": "Scores accounts, assigns segments and publishes risk_updated. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "443c7664-549a-5cb7-b94b-8977d6657339"
+  }
+}

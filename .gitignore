@@ -5,6 +5,10 @@ apm_modules/
 # Generated synthetic data
 data/output/
 
+# Fabric deploy: local settings and staging output
+fabric/config/fabric.config.yml
+build/
+
 # Python
 .venv/
 __pycache__/

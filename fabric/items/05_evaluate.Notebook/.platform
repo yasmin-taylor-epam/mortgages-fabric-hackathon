@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "05_evaluate",
+    "description": "Later-cohort evaluation report. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "a67ccd66-981b-5103-9b01-528483793309"
+  }
+}
