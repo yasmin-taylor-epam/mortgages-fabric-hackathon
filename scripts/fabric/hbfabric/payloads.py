@@ -36,6 +36,44 @@ def timespan_seconds(text: str) -> float:
     return d * 86400 + h * 3600 + mi * 60 + s
 
 
+LANDING_TABLE = "RawEventsLanding"
+STREAMING_ERROR_MARKER = "streaming ingestion"
+
+
+# ----- Streaming ingestion. The update policies on RawEvents and QuarantinedEvents read AccountContext, and Fabric refuses
+# that while streaming ingestion is on for the source table. The KQL database Git item cannot hold this command.
+def streaming_off_command(table: str) -> str:
+    return f".alter-merge table ['{table}'] policy streamingingestion '{{\"IsEnabled\": false}}'"
+
+
+def streaming_is_enabled(rows: list[list]) -> bool:
+    """True unless the rows of `.show table T policy streamingingestion` say the policy is disabled."""
+    for row in rows:
+        for cell in row:
+            if isinstance(cell, str) and cell.startswith("{"):
+                try:
+                    return bool(json.loads(cell).get("IsEnabled", True))
+                except ValueError:
+                    continue
+    return True
+
+
+def without_update_policies(schema: str) -> str:
+    """DatabaseSchema.kql without the `.alter table ... policy update` commands.
+
+    Fabric runs the script as one unit and removes the database when a command fails. Publishing the tables and
+    functions first gives the step a table on which streaming ingestion can be turned off.
+    """
+    drop = re.compile(r"^\.alter table \S+ policy update\b")
+    return "\n".join(line for line in schema.splitlines() if not drop.match(line)) + "\n"
+
+
+def is_streaming_conflict(exc: BaseException) -> bool:
+    """True when a fabric-cicd failure is the streaming ingestion conflict described above."""
+    parts = [str(exc)] + [str(e) for _, e in getattr(exc, "errors", [])]
+    return any(STREAMING_ERROR_MARKER in p.lower() and "update policy" in p.lower() for p in parts)
+
+
 def retention_matches(rows: list[list], softdelete: str) -> bool:
     """True when the rows of `.show table T policy retention` already hold the wanted soft-delete period."""
     for row in rows:

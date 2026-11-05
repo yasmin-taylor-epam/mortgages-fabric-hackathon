@@ -144,7 +144,7 @@ def test_apply_runs_the_steps_in_order(tmp_path):
     session = FakeSession([
         (("POST", "/jobs/instances"), Resp(202, headers={"Location": "https://api.fabric.microsoft.com/job/1", "Retry-After": "0"})),
         (("GET", "/items"), Resp(body={"value": [{"id": f"id-{n}", "type": t, "displayName": n} for n, t in
-                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
+                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline"), (ids.KQL_DATABASE, "KQLDatabase")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
         (("GET", "/v1/workspaces"), Resp(body={"value": []})),
         (("GET", "/v1/capacities"), Resp(body={"value": [{"displayName": "cap", "id": "cccccccc-0000-1111-2222-bbbbbbbbbbbb"}]})),
         (("POST", "/v1/workspaces"), Resp(201, {"id": "wwwwwwww-0000-1111-2222-bbbbbbbbbbbb"})),

@@ -5,6 +5,7 @@ Steps, in order (select with --only or --skip):
   workspace   find or create the workspace, assign the capacity
   roles       OPTIONAL. Assign workspace roles from the settings.
   core        deploy Lakehouse, Environment, Eventhouse, KQL database, notebooks, pipeline and Eventstream (fabric-cicd)
+  streaming   OPTIONAL (--only). Turn streaming ingestion off for RawEventsLanding. The core step does this by itself when Fabric needs it.
   retention   OPTIONAL. Set the soft-delete retention of RawEventsLanding (Kusto management endpoint).
   upload      generate the synthetic exports, upload them and the Python code to the Lakehouse Files area
   notebooks   run 00 to 05 in order, then 06 (Parquet to Delta tables)
@@ -26,24 +27,26 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import yaml
 
 from . import config as cfgmod
 from . import ids, onelake, payloads, stage
-from .api import FabricClient, FabricError
+from .api import SCOPE, FabricClient, FabricError
 from .extra_steps import ExtraSteps, default_runner, make_graph_credential
 
 REPO = stage.REPO
 BUILD = REPO / "build" / "fabric"
-STEPS = ["capacity", "workspace", "roles", "core", "retention", "upload", "notebooks", "pipeline", "schedule", "model",
+STEPS = ["capacity", "workspace", "roles", "core", "streaming", "retention", "upload", "notebooks", "pipeline", "schedule", "model",
          "rls", "labels", "sharepoint", "eventstream", "replay", "git"]
 # Optional steps and the settings section that switches each on. eventstream has no section: use --only.
 OPTIONAL = {"capacity": "capacity_create", "roles": "roles", "retention": "retention", "schedule": "schedule", "rls": "rls",
-            "sharepoint": "sharepoint", "eventstream": None, "replay": "replay", "git": "git"}
+            "sharepoint": "sharepoint", "eventstream": None, "streaming": None, "replay": "replay", "git": "git"}
 NO_WORKSPACE_NEEDED = {"capacity", "workspace", "sharepoint"}
 
 
@@ -81,14 +84,38 @@ def notebook_runs(cfg: cfgmod.EnvSettings) -> list[tuple[str, dict]]:
     ]
 
 
-def make_credential(kind: str, tenant: str | None):
-    from azure.identity import AzureCliCredential, DeviceCodeCredential, InteractiveBrowserCredential
+def _auth_record_path(kind: str) -> Path:
+    """Where the (non-secret) record of who signed in is kept. Outside the repository, in the user profile."""
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".cache")
+    return Path(base) / "homebridge-fabric-deploy" / f"auth-record-{kind}.json"
+
+
+def make_credential(kind: str, tenant: str | None, cache: bool = True):
+    """Sign-in object. With cache on, the token cache is encrypted by the operating system and lives in the user profile.
+    The second run then signs in silently until the refresh token expires. Nothing goes in the repository."""
+    from azure.identity import AuthenticationRecord, AzureCliCredential, DeviceCodeCredential, InteractiveBrowserCredential
 
     if kind == "azcli":
         return AzureCliCredential(tenant_id=tenant) if tenant else AzureCliCredential()
-    if kind == "device":
-        return DeviceCodeCredential(tenant_id=tenant) if tenant else DeviceCodeCredential()
-    return InteractiveBrowserCredential(tenant_id=tenant) if tenant else InteractiveBrowserCredential()
+    cls = DeviceCodeCredential if kind == "device" else InteractiveBrowserCredential
+    kw = {"tenant_id": tenant} if tenant else {}
+    if not cache:
+        return cls(**kw)
+    try:
+        from azure.identity import TokenCachePersistenceOptions
+
+        record_path = _auth_record_path(kind)
+        record = AuthenticationRecord.deserialize(record_path.read_text(encoding="utf-8")) if record_path.exists() else None
+        cred = cls(cache_persistence_options=TokenCachePersistenceOptions(name="homebridge-fabric-deploy"),
+                   authentication_record=record, **kw)
+        if record is None:
+            record = cred.authenticate(scopes=[SCOPE])
+            record_path.parent.mkdir(parents=True, exist_ok=True)
+            record_path.write_text(record.serialize(), encoding="utf-8")
+        return cred
+    except Exception as exc:  # the cache is a convenience. Fall back to a plain sign-in.
+        print(f"Note: the sign-in cache is not available ({type(exc).__name__}). You will sign in again on the next run.", file=sys.stderr)
+        return cls(**kw)
 
 
 def generate_exports(cfg: cfgmod.EnvSettings, out_dir: Path) -> Path:
@@ -104,7 +131,7 @@ def generate_exports(cfg: cfgmod.EnvSettings, out_dir: Path) -> Path:
 class Deployer(ExtraSteps):
     def __init__(self, cfg: cfgmod.EnvSettings, credential=None, client: FabricClient | None = None, dry_run: bool = False,
                  steps: list[str] | None = None, log=print, cicd=None, uploader=None, build_dir: Path = BUILD,
-                 env: dict | None = None, runner=None, graph_credential=None, repo: Path = REPO):
+                 env: dict | None = None, runner=None, graph_credential=None, repo: Path = REPO, sleep=time.sleep):
         self.cfg, self.credential, self.dry_run, self.log = cfg, credential, dry_run, log
         self.client = client or (FabricClient(credential) if credential else None)
         self.steps = steps or default_steps(cfg)
@@ -114,6 +141,7 @@ class Deployer(ExtraSteps):
         self.workspace_id = cfg.workspace_id
         self.stage_dir = self.build_dir / "stage"
         self.env = dict(os.environ if env is None else env)
+        self.sleep = sleep
         self.runner = runner or default_runner
         self.repo = Path(repo)
         self.graph_credential = graph_credential or (make_graph_credential(self.env, credential) if credential else None)
@@ -127,15 +155,25 @@ class Deployer(ExtraSteps):
 
         deploy_with_config(config_file_path=str(config_path), token_credential=self.credential, environment=self.cfg.environment)
 
-    def _write_config(self, name: str, types: list[str], parameter: dict | None) -> Path:
+    def _write_config(self, name: str, types: list[str], parameter: dict | None, stage_dir: Path | None = None) -> Path:
         self.build_dir.mkdir(parents=True, exist_ok=True)
         param_path = None
         if parameter:
             param_path = self.build_dir / f"{name}.parameter.yml"
             param_path.write_text(yaml.safe_dump(parameter, sort_keys=False), encoding="utf-8")
         path = self.build_dir / f"{name}.config.yml"
-        path.write_text(yaml.safe_dump(cicd_config(self.workspace_id, self.stage_dir, types, param_path, self.cfg.prune), sort_keys=False), encoding="utf-8")
+        path.write_text(yaml.safe_dump(cicd_config(self.workspace_id, stage_dir or self.stage_dir, types, param_path, self.cfg.prune), sort_keys=False), encoding="utf-8")
         return path
+
+    def _stage_without_update_policies(self) -> Path:
+        """A copy of the staging folder whose KQL database script has no update policies."""
+        out = self.build_dir / "stage_no_policy"
+        if out.exists():
+            shutil.rmtree(out)
+        shutil.copytree(self.stage_dir, out)
+        for f in out.rglob("DatabaseSchema.kql"):
+            f.write_text(payloads.without_update_policies(f.read_text(encoding="utf-8")), encoding="utf-8")
+        return out
 
     # ----- steps
     def prepare(self) -> None:
@@ -196,8 +234,35 @@ class Deployer(ExtraSteps):
             self.say(f"Would deploy {types} with fabric-cicd to workspace {self.workspace_id}.")
             return
         self.say(f"Deploying {types} with fabric-cicd.")
-        self.cicd(self._write_config("core", types, None))
+        config = self._write_config("core", types, None)
+        if not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):
+            # Fabric runs the database script as one unit and removes the database when a command fails. The update
+            # policies fail while streaming ingestion is on. So publish the database without them first.
+            self.say("The KQL database does not exist yet. Publishing it without the update policies first, then turning streaming ingestion off.")
+            self._publish_with_waits(self._write_config("core_no_policy", ["Eventhouse", "KQLDatabase"], None, self._stage_without_update_policies()))
+            self.streaming()
+        try:
+            self.cicd(config)
+        except Exception as exc:
+            if not payloads.is_streaming_conflict(exc):
+                raise
+            self.say("Fabric refused the update policies because streaming ingestion is on for the landing table. Turning it off, then deploying again.")
+            self.streaming()
+            self.cicd(config)
 
+    def _publish_with_waits(self, config: Path, tries: int = 12, wait_seconds: float = 30) -> None:
+        """Fabric keeps the name of a database that it just removed for a few minutes. Wait and try again."""
+        for attempt in range(tries):
+            try:
+                self.cicd(config)
+                return
+            except Exception as exc:
+                if "not available yet" not in str(exc).lower() and not any("not available yet" in str(e).lower() for _, e in getattr(exc, "errors", [])):
+                    raise
+                if attempt == tries - 1:
+                    raise
+                self.say(f"Fabric still holds the earlier database name. Waiting {int(wait_seconds)} seconds ({attempt + 1}/{tries - 1}).")
+                self.sleep(wait_seconds)
     def upload(self) -> None:
         if self.dry_run:
             n = len(onelake.code_files(REPO))
@@ -281,6 +346,7 @@ def parse(argv=None) -> argparse.Namespace:
     ap.add_argument("--capacity-id")
     ap.add_argument("--tenant", help="Entra tenant (domain or ID) to sign in to. Not stored anywhere.")
     ap.add_argument("--auth", choices=["interactive", "device", "azcli"], default="interactive", help="Sign-in method. 'azcli' re-uses an existing 'az login'.")
+    ap.add_argument("--no-token-cache", action="store_true", help="Do not keep the sign-in between runs (the default keeps it in your user profile).")
     ap.add_argument("--only", nargs="+", choices=STEPS)
     ap.add_argument("--skip", nargs="+", choices=STEPS, default=[])
     return ap.parse_args(argv)
@@ -311,7 +377,7 @@ def main(argv=None) -> int:
             print("Offline checks passed. Nothing was sent to Fabric.")
             print("Steps that a run with these settings would do: " + ", ".join(steps))
             return 0
-        credential = make_credential(a.auth, a.tenant)
+        credential = make_credential(a.auth, a.tenant, cache=not a.no_token_cache)
         Deployer(cfg, credential=credential, dry_run=a.dry_run, steps=steps).run()
         return 0
     except (cfgmod.ConfigError, FabricError) as exc:

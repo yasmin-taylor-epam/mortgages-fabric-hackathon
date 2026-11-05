@@ -109,18 +109,44 @@ class ExtraSteps:
                 self.client.update_role_assignment(self.workspace_id, existing_id, a["role"])
                 self.say(f"  role updated: {label}")
 
-    # ----- retention
+    # ----- retention and streaming (both run Kusto management commands on the KQL database)
+    def _kusto_target(self, step: str) -> tuple[str, str] | None:
+        db = self._need_item("KQLDatabase", ids.KQL_DATABASE, step)
+        if not db:
+            return None
+        info = self.client.get_kql_database(self.workspace_id, db["id"])
+        # Verified on 5 Nov 2026: the Kusto database name of a Fabric KQL database is its item ID, not its display name.
+        return info["properties"]["queryServiceUri"], db["id"]
+
+    def streaming(self) -> None:
+        """Turn streaming ingestion off for the landing table so that the update policies can read AccountContext."""
+        table = payloads.LANDING_TABLE
+        if self.dry_run and self.workspace_id.startswith("<"):
+            self.say(f"Would turn streaming ingestion off for {table}.")
+            return
+        target = self._kusto_target("streaming")
+        if not target:
+            return
+        uri, name = target
+        rows = self.client.kusto_mgmt(uri, name, f".show table {table} policy streamingingestion")
+        if not payloads.streaming_is_enabled(rows):
+            self.say(f"Streaming ingestion is already off for {table}.")
+        elif self.dry_run:
+            self.say(f"Would run on {name}: {payloads.streaming_off_command(table)}")
+        else:
+            self.client.kusto_mgmt(uri, name, payloads.streaming_off_command(table))
+            self.say(f"Turned streaming ingestion off for {table}. Ingestion now uses the queued path, which batches events.")
+
     def retention(self) -> None:
         r = self.cfg.retention
         command = payloads.retention_command(r.table, r.softdelete)
         if self.dry_run and self.workspace_id.startswith("<"):
             self.say(f"Would run on {ids.KQL_DATABASE}: {command}")
             return
-        db = self._need_item("KQLDatabase", ids.KQL_DATABASE, "retention")
-        if not db:
+        target = self._kusto_target("retention")
+        if not target:
             return
-        info = self.client.get_kql_database(self.workspace_id, db["id"])
-        uri, name = info["properties"]["queryServiceUri"], info.get("displayName", ids.KQL_DATABASE)
+        uri, name = target
         rows = self.client.kusto_mgmt(uri, name, f".show table {r.table} policy retention")
         if payloads.retention_matches(rows, r.softdelete):
             self.say(f"Retention of {r.table} is already {r.softdelete}.")
