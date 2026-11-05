@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/feed_watermark.schema.json",
+  "title": "feed_watermark",
+  "description": "Freshness of one source feed at one check time. T03: a stale or missing feed is flagged. A missing feed is not zero arrears.",
+  "x-grain": "One row per dataset + checked_at.",
+  "x-primary-key": ["dataset", "checked_at"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dataset", "checked_at", "max_ingested_at", "max_event_at", "row_count", "stale_threshold_hours", "is_stale"],
+  "properties": {
+    "dataset": {"type": "string"},
+    "checked_at": {"type": "string", "format": "date-time"},
+    "max_ingested_at": {"type": ["string", "null"], "format": "date-time"},
+    "max_event_at": {"type": ["string", "null"], "format": "date-time"},
+    "row_count": {"type": "integer", "minimum": 0},
+    "stale_threshold_hours": {"type": "number"},
+    "is_stale": {"type": "boolean"}
+  }
+}

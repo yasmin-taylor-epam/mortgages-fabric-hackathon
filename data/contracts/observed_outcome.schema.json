@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/observed_outcome.schema.json",
+  "title": "observed_outcome",
+  "description": "Observed refinancing outcome for one deal cycle. Use it for training and evaluation only. Never use it as an input to a score. INV-4: an unknown or incomplete outcome has no label and never counts as retained.",
+  "x-grain": "One row per mortgage_id + cycle_id.",
+  "x-primary-key": ["mortgage_id", "cycle_id"],
+  "x-event-time": "outcome_at",
+  "x-ingestion-time": "outcome_observed_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mortgage_id", "cycle_id", "checkpoint_at", "observation_window_end_at", "outcome_type", "outcome_at", "outcome_observed_at", "evidence_source", "label_status", "label"],
+  "properties": {
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "cycle_id": {"type": "string", "pattern": "^C[0-9]{2}$"},
+    "checkpoint_at": {"type": "string", "format": "date-time", "description": "deal_end_at minus 90 days."},
+    "observation_window_end_at": {"type": "string", "format": "date-time", "description": "deal_end_at plus 30 days."},
+    "outcome_type": {"type": "string", "enum": ["external_refinance", "product_transfer", "continued_servicing", "sale_redemption", "bereavement_redemption", "redemption_unknown_reason", "not_yet_observed"]},
+    "outcome_at": {"type": ["string", "null"], "format": "date-time"},
+    "outcome_observed_at": {"type": ["string", "null"], "format": "date-time", "description": "Time HomeBridge confirmed the outcome. A model release can use a label only if this time is before the release."},
+    "evidence_source": {"type": "string", "enum": ["refinance_record", "redemption_reason", "transfer_completion", "servicing_continued", "none"]},
+    "label_status": {"type": "string", "enum": ["labelled", "excluded", "pending"]},
+    "label": {"type": ["integer", "null"], "enum": [0, 1, null], "description": "1 = confirmed external refinancing. 0 = product transfer or continued servicing. Null when excluded or pending."}
+  },
+  "allOf": [
+    {"if": {"properties": {"label_status": {"const": "labelled"}}}, "then": {"properties": {"label": {"type": "integer"}, "outcome_type": {"enum": ["external_refinance", "product_transfer", "continued_servicing"]}}}, "else": {"properties": {"label": {"type": "null"}}}},
+    {"if": {"properties": {"outcome_type": {"enum": ["sale_redemption", "bereavement_redemption", "redemption_unknown_reason"]}}}, "then": {"properties": {"label_status": {"enum": ["excluded", "pending"]}}}},
+    {"if": {"properties": {"outcome_type": {"const": "not_yet_observed"}}}, "then": {"properties": {"label_status": {"const": "pending"}}}}
+  ]
+}

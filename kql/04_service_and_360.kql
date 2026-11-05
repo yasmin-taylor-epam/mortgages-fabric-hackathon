@@ -1,0 +1,52 @@
+// Service events and the live Customer 360 view.
+// ServiceEvents() output follows data/contracts/service_event.schema.json.
+// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Not yet run in Fabric.
+.execute database script <|
+.create-or-alter function with (folder = "service", docstring = "Service events for Activator and the review-case writer. They do not depend on scoring (T05).")
+ServiceEvents() {
+    let ctx = AccountContextLatest() | project mortgage_id, cycle_id, deal_start_at, deal_end_at;
+    RawEvents
+    | summarize arg_min(ingested_at, *) by event_id
+    | extend service_type = case(
+        event_type == "transfer_request_event" and tostring(payload.error_class) == "software_fault" and tobool(payload.fault_verified) == true, "portal_fault_verified",
+        event_type in ("payment_support_requested", "payment_support_closed"), event_type,
+        event_type == "payment_entry_posted" and tostring(payload.entry_type) == "reversal", "payment_reversed",
+        "")
+    | where isnotempty(service_type)
+    | extend evidence_ids = case(
+        service_type == "portal_fault_verified", pack_array(event_id, application_id),
+        service_type == "payment_reversed", pack_array(event_id, tostring(payload.reversal_of)),
+        pack_array(event_id, tostring(payload.case_id)))
+    | join kind = inner ctx on mortgage_id
+    | where occurred_at >= deal_start_at and occurred_at < deal_end_at + 30d
+    | summarize arg_max(deal_start_at, *) by event_id
+    | project event_id, event_type = service_type, mortgage_id, cycle_id, occurred_at, ingested_at, evidence_ids
+}
+.create-or-alter function with (folder = "service", docstring = "Live Customer 360 view: account context, live service signals, latest valid score, and feed and score age.")
+Customer360() {
+    let now_ = now();
+    let payment_feed_stale = toscalar(SourceWatermarks | summarize arg_max(checked_at, is_stale) by dataset | where dataset == "payment" | project is_stale);
+    let support = ServiceEvents()
+        | where event_type in ("payment_support_requested", "payment_support_closed")
+        | summarize arg_max(occurred_at, event_type) by mortgage_id, cycle_id
+        | project mortgage_id, cycle_id, live_payment_support = event_type == "payment_support_requested";
+    let faults = ServiceEvents()
+        | where event_type == "portal_fault_verified"
+        | summarize verified_faults_30d = countif(occurred_at > now_ - 30d), last_fault_at = max(occurred_at) by mortgage_id, cycle_id;
+    let score = ScoreContext
+        | summarize arg_max(copied_at, *) by mortgage_id, cycle_id
+        | project mortgage_id, cycle_id, run_id, model_version, score, scored_at, score_state;
+    let activity = RawEvents
+        | summarize last_event_at = max(occurred_at), last_ingested_at = max(ingested_at) by mortgage_id;
+    AccountContextLatest()
+    | join kind = leftouter support on mortgage_id, cycle_id
+    | join kind = leftouter faults on mortgage_id, cycle_id
+    | join kind = leftouter score on mortgage_id, cycle_id
+    | join kind = leftouter activity on mortgage_id
+    | extend payment_support_priority = payment_support_status == "active" or live_payment_support == true
+    | extend score_age_hours = (now_ - scored_at) / 1h, last_event_age_minutes = (now_ - last_ingested_at) / 1m
+    | extend payment_feed_stale = coalesce(payment_feed_stale, true)
+    | project mortgage_id, cycle_id, deal_end_at, checkpoint_at, owner_id, identity_status, payment_support_status, live_payment_support,
+              payment_support_priority, verified_faults_30d, last_fault_at, run_id, model_version, score, scored_at, score_state,
+              score_age_hours, last_event_at, last_event_age_minutes, payment_feed_stale, context_version
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/service_event.schema.json",
+  "title": "service_event",
+  "description": "Service event that the KQL function ServiceEvents() derives from accepted live events. Read by the Activator service rule and the review-case writer. These events are independent of scoring (T05).",
+  "x-grain": "One row per event_id.",
+  "x-primary-key": ["event_id"],
+  "x-event-time": "occurred_at",
+  "x-ingestion-time": "ingested_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "event_type", "mortgage_id", "cycle_id", "occurred_at", "ingested_at", "evidence_ids"],
+  "properties": {
+    "event_id": {"type": "string", "description": "Original source event ID."},
+    "event_type": {"type": "string", "enum": ["payment_support_requested", "payment_support_closed", "portal_fault_verified", "payment_reversed"], "description": "portal_fault_verified comes only from a software fault with fault_verified = true. A rejected or abandoned request is not a portal fault."},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "cycle_id": {"type": "string", "pattern": "^C[0-9]{2}$", "description": "Mapped from the account context by event time."},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time", "description": "Eventhouse ingestion time."},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}, "description": "Source record IDs, for example the event_id, application_id, case_id or reversed entry_id. No notes."}
+  }
+}

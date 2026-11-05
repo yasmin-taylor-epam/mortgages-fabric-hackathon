@@ -1,0 +1,146 @@
+{
+  "synthetic": true,
+  "fictional_company": "HomeBridge",
+  "id": "T04",
+  "title": "A payment is reversed.",
+  "rule": "Review and rescoring start. The audit record stays.",
+  "behaviour_owner": [
+    "Data and replay",
+    "Dashboard and action",
+    "Models and evaluation"
+  ],
+  "cutoff_at": "2026-10-01T00:00:00Z",
+  "inputs": {
+    "mortgage_account": [
+      {
+        "account_key": "HB-M-800401|C02",
+        "mortgage_id": "HB-M-800401",
+        "cycle_id": "C02",
+        "cohort_id": "2026-12",
+        "product_type": "fixed_2y",
+        "repayment_type": "repayment",
+        "deal_start_at": "2024-12-30T00:00:00Z",
+        "deal_end_at": "2026-12-30T00:00:00Z",
+        "loan_end_at": "2049-01-01T00:00:00Z",
+        "originated_at": "2022-01-01T00:00:00Z",
+        "fixed_rate_pct": 4.8,
+        "follow_on_rate_pct": 7.49,
+        "balance": 180000.0,
+        "balance_as_of": "2024-12-30T00:00:00Z",
+        "current_payment": 1100.0,
+        "owner_id": "ADV-001",
+        "recorded_at": "2024-12-30T02:00:00Z",
+        "ingested_at": "2024-12-30T03:00:00Z"
+      }
+    ],
+    "account_party": [
+      {
+        "mortgage_id": "HB-M-800401",
+        "party_id": "HB-P-8004011",
+        "role": "primary",
+        "valid_from": "2022-01-01T00:00:00Z",
+        "valid_to": null,
+        "mapping_status": "approved",
+        "recorded_at": "2022-01-01T00:00:00Z",
+        "ingested_at": "2022-01-01T00:00:00Z"
+      }
+    ],
+    "payment": [
+      {
+        "entry_id": "PAY-900000401",
+        "mortgage_id": "HB-M-800401",
+        "entry_type": "scheduled_collection",
+        "due_at": "2026-09-01T00:00:00Z",
+        "posted_at": "2026-09-01T10:00:00Z",
+        "ingested_at": "2026-09-01T12:00:00Z",
+        "amount_due": 1100.0,
+        "amount_received": 1100.0,
+        "reversal_of": null,
+        "reason_code": null
+      },
+      {
+        "entry_id": "PAY-900000402",
+        "mortgage_id": "HB-M-800401",
+        "entry_type": "reversal",
+        "due_at": "2026-09-01T00:00:00Z",
+        "posted_at": "2026-09-06T10:00:00Z",
+        "ingested_at": "2026-09-06T12:00:00Z",
+        "amount_due": 0.0,
+        "amount_received": -1100.0,
+        "reversal_of": "PAY-900000401",
+        "reason_code": "indemnity_claim"
+      },
+      {
+        "entry_id": "PAY-900000403",
+        "mortgage_id": "HB-M-800401",
+        "entry_type": "scheduled_collection",
+        "due_at": "2026-09-29T00:00:00Z",
+        "posted_at": "2026-09-29T10:00:00Z",
+        "ingested_at": "2026-09-29T12:00:00Z",
+        "amount_due": 1100.0,
+        "amount_received": 1100.0,
+        "reversal_of": null,
+        "reason_code": null
+      },
+      {
+        "entry_id": "PAY-900000404",
+        "mortgage_id": "HB-M-800401",
+        "entry_type": "reversal",
+        "due_at": "2026-09-29T00:00:00Z",
+        "posted_at": "2026-09-30T10:00:00Z",
+        "ingested_at": "2026-09-30T12:00:00Z",
+        "amount_due": 0.0,
+        "amount_received": -1100.0,
+        "reversal_of": "PAY-900000999",
+        "reason_code": "bank_recall"
+      }
+    ]
+  },
+  "live_events": [
+    {
+      "event_id": "PAY-900000405",
+      "event_type": "payment_entry_posted",
+      "schema_version": "1.0",
+      "source_system": "payment_ledger",
+      "mortgage_id": "HB-M-800401",
+      "application_id": null,
+      "occurred_at": "2026-10-20T10:00:00Z",
+      "sent_at": "2026-10-20T10:00:00Z",
+      "simulated_ingested_at": "2026-10-20T10:00:20Z",
+      "payload": {
+        "entry_type": "reversal",
+        "due_at": "2026-09-29T00:00:00Z",
+        "amount_due": 0.0,
+        "amount_received": -1100.0,
+        "reversal_of": "PAY-900000403",
+        "reason_code": "bank_recall"
+      }
+    }
+  ],
+  "expected": {
+    "clean_payment_entries": [
+      "PAY-900000401",
+      "PAY-900000402",
+      "PAY-900000403"
+    ],
+    "quarantine": {
+      "PAY-900000404": "invalid_reversal"
+    },
+    "snapshot": {
+      "ctx_reversals_180d": 1,
+      "ctx_missed_payments_180d": 1,
+      "ctx_arrears_amount": 1100.0
+    },
+    "service_events": [
+      {
+        "event_id": "PAY-900000405",
+        "event_type": "payment_reversed",
+        "evidence_ids": [
+          "PAY-900000405",
+          "PAY-900000403"
+        ]
+      }
+    ],
+    "note": "A reversal is not proof of default. It creates no new review case by itself. Dashboard flags open support and renewal cases for a recheck and records rescore_requested with these evidence IDs; Models rescores. A new renewal review starts only if the rescore publishes an eligible risk_updated event."
+  }
+}

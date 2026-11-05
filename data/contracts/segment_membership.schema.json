@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/segment_membership.schema.json",
+  "title": "segment_membership",
+  "description": "Segment assignment for one account, deal cycle and scoring run. Written by the Models and evaluation work package. Append one row per scheduled run. Never overwrite a row.",
+  "x-grain": "One row per mortgage_id + cycle_id + run_id.",
+  "x-primary-key": ["mortgage_id", "cycle_id", "run_id"],
+  "x-owner": "Models and evaluation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["account_key", "mortgage_id", "cycle_id", "run_id", "segment_id", "cluster_model_version", "assigned_at", "valid_from", "valid_to"],
+  "properties": {
+    "account_key": {"type": "string", "pattern": "^HB-M-[0-9]{6}\\|C[0-9]{2}$", "description": "Stored join key: mortgage_id + '|' + cycle_id. Direct Lake allows no calculated columns."},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "cycle_id": {"type": "string", "pattern": "^C[0-9]{2}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "segment_id": {"type": "string", "minLength": 1},
+    "cluster_model_version": {"type": "string", "minLength": 1},
+    "assigned_at": {"type": "string", "format": "date-time"},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_to": {"type": ["string", "null"], "format": "date-time", "description": "Null for the current row. A later run sets validity through a new row, not by editing this one."}
+  }
+}

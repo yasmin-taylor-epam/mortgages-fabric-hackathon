@@ -1,0 +1,50 @@
+/// Internal review cases exported from the SharePoint list.
+table review_cases
+
+	column case_key
+		dataType: string
+		summarizeBy: none
+		sourceColumn: case_key
+
+	column account_key
+		dataType: string
+		summarizeBy: none
+		sourceColumn: account_key
+
+	column mortgage_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: mortgage_id
+
+	column cycle_id
+		dataType: string
+		summarizeBy: none
+		sourceColumn: cycle_id
+
+	column action_family
+		dataType: string
+		summarizeBy: none
+		sourceColumn: action_family
+
+	column status
+		dataType: string
+		summarizeBy: none
+		sourceColumn: status
+
+	column assigned_to
+		dataType: string
+		summarizeBy: none
+		sourceColumn: assigned_to
+
+	column case_created_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: case_created_at
+
+	partition review_cases = entity
+		mode: directLake
+		source
+			entityName: review_cases
+			schemaName: dbo
+			expressionSource: DatabaseQuery

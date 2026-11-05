@@ -1,0 +1,144 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "dealterms",
+  "position": {
+    "x": 312,
+    "y": 16,
+    "z": 1,
+    "width": 952,
+    "height": 120,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "mortgage_id"
+                }
+              },
+              "queryRef": "mortgage_account.mortgage_id",
+              "nativeQueryRef": "mortgage_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "cycle_id"
+                }
+              },
+              "queryRef": "mortgage_account.cycle_id",
+              "nativeQueryRef": "cycle_id"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "deal_end_at"
+                }
+              },
+              "queryRef": "mortgage_account.deal_end_at",
+              "nativeQueryRef": "deal_end_at"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Checkpoint Date"
+                }
+              },
+              "queryRef": "mortgage_account.Checkpoint Date",
+              "nativeQueryRef": "Checkpoint Date"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "Days To Deal End"
+                }
+              },
+              "queryRef": "mortgage_account.Days To Deal End",
+              "nativeQueryRef": "Days To Deal End"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "product_type"
+                }
+              },
+              "queryRef": "mortgage_account.product_type",
+              "nativeQueryRef": "product_type"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "mortgage_account"
+                    }
+                  },
+                  "Property": "current_payment"
+                }
+              },
+              "queryRef": "mortgage_account.current_payment",
+              "nativeQueryRef": "current_payment"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Fixed-rate deal and current terms'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

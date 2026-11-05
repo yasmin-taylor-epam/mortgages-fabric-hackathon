@@ -1,0 +1,16 @@
+/// One row per date. Selects the date for segment history.
+table report_calendar
+
+	column date
+		dataType: dateTime
+		isKey
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: date
+
+	partition report_calendar = entity
+		mode: directLake
+		source
+			entityName: report_calendar
+			schemaName: dbo
+			expressionSource: DatabaseQuery

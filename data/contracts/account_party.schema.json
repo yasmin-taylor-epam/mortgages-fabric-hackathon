@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/account_party.schema.json",
+  "title": "account_party",
+  "description": "Approved mapping between a mortgage account and its borrowers. Joint borrowers are linked parties, not duplicate customers. The table holds no names or contact details.",
+  "x-grain": "One row per mortgage_id + party_id + valid_from.",
+  "x-primary-key": ["mortgage_id", "party_id", "valid_from"],
+  "x-event-time": "valid_from",
+  "x-ingestion-time": "ingested_at",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mortgage_id", "party_id", "role", "valid_from", "valid_to", "mapping_status", "recorded_at", "ingested_at"],
+  "properties": {
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "party_id": {"type": "string", "pattern": "^HB-P-[0-9]{7}$", "description": "Pseudonymous borrower ID."},
+    "role": {"type": "string", "enum": ["primary", "joint"]},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_to": {"type": ["string", "null"], "format": "date-time"},
+    "mapping_status": {"type": "string", "enum": ["approved", "pending"]},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "ingested_at": {"type": "string", "format": "date-time"}
+  }
+}

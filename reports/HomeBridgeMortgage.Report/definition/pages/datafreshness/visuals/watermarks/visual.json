@@ -1,0 +1,144 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "watermarks",
+  "position": {
+    "x": 432,
+    "y": 16,
+    "z": 1,
+    "width": 832,
+    "height": 300,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "dataset"
+                }
+              },
+              "queryRef": "feed_watermark.dataset",
+              "nativeQueryRef": "dataset"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "checked_at"
+                }
+              },
+              "queryRef": "feed_watermark.checked_at",
+              "nativeQueryRef": "checked_at"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "max_ingested_at"
+                }
+              },
+              "queryRef": "feed_watermark.max_ingested_at",
+              "nativeQueryRef": "max_ingested_at"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "max_event_at"
+                }
+              },
+              "queryRef": "feed_watermark.max_event_at",
+              "nativeQueryRef": "max_event_at"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "row_count"
+                }
+              },
+              "queryRef": "feed_watermark.row_count",
+              "nativeQueryRef": "row_count"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "stale_threshold_hours"
+                }
+              },
+              "queryRef": "feed_watermark.stale_threshold_hours",
+              "nativeQueryRef": "stale_threshold_hours"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feed_watermark"
+                    }
+                  },
+                  "Property": "is_stale"
+                }
+              },
+              "queryRef": "feed_watermark.is_stale",
+              "nativeQueryRef": "is_stale"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Feed watermarks'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

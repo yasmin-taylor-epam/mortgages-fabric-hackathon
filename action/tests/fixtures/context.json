@@ -1,0 +1,14 @@
+{
+  "_note": "Illustrative synthetic context for tests and the local replay. Fictional HomeBridge accounts. Not real data.",
+  "accounts": [
+    {"mortgage_id": "MTG-ALEX", "cycle_id": "CYC-2027-01", "identity_status": "ok", "payment_support_status": "active", "owner_id": "ADV-011", "context_version": "ctx-v1"},
+    {"mortgage_id": "MTG-SAM", "cycle_id": "CYC-2027-01", "identity_status": "ok", "payment_support_status": "none", "owner_id": "ADV-011", "context_version": "ctx-v1"},
+    {"mortgage_id": "MTG-JO", "cycle_id": "CYC-2027-02", "identity_status": "ok", "payment_support_status": "none", "owner_id": "ADV-017", "context_version": "ctx-v1"},
+    {"mortgage_id": "MTG-KIM", "cycle_id": "CYC-2027-02", "identity_status": "ok", "payment_support_status": "unknown", "owner_id": "ADV-017", "context_version": "ctx-v1"},
+    {"mortgage_id": "MTG-LEE", "cycle_id": "CYC-2027-02", "identity_status": "conflict", "payment_support_status": "none", "owner_id": "ADV-017", "context_version": "ctx-v1"}
+  ],
+  "runs": {
+    "RUN-0002": "completed",
+    "RUN-0003": "failed"
+  }
+}

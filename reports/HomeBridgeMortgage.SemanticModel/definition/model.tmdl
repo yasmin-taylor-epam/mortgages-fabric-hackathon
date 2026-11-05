@@ -1,0 +1,23 @@
+model Model
+	culture: en-GB
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-GB
+
+ref table mortgage
+ref table mortgage_account
+ref table payment
+ref table feed_watermark
+ref table transfer_request_event
+ref table servicing_case
+ref table servicing_case_event
+ref table servicing_contact
+ref table score_runs
+ref table account_scores
+ref table feature_attributions
+ref table segment_membership
+ref table review_cases
+ref table report_calendar
+
+ref role 'Authorised adviser'
+ref role 'General viewer'

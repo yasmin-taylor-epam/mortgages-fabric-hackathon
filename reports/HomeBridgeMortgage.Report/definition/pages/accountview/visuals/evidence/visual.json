@@ -1,0 +1,130 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.0.0/schema.json",
+  "name": "evidence",
+  "position": {
+    "x": 652,
+    "y": 428,
+    "z": 5,
+    "width": 612,
+    "height": 276,
+    "tabOrder": 5
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "rank"
+                }
+              },
+              "queryRef": "feature_attributions.rank",
+              "nativeQueryRef": "rank"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "feature_name"
+                }
+              },
+              "queryRef": "feature_attributions.feature_name",
+              "nativeQueryRef": "feature_name"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "feature_value"
+                }
+              },
+              "queryRef": "feature_attributions.feature_value",
+              "nativeQueryRef": "feature_value"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "contribution"
+                }
+              },
+              "queryRef": "feature_attributions.contribution",
+              "nativeQueryRef": "contribution"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "contribution_unit"
+                }
+              },
+              "queryRef": "feature_attributions.contribution_unit",
+              "nativeQueryRef": "contribution_unit"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "feature_attributions"
+                    }
+                  },
+                  "Property": "run_id"
+                }
+              },
+              "queryRef": "feature_attributions.run_id",
+              "nativeQueryRef": "run_id"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Score evidence: feature attributions (1 = largest)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://homebridge.example/contracts/servicing_case.schema.json",
+  "title": "servicing_case",
+  "description": "Report dimension: one row per source servicing case, with its status at as_of_at. Built by 01_validate_histories. Model inputs must reconstruct status at their own cutoff from servicing_case_event instead.",
+  "x-grain": "One row per case_id.",
+  "x-primary-key": ["case_id"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "mortgage_id", "category", "support_route", "opened_at", "latest_status", "is_resolved", "resolved_at", "contact_count", "as_of_at"],
+  "properties": {
+    "case_id": {"type": "string", "pattern": "^CASE-[0-9]{7}$"},
+    "mortgage_id": {"type": "string", "pattern": "^HB-M-[0-9]{6}$"},
+    "category": {"type": "string", "enum": ["general_enquiry", "billing_enquiry", "rate_enquiry", "complaint", "portal_problem", "payment_difficulty"]},
+    "support_route": {"type": "string", "enum": ["general_servicing", "complaints_team", "technical_support", "payment_support"]},
+    "opened_at": {"type": "string", "format": "date-time"},
+    "latest_status": {"type": "string", "enum": ["opened", "in_progress", "resolved", "reopened"]},
+    "is_resolved": {"type": "boolean", "description": "True only when latest_status is resolved."},
+    "resolved_at": {"type": ["string", "null"], "format": "date-time"},
+    "contact_count": {"type": "integer", "description": "Distinct contact_id values linked to the case."},
+    "as_of_at": {"type": "string", "format": "date-time"}
+  }
+}

@@ -1,0 +1,6 @@
+/// Direct Lake source. Replace both placeholders with the Lakehouse SQL analytics endpoint when the Fabric workspace exists.
+expression DatabaseQuery =
+		let
+		    database = Sql.Database("REPLACE-WITH-SQL-ANALYTICS-ENDPOINT", "REPLACE-WITH-LAKEHOUSE-ID")
+		in
+		    database

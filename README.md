@@ -4,7 +4,7 @@
 
 Mortgage Renewal Early Warning is a proposed customer intelligence system on Microsoft Fabric. It joins customer history with live activity, groups accounts, scores churn risk, and sends retention alerts for human review.
 
-**Status:** Proposal sent on 18 October. The build runs from 26 October to 6 November. The team chose Mortgage Renewal Early Warning as the scenario.
+**Status:** Proposal sent on 18 October. The team chose Mortgage Renewal Early Warning as the scenario. The three work packages (data and replay, models and evaluation, dashboard and action) are built and integrated. They run and pass tests locally on synthetic data. Nothing has run in Fabric yet. See [Run the whole flow locally](#run-the-whole-flow-locally).
 
 ## Review the proposal
 
@@ -49,15 +49,27 @@ The build follows the three work packages in the blueprint (section 06). Each wo
 | `pipelines/` | Fabric pipeline definitions. | Shared. Each pipeline has one owner. |
 | `action/` | Activator rules, Power Automate flows and the SharePoint review-case list. | Dashboard and action |
 | `reports/` | Power BI semantic model and mortgage report. | Dashboard and action |
+| `scripts/` | Local runner for the whole flow. | Integration |
 
-Each folder README lists its planned items and the rules that apply. The Fabric workspace is not ready yet. Build items that run locally first.
+Each folder README lists its contents, status and rules. The Fabric workspace is not ready yet. Every item runs locally first. Do not claim that an item runs in Fabric until someone has run it there.
+
+## Run the whole flow locally
+
+`scripts/run_local_flow.ps1` deletes `data/output/` and rebuilds it. It generates and validates synthetic data, trains and evaluates the models, scores one checkpoint run, copies the context, replays events into the local case writer, and runs the test suite of each work package.
+
+```powershell
+powershell -File scripts\run_local_flow.ps1            # flow and all tests (several minutes)
+powershell -File scripts\run_local_flow.ps1 -Demo      # then add a scheduled run and a failed run (T05 demo)
+```
+
+Run `-Demo` last. Its extra live runs flag more accounts than the capacity of ten reviews per run. Then `action/tests/test_action_data_integration.py` fails until you rebuild without `-Demo`. The local flow uses a SQLite file in place of SharePoint. It needs Python (tested with 3.13).
 
 This repository holds the build for now. The team may move the build to a separate repository later.
 
 ## Repository contents
 
 - `site/index.html` — current scenario page and proposal.
-- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/` — build folders. See [Build layout](#build-layout).
+- `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/`, `scripts/` — build folders. See [Build layout](#build-layout).
 - `docs/archive/previous-readme.md` — previous repository overview.
 - `docs/archive/technical-blueprint.md` — earlier technical blueprint, retained for reference.
 
