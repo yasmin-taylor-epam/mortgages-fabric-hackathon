@@ -194,10 +194,24 @@ class FabricClient:
         return self.request("GET", f"/v1/workspaces/{workspace_id}/kqlDatabases/{database_id}").json()
 
     def kusto_mgmt(self, query_uri: str, database: str, command: str) -> list[list]:
-        """Run one management command on the Kusto endpoint of a KQL database. Returns the rows of the first table."""
-        resp = self.request("POST", f"{query_uri.rstrip('/')}/v1/rest/mgmt", scope=KUSTO_SCOPE, json={"db": database, "csl": command})
-        tables = resp.json().get("Tables") or []
-        return tables[0].get("Rows", []) if tables else []
+        """Run one management command on the Kusto endpoint of a KQL database. Returns the rows of the first table.
+
+        The token audience for a Fabric eventhouse is UNVERIFIED. The call tries the general Kusto audience first.
+        After a 401 or 403 it tries the query URI of the database as the audience.
+        """
+        base = query_uri.rstrip("/")
+        last: FabricError | None = None
+        for scope in (KUSTO_SCOPE, f"{base}/.default"):
+            try:
+                resp = self.request("POST", f"{base}/v1/rest/mgmt", scope=scope, json={"db": database, "csl": command})
+            except FabricError as exc:
+                if " -> 401" not in str(exc) and " -> 403" not in str(exc):
+                    raise
+                last = exc
+                continue
+            tables = resp.json().get("Tables") or []
+            return tables[0].get("Rows", []) if tables else []
+        raise last
 
     # ----- Azure Resource Manager (capacity)
     def arm_capacity_url(self, subscription_id: str, resource_group: str, name: str) -> str:

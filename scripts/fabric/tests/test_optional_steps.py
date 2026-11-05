@@ -3,13 +3,14 @@ import json
 import shutil
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 import yaml
 
 from conftest import REPO
 from hbfabric import config as cfgmod
-from hbfabric import deploy, extra_steps, ids, payloads
+from hbfabric import deploy, extra_steps, ids, payloads, stage
 from hbfabric.api import FabricClient, FabricError
 from test_deploy import EXAMPLE, FakeCredential, FakeSession, Resp
 
@@ -182,7 +183,7 @@ def test_retention_runs_the_alter_command_only_when_the_value_differs(tmp_path):
     d.retention()
     posts = [b for m, u, b in s.calls if m == "POST"]
     assert [p["csl"] for p in posts] == [".show table RawEventsLanding policy retention", ".alter-merge table RawEventsLanding policy retention softdelete = 7d"]
-    assert all(p["db"] == ids.KQL_DATABASE for p in posts)
+    assert all(p["db"] == f"id-{ids.KQL_DATABASE}" for p in posts)  # the Kusto database name is the item ID
     show_same = Resp(body={"Tables": [{"Rows": [["p", "t", json.dumps({"SoftDeletePeriod": "7.00:00:00"}), "", ""]]}]})
     d2, s2, lines = make(tmp_path, KQL_ROUTES(show_same), steps=["retention"], retention={"enabled": True})
     d2.retention()
@@ -508,5 +509,150 @@ def test_a_dry_run_with_every_optional_step_sends_no_change_request(tmp_path):
 def test_step_order_puts_capacity_first_and_the_model_before_rls():
     s = deploy.STEPS
     assert s.index("capacity") < s.index("workspace") < s.index("roles") < s.index("core") < s.index("retention")
+    assert s.index("core") < s.index("streaming") < s.index("retention")
     assert s.index("model") < s.index("rls") and s.index("pipeline") < s.index("schedule") < s.index("model")
     assert s.index("eventstream") < s.index("replay")
+
+
+# ---------------------------------------------------------------- streaming ingestion
+
+STREAM_CONFLICT = ("Operation failed. Error Code: ScriptExecutionFailed. Referencing additional tables from update policy is not allowed "
+                   "when streaming ingestion is enabled on the source table. Disable streaming ingestion on the following table: 'RawEventsLanding'.")
+
+
+class CicdFailure(Exception):
+    def __init__(self, text):
+        super().__init__("Failed to publish 1 item(s): ['HomeBridgeEvents']")
+        self.errors = [("HomeBridgeEvents", Exception(text))]
+
+
+def test_streaming_off_command_follows_the_documented_form():
+    assert payloads.streaming_off_command("RawEventsLanding") == ".alter-merge table ['RawEventsLanding'] policy streamingingestion '{\"IsEnabled\": false}'"
+    assert payloads.streaming_is_enabled([]) and payloads.streaming_is_enabled([["p", json.dumps({"IsEnabled": True})]])
+    assert not payloads.streaming_is_enabled([["p", json.dumps({"IsEnabled": False})]])
+    assert payloads.is_streaming_conflict(CicdFailure(STREAM_CONFLICT)) and not payloads.is_streaming_conflict(CicdFailure("some other error"))
+
+
+def test_streaming_step_turns_it_off_only_when_on(tmp_path):
+    on = Resp(body={"Tables": [{"Rows": [["p", json.dumps({"IsEnabled": True})]]}]})
+    d, s, _ = make(tmp_path, KQL_ROUTES(on, Resp(body={"Tables": []})), steps=["streaming"])
+    d.streaming()
+    csl = [b["csl"] for m, _, b in s.calls if m == "POST"]
+    assert csl == [".show table RawEventsLanding policy streamingingestion", payloads.streaming_off_command("RawEventsLanding")]
+    off = Resp(body={"Tables": [{"Rows": [["p", json.dumps({"IsEnabled": False})]]}]})
+    d2, s2, lines = make(tmp_path, KQL_ROUTES(off), steps=["streaming"])
+    d2.streaming()
+    assert len([1 for m, _, _ in s2.calls if m == "POST"]) == 1 and "already off" in " ".join(lines)
+    d3, s3, _ = make(tmp_path, KQL_ROUTES(on), dry_run=True, steps=["streaming"])
+    d3.streaming()
+    assert all("alter" not in b["csl"] for m, _, b in s3.calls if m == "POST")
+
+
+def kql_routes_after_first_pass(*mgmt):
+    """/items answers 'no database' once, then 'database exists'."""
+    return [
+        (("GET", "/items"), [items(), items((ids.KQL_DATABASE, "KQLDatabase")), items((ids.KQL_DATABASE, "KQLDatabase"))]),
+        (("GET", "/kqlDatabases/"), Resp(body={"displayName": ids.KQL_DATABASE, "properties": {"queryServiceUri": "https://q.kusto.fabric.microsoft.com"}})),
+        (("POST", "/v1/rest/mgmt"), list(mgmt)),
+    ]
+
+
+ON = Resp(body={"Tables": [{"Rows": [["p", json.dumps({"IsEnabled": True})]]}]})
+
+
+def recording_cicd(attempts, fail_on=()):
+    def cicd(path):
+        attempts.append(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
+        if len(attempts) in fail_on:
+            raise CicdFailure(STREAM_CONFLICT)
+    return cicd
+
+
+def test_core_without_a_database_publishes_it_without_policies_turns_streaming_off_then_deploys_everything(tmp_path):
+    d, s, lines = make(tmp_path, kql_routes_after_first_pass(ON, Resp(body={"Tables": []})), steps=["core"])
+    attempts = []
+    d.cicd = recording_cicd(attempts)
+    d.prepare()
+    d.core()
+    assert [a["core"]["item_types_in_scope"] for a in attempts] == [["Eventhouse", "KQLDatabase"], stage.CORE_TYPES]
+    schema = next(Path(attempts[0]["core"]["repository_directory"]).rglob("DatabaseSchema.kql")).read_text(encoding="utf-8")
+    assert "policy update" not in schema and ".create-merge table RawEventsLanding" in schema
+    assert "policy update" in next(Path(attempts[1]["core"]["repository_directory"]).rglob("DatabaseSchema.kql")).read_text(encoding="utf-8")
+    assert any(b["csl"] == payloads.streaming_off_command("RawEventsLanding") for m, _, b in s.calls if m == "POST")
+    assert any("Turned streaming ingestion off" in x for x in lines)
+
+
+def test_core_with_a_database_deploys_once_when_nothing_conflicts(tmp_path):
+    d, s, _ = make(tmp_path, [(("GET", "/items"), items((ids.KQL_DATABASE, "KQLDatabase")))], steps=["core"])
+    attempts = []
+    d.cicd = recording_cicd(attempts)
+    d.prepare()
+    d.core()
+    assert len(attempts) == 1 and all(m == "GET" for m, _, _ in s.calls)
+
+
+def test_core_with_a_database_turns_streaming_off_after_a_conflict_and_retries_once(tmp_path):
+    routes = [(("GET", "/items"), items((ids.KQL_DATABASE, "KQLDatabase"))),
+              (("GET", "/kqlDatabases/"), Resp(body={"displayName": ids.KQL_DATABASE, "properties": {"queryServiceUri": "https://q"}})),
+              (("POST", "/v1/rest/mgmt"), [ON, Resp(body={"Tables": []}), ON, Resp(body={"Tables": []})])]
+    d, s, _ = make(tmp_path, routes, steps=["core"])
+    attempts = []
+    d.cicd = recording_cicd(attempts, fail_on=(1,))
+    d.prepare()
+    d.core()
+    assert len(attempts) == 2
+    d2, _, _ = make(tmp_path, routes, steps=["core"])
+    n = []
+    d2.cicd = recording_cicd(n, fail_on=(1, 2))
+    d2.prepare()
+    with pytest.raises(CicdFailure):
+        d2.core()
+    assert len(n) == 2  # one retry only
+
+
+def test_core_does_not_retry_other_failures(tmp_path):
+    d, s, _ = make(tmp_path, [(("GET", "/items"), items((ids.KQL_DATABASE, "KQLDatabase")))], steps=["core"])
+    d.cicd = lambda p: (_ for _ in ()).throw(CicdFailure("quota exceeded"))
+    d.prepare()
+    with pytest.raises(CicdFailure):
+        d.core()
+    assert all(m == "GET" for m, _, _ in s.calls)
+
+
+def test_first_pass_waits_while_fabric_still_holds_the_old_database_name(tmp_path):
+    d, _, lines = make(tmp_path, kql_routes_after_first_pass(ON, Resp(body={"Tables": []})), steps=["core"])
+    waits, calls = [], []
+    d.sleep = waits.append
+
+    def cicd(path):
+        calls.append(path)
+        if len(calls) <= 2:
+            raise CicdFailure("Requested 'HomeBridgeEvents' is not available yet and is expected to become available in the upcoming minutes.")
+    d.cicd = cicd
+    d.prepare()
+    d.core()
+    assert waits == [30, 30] and len(calls) == 4 and any("Waiting 30 seconds" in x for x in lines)
+    d2, _, _ = make(tmp_path, kql_routes_after_first_pass(), steps=["core"])
+    d2.sleep = lambda s: None
+    d2.cicd = lambda p: (_ for _ in ()).throw(CicdFailure("not available yet"))
+    d2.prepare()
+    with pytest.raises(CicdFailure):
+        d2.core()
+
+
+def test_without_update_policies_keeps_every_other_command():
+    text = ".create-merge table T (a:string)\n.alter table RawEvents policy update @'[]'\n.create-or-alter function F() { 1 }\n"
+    out = payloads.without_update_policies(text)
+    assert "policy update" not in out and ".create-merge table T" in out and ".create-or-alter function F" in out
+
+
+def test_kusto_falls_back_to_the_database_uri_audience_after_a_403():
+    scopes = []
+
+    class Cred:
+        def get_token(self, scope):
+            scopes.append(scope)
+            return type("T", (), {"token": "t"})()
+    s = FakeSession([(("POST", "/v1/rest/mgmt"), [Resp(403, {}), Resp(body={"Tables": [{"Rows": [["ok"]]}]})])])
+    rows = FabricClient(Cred(), session=s).kusto_mgmt("https://q.kusto.fabric.microsoft.com", "db", ".show version")
+    assert rows == [["ok"]] and scopes == ["https://api.kusto.windows.net/.default", "https://q.kusto.fabric.microsoft.com/.default"]
