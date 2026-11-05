@@ -1,0 +1,778 @@
+<!doctype html>
+<!-- ART DIRECTION
+surface: Transit map (references/surfaces.md) - reader task: follow
+type voice: headline = serif (Iowan/Palatino); body = system sans; evidence, IDs and step tags = mono
+signature figure: one two-lane route (history lane on top, live lane below) that merges at scheduled scoring and ends at one named person
+rhythm: answer + route -> pause band (three clocks) -> two customers, two outcomes -> ten stops in order -> rules and failure cases -> where the build stands -> not specified
+sameness check: the page opens on one wide route diagram, then a full-width pause band, then a second smaller route, a numbered stop list and a status chain; no section is a grid of equal cards
+page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: same stacks; signature figure: the 303 scored accounts as one bar split by the two alert lines; rhythm: answer, bar, plain-words table, calibration and top-10 charts, one account explained, segments, what it does not show; sameness check: three different chart types and one annotated example instead of equal cards
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HomeBridge renewal early warning: the flow</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, h1, h2, h3, h4, li, dd, td, th, figcaption) { overflow-wrap: anywhere; }
+  :where(img, svg) { max-width: 100%; height: auto; }
+
+  :root {
+    --serif: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono: ui-monospace,"Cascadia Code",Consolas,monospace;
+  }
+  html { background: var(--color-base-100); }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: var(--sans); line-height: 1.55; }
+  h1, h2 { font-family: var(--serif); letter-spacing: -.01em; }
+  h1 { font-size: clamp(2rem, 4.4vw, 3.4rem); line-height: 1.05; }
+  h2 { font-size: clamp(1.4rem, 2.6vw, 2rem); line-height: 1.15; }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  .wrap { max-width: 1280px; margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+  .kicker { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; opacity: .65; }
+  .muted { color: color-mix(in oklab, var(--color-base-content) 68%, transparent); }
+  .measure { max-width: 68ch; }
+  .why { font-size: .85rem; border-left: 3px solid color-mix(in oklab, var(--color-primary) 60%, transparent); padding-left: .75rem; margin-top: .75rem; max-width: 80ch; }
+
+  .stamp { display: inline-block; font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; padding: .15rem .55rem; border: 1.5px dashed currentColor; border-radius: .25rem; opacity: .85; }
+  .stamp.gap { color: var(--color-error); }
+  .stamp.prop { color: var(--color-warning); }
+  .stamp.ok { color: var(--color-success); border-style: solid; }
+
+  .figure-scroll { overflow-x: auto; border: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); border-radius: .75rem; background: var(--color-base-100); }
+  .figure-scroll svg { display: block; min-width: 1000px; width: 100%; color: var(--color-base-content); font-family: var(--sans); }
+
+  /* SVG vocabulary */
+  svg .lane { fill: color-mix(in oklab, var(--color-base-content) 4%, var(--color-base-100)); stroke: color-mix(in oklab, var(--color-base-content) 14%, transparent); stroke-width: 1; }
+  svg .lane-label { fill: currentColor; opacity: .6; font: 600 12px var(--mono); letter-spacing: .12em; }
+  svg .node { fill: var(--color-base-100); stroke: currentColor; stroke-width: 1.6; }
+  svg .own-data { fill: color-mix(in oklab, var(--color-info) 20%, var(--color-base-100)); }
+  svg .own-model { fill: color-mix(in oklab, var(--color-secondary) 20%, var(--color-base-100)); }
+  svg .own-act { fill: color-mix(in oklab, var(--color-accent) 24%, var(--color-base-100)); }
+  svg .own-none { fill: color-mix(in oklab, var(--color-base-content) 6%, var(--color-base-100)); }
+  svg .t { fill: currentColor; font: 700 14.5px var(--sans); }
+  svg .s { fill: currentColor; opacity: .72; font: 12px var(--sans); }
+  svg .tag { fill: currentColor; font: 600 11.5px var(--mono); }
+  svg .edge { stroke: currentColor; stroke-width: 2; fill: none; marker-end: url(#arr); }
+  svg .edge.dash { stroke-dasharray: 7 5; }
+  svg .edge.risk { stroke: var(--color-error); stroke-width: 2.6; marker-end: url(#arrE); }
+  svg .badge { fill: var(--color-primary); }
+  svg .badge-t { fill: var(--color-primary-content); font: 700 12px var(--mono); text-anchor: middle; }
+  svg .stampbox { fill: var(--color-base-100); stroke: var(--color-warning); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  svg .stamptext { fill: var(--color-warning); font: 600 11px var(--mono); letter-spacing: .04em; }
+  svg .gate { fill: color-mix(in oklab, var(--color-warning) 22%, var(--color-base-100)); stroke: currentColor; stroke-width: 1.6; }
+  svg .endnode { fill: color-mix(in oklab, var(--color-success) 20%, var(--color-base-100)); stroke: currentColor; stroke-width: 1.6; }
+  svg .stopnode { fill: color-mix(in oklab, var(--color-base-content) 10%, var(--color-base-100)); stroke: currentColor; stroke-width: 1.6; stroke-dasharray: 5 4; }
+  svg .errnode { fill: color-mix(in oklab, var(--color-error) 16%, var(--color-base-100)); stroke: var(--color-error); stroke-width: 2; }
+  svg .gapnode { fill: var(--color-base-100); stroke: var(--color-error); stroke-width: 2; stroke-dasharray: 6 5; }
+
+  .chip { display: inline-flex; align-items: center; gap: .4rem; font-size: .78rem; }
+  .chip i { width: .8rem; height: .8rem; border-radius: .2rem; border: 1.5px solid currentColor; display: inline-block; }
+  .chip i.d { background: color-mix(in oklab, var(--color-info) 40%, transparent); }
+  .chip i.m { background: color-mix(in oklab, var(--color-secondary) 40%, transparent); }
+  .chip i.a { background: color-mix(in oklab, var(--color-accent) 45%, transparent); }
+  .chip i.n { background: color-mix(in oklab, var(--color-base-content) 10%, transparent); }
+
+  .pause { background: color-mix(in oklab, var(--color-base-content) 7%, var(--color-base-100)); border-block: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent); }
+  .clock { font-family: var(--serif); font-size: clamp(2.4rem, 5vw, 3.8rem); line-height: 1; }
+
+  ol.stops { list-style: none; padding: 0; margin: 0; position: relative; }
+  ol.stops::before { content: ""; position: absolute; left: 1.05rem; top: .6rem; bottom: .6rem; width: 3px; background: color-mix(in oklab, var(--color-primary) 35%, transparent); border-radius: 2px; }
+  ol.stops > li { position: relative; padding: .35rem 0 .9rem 3.2rem; }
+  ol.stops .n { position: absolute; left: 0; top: .3rem; width: 2.15rem; height: 2.15rem; border-radius: 999px; background: var(--color-primary); color: var(--color-primary-content); font: 700 .85rem var(--mono); display: grid; place-items: center; box-shadow: 0 0 0 4px var(--color-base-100); }
+  ol.stops h3 { font-weight: 700; font-size: 1.02rem; }
+  ol.stops .meta { font-family: var(--mono); font-size: .72rem; opacity: .7; }
+
+  .rule { display: grid; grid-template-columns: 4.2rem 1fr; gap: .75rem; padding: .55rem 0; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); }
+  .rule .id { font-family: var(--mono); font-weight: 700; color: var(--color-primary); }
+
+  details.disc { border: 1px solid color-mix(in oklab, var(--color-base-content) 14%, transparent); border-radius: .6rem; padding: .25rem 1rem; background: var(--color-base-100); }
+  details.disc > summary { cursor: pointer; font-weight: 700; padding: .65rem 0; }
+  details.disc[open] > summary { border-bottom: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); margin-bottom: .5rem; }
+
+  table.tbl { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  table.tbl th, table.tbl td { text-align: left; padding: .55rem .6rem; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); vertical-align: top; }
+  table.tbl td.id { font-family: var(--mono); font-weight: 700; color: var(--color-primary); white-space: nowrap; }
+
+  .pill-s { font-family: var(--mono); font-size: .7rem; padding: .1rem .5rem; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; }
+
+  .tabs-nav { display: flex; gap: .25rem; flex-wrap: wrap; }
+  #fig-deploy .edge { marker-end: url(#arrD); }
+  .tab-link { font-size: .85rem; font-weight: 600; padding: .35rem .85rem; border-radius: 999px; border: 1.5px solid color-mix(in oklab, var(--color-base-content) 22%, transparent); text-decoration: none; color: inherit; }
+  .tab-link[aria-current="page"] { background: var(--color-primary); color: var(--color-primary-content); border-color: transparent; }
+  [hidden] { display: none !important; }
+  svg .bar-low { fill: color-mix(in oklab, var(--color-base-content) 22%, var(--color-base-100)); }
+  svg .bar-mid { fill: color-mix(in oklab, var(--color-warning) 55%, var(--color-base-100)); }
+  svg .bar-top { fill: var(--color-error); }
+  svg .bar-champ { fill: var(--color-primary); }
+  svg .bar-tree { fill: color-mix(in oklab, var(--color-secondary) 70%, var(--color-base-100)); }
+  svg .bar-base { fill: color-mix(in oklab, var(--color-base-content) 30%, var(--color-base-100)); }
+  svg .axis { stroke: currentColor; stroke-width: 1.5; fill: none; }
+  svg .grid { stroke: color-mix(in oklab, var(--color-base-content) 14%, transparent); stroke-width: 1; fill: none; }
+  svg .pt { fill: var(--color-primary); stroke: var(--color-base-100); stroke-width: 2; }
+  svg .ideal { stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 6 5; opacity: .6; fill: none; }
+  svg .lbl { fill: currentColor; font: 12.5px var(--sans); }
+  svg .lbl-b { fill: currentColor; font: 700 13px var(--sans); }
+  svg .tickl { fill: currentColor; opacity: .7; font: 11.5px var(--mono); }
+  .gloss { width: 100%; border-collapse: collapse; font-size: .93rem; }
+  .gloss th, .gloss td { text-align: left; padding: .65rem .6rem; border-top: 1px solid color-mix(in oklab, var(--color-base-content) 12%, transparent); vertical-align: top; }
+  .gloss td.num { font-family: var(--mono); font-weight: 700; white-space: nowrap; }
+  .gloss td.term { font-weight: 700; min-width: 9rem; }
+  .verdict { font-family: var(--mono); font-size: .7rem; padding: .1rem .5rem; border-radius: 999px; border: 1.5px solid currentColor; white-space: nowrap; }
+  .verdict.good { color: var(--color-success); }
+  .verdict.meh { color: var(--color-warning); }
+  .verdict.warn { color: var(--color-error); }
+
+  @media print { .no-print { display: none !important; } details.disc > :not(summary) { display: block !important; } }
+</style>
+</head>
+<body>
+
+<header class="wrap" style="padding-top: 1.25rem;">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <span class="kicker">Customer Pulse 360 · Challenge 4 · HomeBridge (fictional lender)</span>
+    <nav class="tabs-nav no-print" aria-label="Pages">
+      <a href="#flow" id="tab-flow" class="tab-link">1 · The flow</a>
+      <a href="#outputs" id="tab-outputs" class="tab-link">2 · What the local run produced</a>
+      <a href="#deploy" id="tab-deploy" class="tab-link">3 · Deploy to Fabric</a>
+    </nav>
+    <label class="flex cursor-pointer gap-2 items-center text-xs bg-base-200 py-1 px-3 rounded-full border border-base-content/10 no-print">
+      <span class="font-medium">☀️ Light</span>
+      <input type="checkbox" value="luxury" class="toggle toggle-xs theme-controller" />
+      <span class="font-medium">🌙 Dark</span>
+    </label>
+  </div>
+</header>
+
+<main id="view-flow">
+<section class="wrap" style="padding-block: 2rem 1.25rem;">
+  <h1>How one early warning becomes one human action</h1>
+  <p class="measure" style="margin-top: 1rem; font-size: 1.12rem;">
+    HomeBridge customers sometimes leave for another lender just before their fixed-rate deal ends. This flow scores each mortgage <strong>90 days before the deal ends</strong>, watches live portal activity, and gives <strong>one servicing adviser</strong> one case to look at. A customer who needs payment help goes to trained support first, whatever the score.
+  </p>
+  <p style="margin-top: .75rem;">
+    <span class="stamp prop">Proposed design</span>
+    <span class="stamp gap">Not yet run in Fabric</span>
+  </p>
+</section>
+
+<!-- SIGNATURE FIGURE -->
+<section class="wrap" aria-labelledby="route-title" style="padding-bottom: 2.5rem;">
+  <div class="flex flex-wrap items-end justify-between gap-3" style="margin-bottom: .75rem;">
+    <h2 id="route-title">The route, stop by stop</h2>
+    <div class="flex flex-wrap gap-x-4 gap-y-1">
+      <span class="chip"><i class="d"></i>Data and replay</span>
+      <span class="chip"><i class="m"></i>Models and evaluation</span>
+      <span class="chip"><i class="a"></i>Dashboard and action</span>
+      <span class="chip"><i class="n"></i>No single owner</span>
+    </div>
+  </div>
+
+  <div class="figure-scroll" role="img" aria-label="Route diagram. A history lane and a live lane run left to right, merge at scheduled scoring, then reach a payment-support check and one review case for a servicing adviser.">
+  <svg viewBox="0 0 1400 690" xmlns="http://www.w3.org/2000/svg" id="fig-route">
+    <title>Route from source data and live events to one review case</title>
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+      <marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill: var(--color-error)"/></marker>
+    </defs>
+
+    <!-- lanes -->
+    <rect class="lane" x="20" y="50" width="760" height="170" rx="12" id="lane-history"><title>History lane: dated exports, scheduled</title></rect>
+    <text class="lane-label" x="40" y="76">HISTORY · DATED EXPORTS, ON A SCHEDULE</text>
+    <rect class="lane" x="20" y="385" width="1000" height="170" rx="12" id="lane-live"><title>Live lane: events one at a time</title></rect>
+    <text class="lane-label" x="40" y="411">LIVE · EVENT BY EVENT</text>
+    <text class="lane-label" x="1040" y="236" opacity=".5">WHERE THEY MEET</text>
+
+    <!-- history lane -->
+    <g id="stop-1"><title>Step 1: Load raw exports into the Lakehouse</title>
+      <path class="node own-data" d="M56 112 v56 a84 12 0 0 0 168 0 v-56"/>
+      <ellipse class="node own-data" cx="140" cy="112" rx="84" ry="12"/>
+      <text class="t" x="140" y="140" text-anchor="middle">Load raw exports</text>
+      <text class="s" x="140" y="158" text-anchor="middle">Pipelines → Lakehouse</text>
+      <circle class="badge" cx="62" cy="100" r="13"/><text class="badge-t" x="62" y="104">1</text></g>
+    <g id="stop-2"><title>Step 2: Validate and freeze feature snapshots</title>
+      <rect class="node own-none" x="246" y="95" width="168" height="76" rx="8"/>
+      <text class="t" x="330" y="128" text-anchor="middle">Feature snapshots</text>
+      <text class="s" x="330" y="147" text-anchor="middle">frozen at the cutoff</text>
+      <circle class="badge" cx="252" cy="95" r="13"/><text class="badge-t" x="252" y="99">2</text></g>
+    <g id="stop-3"><title>Step 3: Train the renewal model and the behaviour clusters</title>
+      <rect class="node own-model" x="436" y="95" width="168" height="76" rx="8"/>
+      <text class="t" x="520" y="128" text-anchor="middle">Train models</text>
+      <text class="s" x="520" y="147" text-anchor="middle">risk + clusters, MLflow</text>
+      <circle class="badge" cx="442" cy="95" r="13"/><text class="badge-t" x="442" y="99">3</text></g>
+    <path class="edge" d="M224 133 H244"/>
+    <path class="edge" d="M414 133 H434"/>
+
+    <!-- live lane -->
+    <g id="stop-5"><title>Step 5: Eventstream replays portal events</title>
+      <rect class="node own-data" x="56" y="432" width="168" height="76" rx="14"/>
+      <path d="M74 432 v76 M206 432 v76" stroke="currentColor" stroke-width="1.6" fill="none"/>
+      <text class="t" x="140" y="466" text-anchor="middle">Replay live events</text>
+      <text class="s" x="140" y="485" text-anchor="middle">Eventstream</text>
+      <circle class="badge" cx="62" cy="432" r="13"/><text class="badge-t" x="62" y="436">5</text></g>
+    <g id="stop-5b"><title>Eventhouse keeps each event with its original ID and times</title>
+      <path class="node own-data" d="M246 452 v56 a84 12 0 0 0 168 0 v-56"/>
+      <ellipse class="node own-data" cx="330" cy="452" rx="84" ry="12"/>
+      <text class="t" x="330" y="480" text-anchor="middle">Eventhouse</text>
+      <text class="s" x="330" y="498" text-anchor="middle">IDs and times kept</text></g>
+    <g id="stop-6"><title>Step 6: KQL journey queries</title>
+      <rect class="node own-data" x="436" y="432" width="168" height="76" rx="8"/>
+      <text class="t" x="520" y="466" text-anchor="middle">KQL journeys</text>
+      <text class="s" x="520" y="485" text-anchor="middle">stages · stalls · retries</text>
+      <circle class="badge" cx="442" cy="432" r="13"/><text class="badge-t" x="442" y="436">6</text></g>
+    <g id="stop-7"><title>Step 7: Join live events with account context and score summaries</title>
+      <rect class="node own-data" x="626" y="432" width="168" height="76" rx="8"/>
+      <text class="t" x="710" y="466" text-anchor="middle">Join context</text>
+      <text class="s" x="710" y="485" text-anchor="middle">versioned account copy</text>
+      <circle class="badge" cx="632" cy="432" r="13"/><text class="badge-t" x="632" y="436">7</text></g>
+    <g id="stop-8"><title>Step 8: Copy cutoff-filtered journey results into Lakehouse staging</title>
+      <rect class="node own-none" x="816" y="432" width="168" height="76" rx="8"/>
+      <text class="t" x="900" y="466" text-anchor="middle">Stage for scoring</text>
+      <text class="s" x="900" y="485" text-anchor="middle">cutoff-filtered copy</text>
+      <circle class="badge" cx="822" cy="432" r="13"/><text class="badge-t" x="822" y="436">8</text></g>
+    <path class="edge" d="M224 470 H244"/>
+    <path class="edge" d="M414 470 H434"/>
+    <path class="edge" d="M604 470 H624"/>
+    <path class="edge" d="M794 470 H814"/>
+
+    <!-- merge into scoring -->
+    <path class="edge" d="M604 133 H700 V300 H928" id="edge-3-9"><title>Trained models feed scoring</title></path>
+    <path class="edge" d="M984 470 H1010 V339" id="edge-8-9"><title>Staged journey results feed scoring</title></path>
+
+    <g id="stop-9"><title>Step 9: Scheduled scoring and segment assignment</title>
+      <rect class="node own-model" x="930" y="262" width="160" height="76" rx="8"/>
+      <text class="t" x="1010" y="295" text-anchor="middle">Scheduled scoring</text>
+      <text class="s" x="1010" y="314" text-anchor="middle">risk + segment</text>
+      <circle class="badge" cx="936" cy="262" r="13"/><text class="badge-t" x="936" y="266">9</text></g>
+
+    <!-- gold and BI -->
+    <g id="stop-4"><title>Step 4: Gold Delta tables and Power BI</title>
+      <path class="node own-act" d="M926 112 v56 a84 12 0 0 0 168 0 v-56"/>
+      <ellipse class="node own-act" cx="1010" cy="112" rx="84" ry="12"/>
+      <text class="t" x="1010" y="140" text-anchor="middle">Gold Delta tables</text>
+      <text class="s" x="1010" y="158" text-anchor="middle">completed-run marker</text>
+      <circle class="badge" cx="932" cy="100" r="13"/><text class="badge-t" x="932" y="104">4</text>
+      <rect class="node own-act" x="1170" y="95" width="170" height="76" rx="38"/>
+      <text class="t" x="1255" y="128" text-anchor="middle">Power BI report</text>
+      <text class="s" x="1255" y="147" text-anchor="middle">Direct Lake</text></g>
+    <path class="edge" d="M1010 262 V172"/>
+    <path class="edge" d="M1094 133 H1168"/>
+
+    <!-- run gate -->
+    <path class="gate" d="M1150 270 L1180 300 L1150 330 L1120 300 Z" id="gate-run"><title>Gate: did the scoring run succeed? risk_updated fires only after success (INV-5)</title></path>
+    <text class="tag" x="1150" y="349" text-anchor="middle">run OK?</text>
+    <path class="edge" d="M1090 300 H1118"/>
+    <path class="edge" d="M1182 300 H1208"/>
+
+    <g id="stop-10"><title>Step 10: Activator and Power Automate</title>
+      <rect class="node own-act" x="1210" y="262" width="160" height="76" rx="8"/>
+      <text class="t" x="1290" y="295" text-anchor="middle">Activator + flow</text>
+      <text class="s" x="1290" y="314" text-anchor="middle">Power Automate</text>
+      <circle class="badge" cx="1216" cy="262" r="13"/><text class="badge-t" x="1216" y="266">10</text></g>
+
+    <!-- payment-support gate -->
+    <path class="edge" d="M1290 338 V376"/>
+    <path class="gate" d="M1290 376 L1320 406 L1290 436 L1260 406 Z" id="gate-support"><title>Gate: active payment-support request? Trained servicing staff go first (INV-1)</title></path>
+    <text class="tag" x="1328" y="403">payment</text>
+    <text class="tag" x="1328" y="417">support?</text>
+    <path class="edge risk" d="M1260 406 H1210" id="edge-support"><title>Payment support comes first, whatever the churn score</title></path>
+    <text class="tag" x="1235" y="398" text-anchor="middle" style="fill: var(--color-error)">yes</text>
+    <g id="stop-support"><title>Trained servicing staff handle payment support first (INV-1)</title>
+      <rect class="errnode" x="1052" y="368" width="156" height="76" rx="8"/>
+      <text class="t" x="1130" y="400" text-anchor="middle">Support team first</text>
+      <text class="s" x="1130" y="419" text-anchor="middle">wins over score (INV-1)</text></g>
+    <path class="edge" d="M1290 436 V482"/>
+    <text class="tag" x="1300" y="462">no</text>
+
+    <g id="stop-case"><title>Internal review case in a secured SharePoint list</title>
+      <path class="node own-act" d="M1206 504 v54 a84 12 0 0 0 168 0 v-54"/>
+      <ellipse class="node own-act" cx="1290" cy="504" rx="84" ry="12"/>
+      <text class="t" x="1290" y="532" text-anchor="middle">Review case</text>
+      <text class="s" x="1290" y="550" text-anchor="middle">one open per key</text></g>
+    <path class="edge" d="M1290 572 V606"/>
+    <g id="stop-adviser"><title>The servicing adviser owns the review</title>
+      <rect class="endnode" x="1190" y="608" width="200" height="46" rx="23"/>
+      <text class="t" x="1290" y="636" text-anchor="middle">Servicing adviser</text></g>
+
+    <!-- stamps -->
+    <g id="clock-60"><rect class="stampbox" x="40" y="565" width="450" height="30" rx="4"/>
+      <text class="stamptext" x="56" y="585">PROPOSED TARGET · 60 s: live event visible in Customer 360</text></g>
+    <g id="clock-15"><rect class="stampbox" x="628" y="320" width="290" height="30" rx="4"/>
+      <text class="stamptext" x="640" y="340">PROPOSED TARGET · scoring every 15 min</text></g>
+    <g id="clock-5"><rect class="stampbox" x="1020" y="590" width="150" height="46" rx="4"/>
+      <text class="stamptext" x="1032" y="609">PROPOSED TARGET</text>
+      <text class="stamptext" x="1032" y="626">5 min: run → alert</text></g>
+    <text class="s" x="1010" y="206" text-anchor="middle" style="font-style: italic">scores and segments written after each successful run</text>
+  </svg>
+  </div>
+  <p class="why"><strong>Why this form:</strong> a route lets you follow one warning from raw data to a named person, and shows that the history lane and the live lane stay apart until scoring. <strong>Trade-off:</strong> it hides data columns, tests and thresholds; those are in the sections below.</p>
+
+  <div class="flex flex-wrap gap-x-6 gap-y-2 small" style="margin-top: 1rem; font-size: .8rem;">
+    <span class="kicker" style="opacity:.8">How to read it</span>
+    <span class="chip"><svg width="26" height="16" viewBox="0 0 26 16"><path d="M2 3 v10 a11 3 0 0 0 22 0 v-10" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="13" cy="3" rx="11" ry="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Stored data</span>
+    <span class="chip"><svg width="26" height="16" viewBox="0 0 26 16"><rect x="1" y="2" width="24" height="12" rx="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 2v12M20 2v12" stroke="currentColor" stroke-width="1.5"/></svg>Stream of events</span>
+    <span class="chip"><svg width="26" height="16" viewBox="0 0 26 16"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Step that runs</span>
+    <span class="chip"><svg width="20" height="16" viewBox="0 0 20 16"><path d="M10 1 L19 8 L10 15 L1 8z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Check</span>
+    <span class="chip"><svg width="30" height="10" viewBox="0 0 30 10"><path d="M1 5h26" stroke="var(--color-error)" stroke-width="2.6"/></svg>Priority path (the risk)</span>
+    <span class="chip"><svg width="30" height="16" viewBox="0 0 30 16"><rect x="1" y="2" width="28" height="12" rx="2" fill="none" stroke="var(--color-warning)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>Target, not a measured result</span>
+    <span class="chip"><span class="pill-s" style="background: var(--color-primary); color: var(--color-primary-content); border-color: transparent;">n</span>Blueprint step number</span>
+  </div>
+</section>
+
+<!-- PAUSE BAND -->
+<aside class="pause" aria-labelledby="clocks-title">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker" id="clocks-title">Pause here · three separate clocks</p>
+    <p style="font-family: var(--serif); font-size: clamp(1.3rem, 2.6vw, 1.9rem); line-height: 1.2; margin-top: .4rem; max-width: 34ch;">A live event and a fresh score are two different things.</p>
+    <div class="grid gap-6" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1.5rem;">
+      <div><div class="clock">60 s</div><p class="small" style="font-size:.9rem">From a live event to the Customer 360 view.</p></div>
+      <div><div class="clock">15 min</div><p class="small" style="font-size:.9rem">Between scoring runs. They refresh features, segments and risk. They do not retrain the models.</p></div>
+      <div><div class="clock">5 min</div><p class="small" style="font-size:.9rem">From a successful scoring run to the alert.</p></div>
+    </div>
+    <p style="margin-top: 1rem;"><span class="stamp prop">Proposed targets · not measured · not platform guarantees</span></p>
+    <p class="why">If scoring fails, the last score is marked stale, the live view still updates, and no new risk event fires (T05, INV-5).</p>
+  </div>
+</aside>
+
+<!-- TWO CUSTOMERS -->
+<section class="wrap" aria-labelledby="two-title" style="padding-block: 2.5rem;">
+  <h2 id="two-title">Two customers, two outcomes</h2>
+  <p class="measure muted" style="margin: .5rem 0 1rem;">The blueprint uses two counterexamples. A quiet portal history alone is not a reason to alert.</p>
+  <div class="figure-scroll" role="img" aria-label="Two short routes. Alex reports payment worry and repeated portal failures, so a servicing adviser inspects both problems and payment support goes first. Sam completes the product transfer and no alert is raised.">
+  <svg viewBox="0 0 1200 330" xmlns="http://www.w3.org/2000/svg" id="fig-two">
+    <title>Two customers: Alex gets a review, Sam gets no alert</title>
+    <text class="lane-label" x="30" y="40">ALEX · NEEDS A HUMAN</text>
+    <g id="alex-1"><rect class="node" x="30" y="60" width="200" height="70" rx="8"/><text class="t" x="130" y="90" text-anchor="middle">Payment worry</text><text class="s" x="130" y="109" text-anchor="middle">reported to HomeBridge</text></g>
+    <g id="alex-2"><rect class="node" x="270" y="60" width="200" height="70" rx="8"/><text class="t" x="370" y="90" text-anchor="middle">Portal keeps failing</text><text class="s" x="370" y="109" text-anchor="middle">on a transfer request</text></g>
+    <g id="alex-3"><rect class="node own-model" x="510" y="60" width="200" height="70" rx="8"/><text class="t" x="610" y="90" text-anchor="middle">Scored at checkpoint</text><text class="s" x="610" y="109" text-anchor="middle">90 days before deal end</text></g>
+    <g id="alex-4"><rect class="errnode" x="750" y="60" width="200" height="70" rx="8"/><text class="t" x="850" y="90" text-anchor="middle">Payment support first</text><text class="s" x="850" y="109" text-anchor="middle">trained staff, INV-1</text></g>
+    <g id="alex-5"><rect class="endnode" x="990" y="60" width="180" height="70" rx="35"/><text class="t" x="1080" y="90" text-anchor="middle">Adviser reviews</text><text class="s" x="1080" y="109" text-anchor="middle">both problems</text></g>
+    <path class="edge" d="M230 95 H268"/><path class="edge" d="M470 95 H508"/><path class="edge" d="M710 95 H748"/><path class="edge risk" d="M950 95 H988"/>
+
+    <text class="lane-label" x="30" y="210">SAM · NO ALERT</text>
+    <g id="sam-1"><rect class="node" x="30" y="230" width="200" height="70" rx="8"/><text class="t" x="130" y="260" text-anchor="middle">Transfer completes</text><text class="s" x="130" y="279" text-anchor="middle">no payment problems</text></g>
+    <g id="sam-2"><rect class="node" x="270" y="230" width="200" height="70" rx="8"/><text class="t" x="370" y="260" text-anchor="middle">Quiet portal history</text><text class="s" x="370" y="279" text-anchor="middle">on its own, not a signal</text></g>
+    <g id="sam-3"><rect class="stopnode" x="510" y="230" width="200" height="70" rx="8"/><text class="t" x="610" y="260" text-anchor="middle">No alert raised</text><text class="s" x="610" y="279" text-anchor="middle">no review case</text></g>
+    <path class="edge" d="M230 265 H268"/><path class="edge" d="M470 265 H508"/>
+    <g><rect class="stampbox" x="760" y="244" width="250" height="40" rx="4"/><text class="stamptext" x="776" y="262">ILLUSTRATIVE · from the</text><text class="stamptext" x="776" y="277">blueprint counterexample</text></g>
+  </svg>
+  </div>
+  <p class="why"><strong>Why this form:</strong> two short routes side by side show the one rule that matters: the same pipeline gives different answers because of evidence, not because of a quiet history. <strong>Trade-off:</strong> it is a story, not a measured result.</p>
+</section>
+
+<!-- STOPS -->
+<section class="wrap" aria-labelledby="stops-title" style="padding-block: 0 2.5rem;">
+  <div>
+    <div>
+      <h2 id="stops-title">The ten stops in order</h2>
+      <p class="muted measure" style="margin: .5rem 0 1.25rem;">Step numbers match the blueprint page. History and live paths only meet at step 9.</p>
+    </div>
+    <div>
+      <ol class="stops" style="max-width: 78ch;">
+        <li><span class="n">1</span><h3>Load raw exports</h3><p class="muted">Pipelines load dated account, payment, transfer-request and servicing exports into raw Lakehouse tables.</p><p class="meta">Data and replay · pipelines/</p></li>
+        <li><span class="n">2</span><h3>Freeze feature snapshots</h3><p class="muted">Notebooks check keys and ledger history, then build clean histories and one frozen snapshot per mortgage, deal cycle and cutoff.</p><p class="meta">Notebooks · shared</p></li>
+        <li><span class="n">3</span><h3>Train the models</h3><p class="muted">One model estimates refinancing risk. One clustering model groups behaviour. MLflow records versions and feature signatures.</p><p class="meta">Models and evaluation</p></li>
+        <li><span class="n">4</span><h3>Publish Gold tables</h3><p class="muted">Scores, segments and evidence references land in Gold Delta tables. A completed-run marker makes them eligible. Power BI reads them in Direct Lake mode.</p><p class="meta">Dashboard and action · reports/</p></li>
+        <li><span class="n">5</span><h3>Replay live events</h3><p class="muted">Eventstream replays a renewal-portal fault into Eventhouse. Each event keeps its original ID and timestamps.</p><p class="meta">Data and replay · kql/</p></li>
+        <li><span class="n">6</span><h3>Read the journey</h3><p class="muted">KQL finds three patterns: stages and portal errors in order, days stuck at one stage, and retries after a software error.</p><p class="meta">Data and replay · kql/</p></li>
+        <li><span class="n">7</span><h3>Add account context</h3><p class="muted">A pipeline copies versioned account context and finished score summaries into Eventhouse. KQL joins them with accepted live events.</p><p class="meta">Data and replay · pipelines/</p></li>
+        <li><span class="n">8</span><h3>Stage the journey results</h3><p class="muted">A separate pipeline copies cutoff-filtered journey results into Lakehouse staging tables, for the notebooks to combine with dated history.</p><p class="meta">Pipelines · shared</p></li>
+        <li><span class="n">9</span><h3>Score on a schedule</h3><p class="muted">A pipeline scores and assigns segments on a schedule. For the replay, the team also starts one run by hand. A failed run leaves the last score marked stale.</p><p class="meta">Models and evaluation · pipelines/</p></li>
+        <li><span class="n">10</span><h3>Create one review case</h3><p class="muted">Activator and Power Automate create an internal case for one adviser in a secured SharePoint list. The writer checks payment-support needs first. A repeat write reads the existing case.</p><p class="meta">Dashboard and action · action/</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- RULES -->
+<section class="wrap" aria-labelledby="rules-title" style="padding-block: 0 2.5rem;">
+  <h2 id="rules-title">Rules that must hold</h2>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">These come from the blueprint's build specification. The demo must pass them.</p>
+  <div style="max-width: 90ch;">
+    <div class="rule"><span class="id">INV-1</span><span>An active payment-support request goes to trained servicing staff first, whatever the churn score.</span></div>
+    <div class="rule"><span class="id">INV-2</span><span>Features use only data known at the checkpoint. Both <code>occurred_at</code> and <code>ingested_at</code> must be at or before <code>cutoff_at</code>.</span></div>
+    <div class="rule"><span class="id">INV-3</span><span>At most one open review case per <code>mortgage_id + cycle_id + action_family</code>.</span></div>
+    <div class="rule"><span class="id">INV-4</span><span>An unknown or incomplete refinancing outcome gets no label. It never counts as retained.</span></div>
+    <div class="rule"><span class="id">INV-5</span><span><code>risk_updated</code> fires only after a scoring run succeeds. A failed run leaves the last score marked stale.</span></div>
+    <div class="rule"><span class="id">INV-6</span><span>The prototype sends no customer messages and makes no rate or credit decisions.</span></div>
+  </div>
+
+  <details class="disc" style="margin-top: 1.5rem;">
+    <summary>Failure cases the demo must pass (T01 to T07)</summary>
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Case</th><th>Expected result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">T01</td><td>The same eligible event is replayed.</td><td>One review case for the same case key.</td></tr>
+        <tr><td class="id">T02</td><td>An unknown account or a conflicting borrower mapping arrives.</td><td>The record goes to quarantine.</td></tr>
+        <tr><td class="id">T03</td><td>The payment feed is stale or missing.</td><td>The view flags the feed as stale. Missing is not zero arrears.</td></tr>
+        <tr><td class="id">T04</td><td>A payment is reversed.</td><td>Review and rescoring start. The audit record stays.</td></tr>
+        <tr><td class="id">T05</td><td>A scoring run fails.</td><td>Last score marked stale. Live view still updates. No new <code>risk_updated</code> event. Service alerts stay independent.</td></tr>
+        <tr><td class="id">T06</td><td>A review-case write fails.</td><td>The write retries with the same key. No duplicate case.</td></tr>
+        <tr><td class="id">T07</td><td>Three contacts about one unresolved problem, and three about separate enquiries.</td><td>History tells repeat contacts about one case from separate enquiries.</td></tr>
+      </tbody>
+    </table>
+  </details>
+</section>
+
+<!-- STATUS -->
+<aside class="pause">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker">Where the build stands · 5 November</p>
+    <h2 style="margin-top: .3rem;">The code exists and runs locally. Fabric has not run it yet.</h2>
+    <div class="figure-scroll" style="margin-top: 1.25rem;" role="img" aria-label="Status chain. Three work packages were built, merged in pull request 9 and passed local tests. Pull request 10 adds the deploy script, which passed offline checks. Running in Fabric is an evidence gap.">
+    <svg viewBox="0 0 1200 250" xmlns="http://www.w3.org/2000/svg" id="fig-status">
+      <title>Build status chain</title>
+      <g id="st-main"><rect class="node own-none" x="20" y="60" width="170" height="80" rx="8"/><text class="t" x="105" y="94" text-anchor="middle">main</text><text class="s" x="105" y="114" text-anchor="middle">blueprint page + folders</text></g>
+      <g id="st-data"><rect class="node own-data" x="225" y="60" width="170" height="80" rx="8"/><text class="t" x="310" y="94" text-anchor="middle">Data and replay</text><text class="s" x="310" y="114" text-anchor="middle">69 files vs main</text></g>
+      <g id="st-model"><rect class="node own-model" x="430" y="60" width="170" height="80" rx="8"/><text class="t" x="515" y="94" text-anchor="middle">Models, evaluation</text><text class="s" x="515" y="114" text-anchor="middle">99 files vs main</text></g>
+      <g id="st-act"><rect class="node own-act" x="635" y="60" width="170" height="80" rx="8"/><text class="t" x="720" y="94" text-anchor="middle">Dashboard, action</text><text class="s" x="720" y="114" text-anchor="middle">84 files vs main</text></g>
+      <g id="st-int"><rect class="node" x="840" y="60" width="150" height="80" rx="8"/><text class="t" x="915" y="94" text-anchor="middle">PR #9</text><text class="s" x="915" y="114" text-anchor="middle">merged + local run</text></g>
+      <g id="st-deploy"><rect class="node" x="1020" y="60" width="150" height="80" rx="8"/><text class="t" x="1095" y="94" text-anchor="middle">PR #10</text><text class="s" x="1095" y="114" text-anchor="middle">deploy script</text></g>
+      <g id="st-fabric"><rect class="gapnode" x="1020" y="170" width="150" height="56" rx="8"/><text class="t" x="1095" y="194" text-anchor="middle">Run in Fabric</text><text class="s" x="1095" y="212" text-anchor="middle">needs your sign-in</text></g>
+      <path class="edge" d="M190 100 H223"/><path class="edge" d="M395 100 H428"/><path class="edge" d="M600 100 H633"/><path class="edge" d="M805 100 H838"/><path class="edge" d="M990 100 H1018"/><path class="edge dash" d="M1095 140 V168"/>
+      <text class="s" x="310" y="160" text-anchor="middle">Built locally</text>
+      <text class="s" x="515" y="160" text-anchor="middle">Built locally</text>
+      <text class="s" x="720" y="160" text-anchor="middle">Built locally</text>
+      <text class="s" x="915" y="160" text-anchor="middle">Open · tests pass locally</text>
+      <g><rect class="stampbox" x="20" y="195" width="520" height="30" rx="4"/><text class="stamptext" x="34" y="215">MEASURED · PR #9: 80 + 22 + 64 + 82 tests; PR #10: 77 offline tests</text></g>
+      <g><rect class="stampbox" style="stroke: var(--color-error)" x="580" y="195" width="400" height="30" rx="4"/><text class="stamptext" style="fill: var(--color-error)" x="594" y="215">EVIDENCE GAP · nothing has run in Fabric</text></g>
+    </svg>
+    </div>
+    <p class="why"><strong>Why this form:</strong> a chain shows what depends on what, and which link is still dashed. <strong>Trade-off:</strong> passing tests show the code is consistent, not that Fabric accepts it. The test counts come from the pull request descriptions and the session reports.</p>
+  </div>
+</aside>
+
+<!-- NOT SPECIFIED -->
+<section class="wrap" aria-labelledby="ns-title" style="padding-block: 2.5rem 3rem;">
+  <h2 id="ns-title">Deliberately not decided</h2>
+  <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
+    <li>Alert thresholds. The team freezes them on validation data.</li>
+    <li>Segment names. They follow inspection of the clusters.</li>
+    <li>Mortgage default prediction. This build predicts external refinancing, not failure to repay.</li>
+    <li>Contact scripts and customer messages.</li>
+    <li>Fabric capacity and licences.</li>
+  </ul>
+  <p class="muted small" style="margin-top: 1.5rem; font-size: .8rem;">Source: the blueprint page (<code>site/index.html</code> on main) and the three work-package branches. Fictional company and proposed targets. No results are claimed.</p>
+</section>
+</main>
+
+<!-- PAGE 2: OUTPUTS -->
+<main id="view-outputs" hidden>
+<section class="wrap" style="padding-block: 2rem 1.25rem;">
+  <h1>What the local run actually produced</h1>
+  <p class="measure" style="margin-top: 1rem; font-size: 1.12rem;">
+    The integration session ran the whole flow on made-up customers on 3 November. It scored <strong>303 open mortgages</strong>. Most look low-risk. <strong>141</strong> cross the normal alert line, but only <strong>6</strong> cross the strict line that matches ten reviews. The model is better than the simple rules, but only moderately good.
+  </p>
+  <p style="margin-top: .75rem;">
+    <span class="stamp ok">Measured · local run, 3 Nov, read from the output files</span>
+    <span class="stamp gap">Synthetic data · not real borrowers</span>
+  </p>
+</section>
+
+<!-- SIGNATURE FIGURE: 303 accounts -->
+<section class="wrap" aria-labelledby="bar-title" style="padding-bottom: 2.5rem;">
+  <h2 id="bar-title">The 303 scored mortgages, split by two alert lines</h2>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">Each mortgage gets a score from 0 to 1. Think of it as the estimated chance the customer refinances with another lender. Two lines decide who is flagged.</p>
+  <div class="figure-scroll" role="img" aria-label="One bar of 303 mortgages: 162 below the normal alert line, 135 between the lines, and 6 above the strict line.">
+  <svg viewBox="0 0 1100 300" xmlns="http://www.w3.org/2000/svg" id="fig-bar">
+    <title>303 scored mortgages split by two alert lines</title>
+    <text class="lbl-b" x="30" y="40">One scoring run · 303 mortgages</text>
+    <g id="bar-low"><title>162 below 0.198</title><rect class="bar-low node" x="30" y="70" width="534" height="70"/></g>
+    <g id="bar-mid"><title>135 between 0.198 and 0.559</title><rect class="bar-mid node" x="564" y="70" width="446" height="70"/></g>
+    <g id="bar-top"><title>6 at or above 0.559</title><rect class="bar-top node" x="1010" y="70" width="60" height="70"/></g>
+    <text class="lbl-b" x="297" y="112" text-anchor="middle">162 · below the normal line</text>
+    <text class="lbl-b" x="787" y="112" text-anchor="middle">135 · flagged by the normal line only</text>
+    <text class="lbl-b" x="1040" y="112" text-anchor="middle" style="fill: var(--color-error-content)">6</text>
+    <path class="axis" d="M564 150 V170"/><path class="axis" d="M1010 150 V170"/>
+    <text class="lbl-b" x="564" y="190" text-anchor="middle">Normal line: score 0.198</text>
+    <text class="lbl" x="564" y="208" text-anchor="middle">best balance of catching leavers and false alarms</text>
+    <text class="lbl-b" x="1010" y="190" text-anchor="end">Strict line: score 0.559</text>
+    <text class="lbl" x="1010" y="208" text-anchor="end">sized for about ten reviews per run</text>
+    <g><rect class="stampbox" x="30" y="236" width="360" height="30" rx="4"/><text class="stamptext" x="44" y="256">MEASURED · account_scores.parquet, 303 rows</text></g>
+    <g><rect class="stampbox" style="stroke: var(--color-error)" x="560" y="236" width="510" height="30" rx="4"/><text class="stamptext" style="fill: var(--color-error)" x="574" y="256">EVIDENCE GAP · lines were set on older data, see the live-run problem</text></g>
+  </svg>
+  </div>
+  <p class="why"><strong>Why this form:</strong> one bar shows at a glance how few mortgages the strict line picks out. <strong>Trade-off:</strong> it does not say which flagged mortgages really leave. The next charts do that.</p>
+</section>
+
+<!-- GLOSSARY -->
+<aside class="pause">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker">Pause here · the numbers in plain words</p>
+    <h2 style="margin-top: .3rem;">What each number means, and whether it is good</h2>
+    <p class="muted measure" style="margin: .5rem 0 1.25rem;">The "test" below means 923 mortgages from May and June that the model never saw while learning. About 22 in 100 of them really refinanced elsewhere. A coin-flip rule would therefore catch about 22%.</p>
+    <div style="overflow-x: auto;">
+    <table class="gloss">
+      <thead><tr><th>Term</th><th>Our value</th><th>In plain words</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="term">Synthetic data</td><td class="num">3,304 cycles</td><td>Made-up customers that look realistic. A "cycle" is one fixed-rate deal on one mortgage. Nothing here comes from a real person.</td><td><span class="verdict meh">context</span></td></tr>
+        <tr><td class="term">Quarantined records</td><td class="num">35 of ~130,000</td><td>Rows set aside because they were broken: unknown account, conflicting borrower, duplicate with different values and so on. The checks caught them on purpose.</td><td><span class="verdict good">working</span></td></tr>
+        <tr><td class="term">Score</td><td class="num">avg 0.22</td><td>The model's estimate of the chance a mortgage refinances elsewhere. The average of 0.22 matches the 22 in 100 real rate in the test months.</td><td><span class="verdict good">sensible</span></td></tr>
+        <tr><td class="term">Accuracy</td><td class="num">62%</td><td>Share of all calls that were right. Misleading here: always guessing "nobody leaves" scores 78%. So we look at the numbers below instead.</td><td><span class="verdict meh">ignore</span></td></tr>
+        <tr><td class="term">Precision</td><td class="num">32%</td><td>Of the mortgages the model flagged, how many really left. About 1 in 3. The rules baseline managed 24%.</td><td><span class="verdict meh">modest</span></td></tr>
+        <tr><td class="term">Recall</td><td class="num">64%</td><td>Of the mortgages that really left, how many the model flagged. About 2 in 3. The rules baseline caught 19%.</td><td><span class="verdict good">decent</span></td></tr>
+        <tr><td class="term">Lift at ten</td><td class="num">3.4×</td><td>Take the ten highest scores each month. Their refinance rate is 3.4 times the normal 22%. The rules baseline gets 1.0×, which is no better than random.</td><td><span class="verdict good">strong</span></td></tr>
+        <tr><td class="term">Average precision</td><td class="num">0.41</td><td>One number for how well flagged mortgages are ranked. Random guessing gives about 0.22. Rules gave 0.22. The model gives 0.41.</td><td><span class="verdict good">better</span></td></tr>
+        <tr><td class="term">ROC AUC</td><td class="num">0.67</td><td>Pick one leaver and one stayer at random. How often does the leaver score higher? 0.5 is a coin flip and 1.0 is perfect. 0.67 is a real but modest signal.</td><td><span class="verdict meh">modest</span></td></tr>
+        <tr><td class="term">Calibration</td><td class="num">error 0.02</td><td>When the model says 30%, do about 30% really leave? Yes, closely. See the chart below.</td><td><span class="verdict good">trustworthy</span></td></tr>
+        <tr><td class="term">Proxy check</td><td class="num">0 flagged</td><td>A test that the model is not quietly using payment-hardship signals or loan balance. None of its inputs track them closely.</td><td><span class="verdict good">clean</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</aside>
+
+<!-- CALIBRATION + TOP10 -->
+<section class="wrap" aria-labelledby="charts-title" style="padding-block: 2.5rem;">
+  <h2 id="charts-title">Two charts that show the model works</h2>
+  <div class="grid gap-8" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); margin-top: 1rem; align-items: start;">
+    <div>
+      <h3 style="font-weight: 700;">Is the model honest about its confidence?</h3>
+      <p class="muted" style="font-size:.9rem; margin: .25rem 0 .75rem;">The 923 test mortgages are sorted into ten equal groups by score. Each dot is one group. The dashed line is "perfectly honest". The dots sit close to it.</p>
+      <div class="figure-scroll" role="img" aria-label="Calibration chart: ten points close to the diagonal line, from about 7 percent predicted and 12 percent observed up to about 51 percent predicted and 49 percent observed.">
+      <svg viewBox="0 0 560 380" xmlns="http://www.w3.org/2000/svg" id="fig-cal" style="min-width: 380px;">
+        <title>Predicted score against observed refinancing rate in ten groups</title>
+        <path class="grid" d="M70 271.7H530 M70 223.3H530 M70 175H530 M70 126.7H530 M70 78.3H530 M70 30H530"/>
+        <path class="grid" d="M146.7 30V320 M223.3 30V320 M300 30V320 M376.7 30V320 M453.3 30V320 M530 30V320"/>
+        <path class="axis" d="M70 30V320H530"/>
+        <path class="ideal" d="M70 320 L530 30" id="cal-ideal"><title>Perfect calibration</title></path>
+        <g class="tickl" text-anchor="end"><text x="62" y="324">0%</text><text x="62" y="275">10%</text><text x="62" y="227">20%</text><text x="62" y="179">30%</text><text x="62" y="130">40%</text><text x="62" y="82">50%</text><text x="62" y="34">60%</text></g>
+        <g class="tickl" text-anchor="middle"><text x="70" y="338">0%</text><text x="146.7" y="338">10%</text><text x="223.3" y="338">20%</text><text x="300" y="338">30%</text><text x="376.7" y="338">40%</text><text x="453.3" y="338">50%</text><text x="530" y="338">60%</text></g>
+        <text class="lbl" x="300" y="364" text-anchor="middle">What the model predicted</text>
+        <text class="lbl" x="16" y="175" transform="rotate(-90 16 175)" text-anchor="middle">What really happened</text>
+        <g id="cal-points">
+          <circle class="pt" cx="126.8" cy="262.8" r="6"><title>Group 1: predicted 7.4%, observed 11.8%</title></circle>
+          <circle class="pt" cx="156.5" cy="272.7" r="6"><title>Group 2: predicted 11.3%, observed 9.8%</title></circle>
+          <circle class="pt" cx="165.8" cy="251.7" r="6"><title>Group 3: predicted 12.5%, observed 14.1%</title></circle>
+          <circle class="pt" cx="176.7" cy="246.4" r="6"><title>Group 4: predicted 13.9%, observed 15.2%</title></circle>
+          <circle class="pt" cx="194.1" cy="231.6" r="6"><title>Group 5: predicted 16.2%, observed 18.3%</title></circle>
+          <circle class="pt" cx="220" cy="225.4" r="6"><title>Group 6: predicted 19.6%, observed 19.6%</title></circle>
+          <circle class="pt" cx="262.2" cy="188.7" r="6"><title>Group 7: predicted 25.1%, observed 27.2%</title></circle>
+          <circle class="pt" cx="295.1" cy="193.9" r="6"><title>Group 8: predicted 29.4%, observed 26.1%</title></circle>
+          <circle class="pt" cx="334.4" cy="172.9" r="6"><title>Group 9: predicted 34.5%, observed 30.4%</title></circle>
+          <circle class="pt" cx="462.4" cy="80.9" r="6"><title>Group 10: predicted 51.2%, observed 49.5%</title></circle>
+        </g>
+        <text class="lbl" x="400" y="190">dashed = perfect</text>
+      </svg>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-weight: 700;">Do the top ten really leave more often?</h3>
+      <p class="muted" style="font-size:.9rem; margin: .25rem 0 .75rem;">Each month, take the ten highest-scored mortgages. The bars show the share that really refinanced. The dashed line is the normal rate, 22%.</p>
+      <div class="figure-scroll" role="img" aria-label="Bar chart. Rules baseline: 15 percent in May and 28 percent in June. Champion model: 70 percent and 80 percent. Decision tree: 61 percent and 58 percent. Normal rate is 22 percent.">
+      <svg viewBox="0 0 560 360" xmlns="http://www.w3.org/2000/svg" id="fig-top10" style="min-width: 380px;">
+        <title>Share of the top ten that really refinanced, by model and month</title>
+        <path class="grid" d="M60 50H540 M60 100H540 M60 150H540 M60 200H540 M60 250H540"/>
+        <path class="axis" d="M60 50V250H540"/>
+        <g class="tickl" text-anchor="end"><text x="52" y="254">0%</text><text x="52" y="204">25%</text><text x="52" y="154">50%</text><text x="52" y="104">75%</text><text x="52" y="54">100%</text></g>
+        <!-- scale: 200px per 100% -->
+        <rect class="bar-base" x="90" y="219.2" width="50" height="30.8"><title>Rules baseline, May: 15.4%</title></rect>
+        <rect class="bar-base" x="150" y="193.8" width="50" height="56.2"><title>Rules baseline, June: 28.1%</title></rect>
+        <rect class="bar-champ" x="250" y="110" width="50" height="140"><title>Champion model, May: 70.0%</title></rect>
+        <rect class="bar-champ" x="310" y="90" width="50" height="160"><title>Champion model, June: 80.0%</title></rect>
+        <rect class="bar-tree" x="410" y="127.2" width="50" height="122.8"><title>Decision tree, May: 61.4%</title></rect>
+        <rect class="bar-tree" x="470" y="135" width="50" height="115"><title>Decision tree, June: 57.5%</title></rect>
+        <path class="ideal" d="M60 206H540"><title>Normal refinancing rate, about 22%</title></path>
+        <g class="lbl-b" text-anchor="middle"><text x="115" y="213">15%</text><text x="175" y="187">28%</text><text x="275" y="104">70%</text><text x="335" y="84">80%</text><text x="435" y="121">61%</text><text x="495" y="129">58%</text></g>
+        <g class="lbl" text-anchor="middle"><text x="145" y="272">May · June</text><text x="305" y="272">May · June</text><text x="465" y="272">May · June</text></g>
+        <g class="lbl-b" text-anchor="middle"><text x="145" y="296">Rules baseline</text><text x="305" y="296">Champion model</text><text x="465" y="296">Decision tree</text></g>
+        <text class="lbl" x="300" y="322" text-anchor="middle">The wide margin of error is real: ten accounts is a small sample.</text>
+        <text class="lbl" x="536" y="200" text-anchor="end">normal rate 22%</text>
+      </svg>
+      </div>
+    </div>
+  </div>
+  <p class="why"><strong>Why this form:</strong> two simple charts answer the two questions a sceptic asks: can I trust the percentages, and does the top of the list matter. <strong>Trade-off:</strong> the 95% margin of error is wide for ten accounts (for the champion, roughly 1.8× to 4.7× the normal rate). It beats the baseline, but the exact multiple is uncertain.</p>
+</section>
+
+<!-- ONE ACCOUNT EXPLAINED -->
+<aside class="pause">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker">One mortgage, explained · highest score in the run</p>
+    <h2 style="margin-top: .3rem;">Why the model gave HB-M-003197 a score of 0.93</h2>
+    <p class="muted measure" style="margin: .5rem 0 1rem;">Every scored mortgage keeps its top reasons. Here are the top eight for the highest-scored one. A bar to the right pushes the score up. A bar to the left pushes it down. The numbers are "points added before the score is turned into a chance"; bigger means a stronger push.</p>
+    <div class="figure-scroll" role="img" aria-label="Eight reasons for one high-risk mortgage. The strongest is that the latest transfer request was abandoned.">
+    <svg viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" id="fig-reasons">
+      <title>Top eight reasons behind one high score</title>
+      <path class="axis" d="M420 10V320"/>
+      <g class="lbl" text-anchor="end">
+        <text x="370" y="35">Latest transfer request was abandoned</text>
+        <text x="370" y="75">One abandoned or rejected request</text>
+        <text x="370" y="115">Rate-related servicing cases in a year: 2</text>
+        <text x="370" y="155">Request stuck at "documents outstanding"</text>
+        <text x="370" y="195">60-month fixed deal</text>
+        <text x="370" y="235">Rate gap value: 5.8</text>
+        <text x="370" y="275">One customer-input error in 90 days</text>
+        <text x="370" y="315">Two servicing contacts in 90 days</text>
+      </g>
+      <rect class="bar-top" x="420" y="18" width="399" height="26"><title>pt_latest_status=abandoned: +1.60</title></rect>
+      <rect class="bar-top" x="420" y="58" width="176" height="26"><title>pt_abandoned_or_rejected_count: +0.70</title></rect>
+      <rect class="bar-top" x="420" y="98" width="99" height="26"><title>svc_cases_rate_365d: +0.39</title></rect>
+      <rect class="bar-top" x="420" y="138" width="95" height="26"><title>pt_latest_stage=documents_outstanding: +0.38</title></rect>
+      <rect class="bar-top" x="420" y="178" width="91" height="26"><title>deal_length_months: +0.37</title></rect>
+      <rect class="bar-top" x="420" y="218" width="63" height="26"><title>rate_gap_pct: +0.25</title></rect>
+      <rect class="bar-low node" x="381" y="258" width="39" height="26"><title>pt_customer_input_errors_90d: -0.16</title></rect>
+      <rect class="bar-top" x="420" y="298" width="36" height="26"><title>svc_contacts_90d: +0.14</title></rect>
+      <g class="lbl-b"><text x="827" y="36">+1.60</text><text x="604" y="76">+0.70</text><text x="527" y="116">+0.39</text><text x="523" y="156">+0.38</text><text x="519" y="196">+0.37</text><text x="491" y="236">+0.25</text><text x="428" y="276">−0.16 (pulls the score down)</text><text x="464" y="316">+0.14</text></g>
+    </svg>
+    </div>
+    <p class="why"><strong>Why this form:</strong> bars from a centre line show what pushes a score up and what pulls it down for one account. <strong>Trade-off:</strong> these reasons explain the score. They do not prove why the customer would really leave, and the account is synthetic. Across all 303 mortgages, the top reason was the deal length for 163 of them.</p>
+  </div>
+</aside>
+
+<!-- SEGMENTS + ALERTS -->
+<section class="wrap" aria-labelledby="seg-title" style="padding-block: 2.5rem;">
+  <h2 id="seg-title">Four groups of similar mortgages</h2>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">A separate model sorts mortgages into groups by behaviour. The groups have no names yet. The team names them after looking at the profiles. Numbers below are from the test months.</p>
+  <div style="overflow-x: auto;">
+  <table class="gloss">
+    <thead><tr><th>Group</th><th>Test mortgages</th><th>Really refinanced</th><th>What sets it apart</th></tr></thead>
+    <tbody>
+      <tr><td class="term">SEG-1</td><td class="num">496</td><td class="num">21%</td><td>Quiet. No failed portal attempts and no software errors.</td></tr>
+      <tr><td class="term">SEG-2</td><td class="num">355</td><td class="num">21%</td><td>Mostly quiet, with a few failed attempts (about 0.1 on average).</td></tr>
+      <tr><td class="term">SEG-3</td><td class="num">60</td><td class="num">35%</td><td>Portal trouble: about 0.7 failed attempts in 30 days and 2.4 software errors in 90 days.</td></tr>
+      <tr><td class="term">SEG-4</td><td class="num">12</td><td class="num">50%</td><td>Heavy trouble: 2 failed attempts, about 2 software errors, an unresolved complaint and repeat contacts. Only 12 mortgages, so treat 50% as a hint.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="why"><strong>Read it like this:</strong> the more portal trouble and unresolved complaints, the higher the real refinancing rate. That is the pattern the data generator was built to contain, so it shows the model can find it, not that real customers behave this way.</p>
+</section>
+
+<aside class="pause">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker">The problem to solve before the demo</p>
+    <h2 style="margin-top: .3rem;">Too many alerts for the people available</h2>
+    <div class="grid gap-6" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1.25rem;">
+      <div><div class="clock">10</div><p style="font-size:.9rem">Reviews the team can handle per run (the capacity).</p></div>
+      <div><div class="clock">6</div><p style="font-size:.9rem">Mortgages over the strict line in the checkpoint run. This fits the capacity.</p></div>
+      <div><div class="clock" style="color: var(--color-error);">22</div><p style="font-size:.9rem">Mortgages flagged in each later live run, per the session report. This is over the capacity.</p></div>
+    </div>
+    <p class="why">The strict line was set on checkpoint data, 90 days before the deal ends. Live runs score mortgages at a different point in the deal, so the line no longer fits. The team needs a cap on live alerts, or a separate live threshold. One test fails after extra live runs, so the script runs them only in demo mode.</p>
+    <p style="margin-top: .75rem;"><span class="stamp gap">Reported by the session · live runs not re-run for this page</span></p>
+  </div>
+</aside>
+
+<!-- LIMITS -->
+<section class="wrap" aria-labelledby="lim-title" style="padding-block: 2.5rem 3rem;">
+  <h2 id="lim-title">What these results do not show</h2>
+  <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
+    <li>Real predictive power. Outcomes in the data come from hidden rules in the generator, not real borrowers.</li>
+    <li>That the alerts save customers. That needs real actions and a comparison group.</li>
+    <li>Anything about Fabric. Nothing here ran in Fabric, so the timing targets are unmeasured.</li>
+    <li>The numbers from the case-writer replay (6 renewal cases, 1 payment-support case, 435 cases in the local store). They come from the integration pull request. The case store itself was not inspected for this page.</li>
+  </ul>
+  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>data/output/lakehouse/gold</code> and <code>data/output/reports/evaluation_report.json</code> in the integration worktree, release <code>REL-20261103T182309Z</code>; segment, quarantine and split figures from the same run. Train 1,383, validation 460, test 923 mortgages.</p>
+</section>
+</main>
+
+<!-- PAGE 3: DEPLOY -->
+<main id="view-deploy" hidden>
+<section class="wrap" style="padding-block: 2rem 1.25rem;">
+  <h1>How to deploy this to Fabric</h1>
+  <p class="measure" style="margin-top: 1rem; font-size: 1.12rem;">
+    A script does most of the work. You sign in once in a browser, and it creates the workspace, publishes the items, uploads the data and runs the notebooks. <strong>A few steps stay by hand</strong>, mostly because they need an administrator or a person to approve a connection.
+  </p>
+  <p style="margin-top: .75rem;">
+    <span class="stamp gap">Untested in Fabric · only offline checks have passed</span>
+    <span class="stamp prop">From docs/fabric-deployment.md in PR #10</span>
+  </p>
+</section>
+
+<section class="wrap" aria-labelledby="dep-title" style="padding-bottom: 2.5rem;">
+  <h2 id="dep-title">Three commands, then the deploy steps in order</h2>
+  <div class="figure-scroll" style="margin-top: .75rem;" role="img" aria-label="Three commands: validate offline, dry run with sign-in, then deploy. Deploy runs six steps in order: workspace, items, data upload, notebooks, scoring pipeline, then model and report.">
+  <svg viewBox="0 0 1200 340" xmlns="http://www.w3.org/2000/svg" id="fig-deploy">
+    <title>Validate, dry run, deploy, and the steps deploy runs</title>
+    <defs>
+      <marker id="arrD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker>
+    </defs>
+    <g id="cmd-1"><rect class="node own-none" x="30" y="40" width="270" height="86" rx="8"/><text class="t" x="165" y="72" text-anchor="middle">1 · --validate</text><text class="s" x="165" y="92" text-anchor="middle">offline checks</text><text class="s" x="165" y="110" text-anchor="middle">no sign-in</text></g>
+    <g id="cmd-2"><rect class="node own-none" x="345" y="40" width="270" height="86" rx="8"/><text class="t" x="480" y="72" text-anchor="middle">2 · --dry-run</text><text class="s" x="480" y="92" text-anchor="middle">you sign in in a browser</text><text class="s" x="480" y="110" text-anchor="middle">reads only, changes nothing</text></g>
+    <g id="cmd-3"><rect class="node own-act" x="660" y="40" width="270" height="86" rx="8"/><text class="t" x="795" y="72" text-anchor="middle">3 · no flag</text><text class="s" x="795" y="92" text-anchor="middle">same sign-in</text><text class="s" x="795" y="110" text-anchor="middle">deploys and runs everything</text></g>
+    <path class="edge" d="M300 83 H343"/><path class="edge" d="M615 83 H658"/>
+    <path class="edge" d="M795 126 V158"/>
+
+    <rect class="lane" x="20" y="158" width="1160" height="110" rx="12"/>
+    <text class="lane-label" x="40" y="182">DEPLOY RUNS THESE, IN ORDER</text>
+    <g id="d-ws"><rect class="node own-none" x="40" y="196" width="170" height="56" rx="8"/><text class="t" x="125" y="220" text-anchor="middle">Workspace</text><text class="s" x="125" y="238" text-anchor="middle">find or create</text></g>
+    <g id="d-core"><rect class="node own-data" x="234" y="196" width="170" height="56" rx="8"/><text class="t" x="319" y="220" text-anchor="middle">Core items</text><text class="s" x="319" y="238" text-anchor="middle">lakehouse, notebooks…</text></g>
+    <g id="d-up"><rect class="node own-data" x="428" y="196" width="170" height="56" rx="8"/><text class="t" x="513" y="220" text-anchor="middle">Upload data</text><text class="s" x="513" y="238" text-anchor="middle">+ Python code</text></g>
+    <g id="d-nb"><rect class="node own-model" x="622" y="196" width="170" height="56" rx="8"/><text class="t" x="707" y="220" text-anchor="middle">Run notebooks</text><text class="s" x="707" y="238" text-anchor="middle">00 to 06, trains models</text></g>
+    <g id="d-pl"><rect class="node own-model" x="816" y="196" width="170" height="56" rx="8"/><text class="t" x="901" y="220" text-anchor="middle">Scoring pipeline</text><text class="s" x="901" y="238" text-anchor="middle">run once</text></g>
+    <g id="d-rep"><rect class="node own-act" x="1010" y="196" width="150" height="56" rx="8"/><text class="t" x="1085" y="220" text-anchor="middle">Model + report</text><text class="s" x="1085" y="238" text-anchor="middle">Direct Lake</text></g>
+    <path class="edge" d="M210 224 H232"/><path class="edge" d="M404 224 H426"/><path class="edge" d="M598 224 H620"/><path class="edge" d="M792 224 H814"/><path class="edge" d="M986 224 H1008"/>
+    <g><rect class="stampbox" x="30" y="290" width="1140" height="30" rx="4"/><text class="stamptext" x="44" y="310">OPT-IN, OFF BY DEFAULT · capacity, roles, KQL retention, 15-min schedule, report role members, SharePoint, Git connect, replay</text></g>
+  </svg>
+  </div>
+  <p class="why"><strong>Why this form:</strong> it shows the three commands you type and what the last one does. <strong>Trade-off:</strong> it hides settings. You set the workspace and capacity names in <code>fabric/config/fabric.config.yml</code>, which Git ignores and which must hold no login or token.</p>
+</section>
+
+<aside class="pause">
+  <div class="wrap" style="padding-block: 2.25rem;">
+    <p class="kicker">Pause here · before you run it</p>
+    <h2 style="margin-top: .3rem;">Test on one workspace first</h2>
+    <p class="muted measure" style="margin: .5rem 0 1rem;">Nothing here has run in Fabric. Expect errors on the first real run. Fix them on one workspace, then run the same script on the main one.</p>
+    <ol class="stops" style="max-width: 78ch;">
+      <li><span class="n">1</span><h3>Get the code</h3><p class="muted">Check out the branch for PR #10. It already contains PR #9. You need Python 3.10 or later.</p></li>
+      <li><span class="n">2</span><h3>Set the names</h3><p class="muted">Copy <code>fabric.config.example.yml</code> to <code>fabric.config.yml</code>. Set <code>workspace_name</code> and <code>capacity_name</code>. Find the capacity name under Workspace settings, then License info.</p></li>
+      <li><span class="n">3</span><h3>Run the three commands</h3><p class="muted">Validate, then dry run, then deploy. Sign in yourself in the browser.</p></li>
+      <li><span class="n">4</span><h3>Do the hand steps</h3><p class="muted">The list is below. Do them once, on the workspace you will demo from.</p></li>
+    </ol>
+  </div>
+</aside>
+
+<section class="wrap" aria-labelledby="hand-title" style="padding-block: 2.5rem;">
+  <h2 id="hand-title">What stays by hand, and why</h2>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">A research check against Microsoft's documentation on 4 November found these cannot be done from a script, or not without extra permissions. The cited pages were not independently re-read.</p>
+  <div style="overflow-x: auto;">
+  <table class="gloss">
+    <thead><tr><th>Step</th><th>Why it stays by hand</th></tr></thead>
+    <tbody>
+      <tr><td class="term">Purview sensitivity labels</td><td>The API needs an interactive Fabric administrator. It does not accept app identities.</td></tr>
+      <tr><td class="term">Activator rules</td><td>The script does not build them. The published file format has no way to represent a Power Automate action.</td></tr>
+      <tr><td class="term">Power Automate flow and its first connections</td><td>A person must approve the SharePoint connection. Linking an Activator rule to a flow is done in the portal.</td></tr>
+      <tr><td class="term">Free trial capacity</td><td>There is no API to start a trial.</td></tr>
+      <tr><td class="term">One-time tenant setting</td><td>A Fabric admin must switch on "Service principals can call Fabric public APIs" before an app identity can use the APIs.</td></tr>
+      <tr><td class="term">Report role members</td><td>They do not travel with the model files. The opt-in <code>rls</code> step can add them, but it needs the model's XMLA endpoint.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="wrap" aria-labelledby="move-title" style="padding-block: 0 3rem;">
+  <h2 id="move-title">Moving to the main workspace</h2>
+  <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
+    <li><strong>Simplest:</strong> change the workspace name in the settings and run the script again. It publishes, uploads and trains again, and re-running is safe.</li>
+    <li><strong>Git sync:</strong> commit from your workspace to its branch, merge to <code>main</code>, then choose Update all in the main workspace. Git carries item definitions only, not data, trained models or labels. Check the report model file first, because the script writes workspace-specific IDs into it.</li>
+    <li><strong>Deployment pipelines:</strong> they also move definitions only, not data.</li>
+    <li><strong>Do not turn on <code>prune</code></strong> while other people share the workspace.</li>
+  </ul>
+  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>docs/fabric-deployment.md</code> and the PR #10 description. Guidance on moving between workspaces is general Fabric behaviour and is untested here.</p>
+</section>
+</main>
+
+<script>
+  (function () {
+    var views = { flow: document.getElementById('view-flow'), outputs: document.getElementById('view-outputs'), deploy: document.getElementById('view-deploy') };
+    var titles = { flow: 'HomeBridge renewal early warning: the flow', outputs: 'HomeBridge: what the local run produced', deploy: 'HomeBridge: deploy to Fabric' };
+    function show() {
+      var key = (location.hash || '#flow').replace('#', '');
+      if (!views[key]) key = 'flow';
+      Object.keys(views).forEach(function (k) {
+        views[k].hidden = k !== key;
+        var t = document.getElementById('tab-' + k);
+        if (k === key) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+      });
+      document.title = titles[key];
+      window.scrollTo(0, 0);
+    }
+    window.addEventListener('hashchange', show);
+    show();
+  })();
+</script>
+</body>
+</html>

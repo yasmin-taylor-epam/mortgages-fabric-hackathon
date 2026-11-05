@@ -83,6 +83,7 @@ powershell -File scripts\deploy_fabric.ps1 --validate   # offline, no sign-in
 - `site/index.html` — current scenario page and proposal.
 - `data/`, `kql/`, `notebooks/`, `pipelines/`, `action/`, `reports/`, `scripts/`, `fabric/` — build folders. See [Build layout](#build-layout).
 - `docs/fabric-deployment.md` — Fabric deployment as code: what is automated, what is manual, steps and permissions.
+- `docs/overview/homebridge-flow.html` — three-page explainer: the flow, the local run outputs, and the deploy to Fabric.
 - `docs/archive/previous-readme.md` — previous repository overview.
 - `docs/archive/technical-blueprint.md` — earlier technical blueprint, retained for reference.
 
