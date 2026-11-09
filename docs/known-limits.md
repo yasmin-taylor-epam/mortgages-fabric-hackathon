@@ -22,7 +22,7 @@ Live results on 9 November 2026: the processed-ingestion destination failed; dir
 
 The portal flow worked once on a new Eventstream: delete a broken API-made destination, add an Eventhouse direct-ingestion destination, link the stream to it, publish, then use "Configure KQL data connection" in Live mode. Test events landed in 31 to 46 seconds. A full resend of 21,538 events landed in 15 to 30 seconds. The wizard needs sample events in the stream, and events sent before the data connection existed never landed. The steps are in `docs/fabric-deployment.md`, section "Eventstream destination: portal steps".
 
-**Defect to check each time:** the wizard's "use existing mapping" list was empty, so it created the mapping `RawEventsLanding_mapping` instead of using `RawEventsLanding_json`. It mapped `$.schema_version` to a new column `schema_version_1` and added that column to the table. The existing `schema_version` column stayed empty in every row. Map it to the existing column in the wizard, or alter the mapping afterwards. A fix was waiting for approval.
+**Defect to check each time:** the wizard's "use existing mapping" list was empty, so it created the mapping `RawEventsLanding_mapping` instead of using `RawEventsLanding_json`. It mapped `$.schema_version` to a new column `schema_version_1` and added that column to the table. The existing `schema_version` column stayed empty in every row. Map it to the existing column in the wizard, or alter the mapping afterwards. The extra column can stay. It is unused, and dropping it is optional and needs the owner's approval. A fix was waiting for approval.
 
 Still open: whether a redeploy removes the destination, and whether the flow works a second time.
 
