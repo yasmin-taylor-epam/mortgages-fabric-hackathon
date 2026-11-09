@@ -72,12 +72,13 @@ def account_context(clean: dict[str, pd.DataFrame], conflict_mortgages, watermar
     acct = clean["mortgage_account"]
     st = case_status_at(clean["servicing_case_event"], copied_at)
     active = set(st[(st["category"] == "payment_difficulty") & (st["latest_status"] != "resolved")]["mortgage_id"])
+    # A late servicing feed makes "none" unknown. It never hides a payment-difficulty case that is already known.
     svc_stale = bool(watermarks.set_index("dataset").loc["servicing_case_event", "is_stale"]) if "servicing_case_event" in set(watermarks["dataset"]) else True
     ctx = pd.DataFrame({
         "mortgage_id": acct["mortgage_id"], "cycle_id": acct["cycle_id"], "deal_start_at": acct["deal_start_at"],
         "deal_end_at": acct["deal_end_at"], "checkpoint_at": acct["deal_end_at"] - pd.Timedelta(days=90),
         "identity_status": ["conflict" if m in set(conflict_mortgages) else "ok" for m in acct["mortgage_id"]],
-        "payment_support_status": ["unknown" if svc_stale else ("active" if m in active else "none") for m in acct["mortgage_id"]],
+        "payment_support_status": ["active" if m in active else ("unknown" if svc_stale else "none") for m in acct["mortgage_id"]],
         "owner_id": acct["owner_id"], "context_version": f"ctx-{_stamp(copied_at)}", "copied_at": copied_at,
     })
     return io.coerce(ctx, "account_context")
@@ -95,10 +96,13 @@ def score_context(gold_dir: Path, copied_at) -> pd.DataFrame:
     done = runs[runs["status"] == "completed"]
     s = scores[scores["run_id"].isin(set(done["run_id"]))].sort_values("scored_at")
     s = s.groupby(["mortgage_id", "cycle_id"], as_index=False).last()
-    failed = runs[runs["status"] == "failed"]
-    last_failed = pd.to_datetime(failed["started_at"], utc=True).max() if len(failed) else pd.NaT
     s["scored_at"] = pd.to_datetime(s["scored_at"], utc=True)
-    later_failure = s["scored_at"] < last_failed if pd.notna(last_failed) else pd.Series(False, index=s.index)
+    keys = s["mortgage_id"].astype(str) + "|" + s["cycle_id"].astype(str)
+    later_failure = pd.Series(False, index=s.index)
+    for _, run in runs[runs["status"] == "failed"].iterrows():
+        scope = run["scope_keys"] if "scope_keys" in runs.columns else None
+        covered = pd.Series(True, index=s.index) if not isinstance(scope, str) else keys.map(lambda k: f",{k}," in scope)  # no scope recorded: all accounts
+        later_failure |= covered & (s["scored_at"] < pd.Timestamp(run["started_at"]).tz_convert("UTC"))
     old = (copied_at - s["scored_at"]) > pd.Timedelta(hours=SCORE_STALE_HOURS)
     s["score_state"] = ["stale" if (f or o) else "current" for f, o in zip(later_failure, old)]
     s["copied_at"] = copied_at

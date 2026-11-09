@@ -5,3 +5,5 @@ role 'General viewer'
 	tablePermission servicing_case = [support_route] <> "payment_support"
 
 	tablePermission review_cases = [action_family] <> "support"
+
+	tablePermission review_outcomes = NOT CONTAINSSTRING ( [case_key], "|support" )

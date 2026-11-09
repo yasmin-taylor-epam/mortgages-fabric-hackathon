@@ -23,7 +23,8 @@ TABLES: dict[str, dict] = {
     "score_runs": {
         "key": ["run_id"], "append_only": False,
         "columns": {"run_id": str, "run_kind": str, "status": str, "started_at": TS, "completed_at": TS, "cutoff_at": TS,
-                    "model_version": str, "cluster_model_version": str, "snapshot_count": "Int64", "error": str},
+                    "model_version": str, "cluster_model_version": str, "snapshot_count": "Int64", "error": str,
+                    "scope_keys": str},
     },
     "account_scores": {
         "key": ["mortgage_id", "cycle_id", "run_id"], "append_only": True,

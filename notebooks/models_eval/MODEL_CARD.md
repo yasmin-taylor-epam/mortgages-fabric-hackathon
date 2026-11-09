@@ -39,7 +39,7 @@ These inputs are excluded on purpose:
 | Logistic regression | Learned model, standardised inputs | Regularisation C |
 | Decision tree | Learned model, depth 3 or 4, at least 25 accounts per leaf | Depth |
 
-The champion is the learned model with the higher validation average precision. Logistic regression wins a near tie. Each model has an alert threshold candidate that maximises F1 on validation data. The release also records a capacity threshold: the score of the tenth-highest validation account. The team confirms the routing threshold. The blueprint does not specify it.
+The champion is the learned model with the higher validation average precision. Logistic regression wins a near tie. The routing threshold comes from a named rule on validation data. The default rule is `max_f1`. The optional rule `min_cost` needs two costs from the team. The release stores the rule name, its parameters and the value. The evaluation report compares the options (see `docs/alert-threshold.md`). The team confirms the rule. The blueprint does not specify it. An earlier build set the threshold by the tenth-highest validation score, to fit an assumed review capacity of 10 per run. That rule is retired. It caught about 7% of leavers on the test cohort.
 
 Clusters: k-means on request and servicing behaviour, with k from 2 to 5. The selected k has the best silhouette among the stable solutions. A stable solution has a mean bootstrap adjusted Rand index of at least 0.8 and a worst index of at least 0.5. The clusters are fitted once per release, and each run only assigns accounts. A segment ID keeps its meaning until the next release. Segment names come after the team inspects the profiles.
 
@@ -47,7 +47,7 @@ Clusters: k-means on request and servicing behaviour, with k from 2 to 5. The se
 
 - Cohorts are deal-end months. The simulated release is on 1 June 2026. Training uses 2026-01 to 2026-03, validation uses 2026-04 and the test uses 2026-05 and 2026-06.
 - Training and validation labels must be observed before the release. Test-cohort borrowers are removed from training.
-- Metrics: accuracy, precision, recall, ROC AUC, average precision, Brier score, expected calibration error, a calibration table, and lift at ten reviews per run. Lift is computed for each test cohort and has a bootstrap interval.
+- Metrics: accuracy, precision, recall, ROC AUC, average precision, Brier score, expected calibration error, a calibration table, and lift at 10 (the ten highest scores in a cohort). Lift is computed for each test cohort and has a bootstrap interval.
 
 ## Results on synthetic data (illustrative)
 

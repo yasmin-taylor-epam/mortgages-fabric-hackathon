@@ -122,4 +122,4 @@ def test_evaluation_report(released):
         assert {c["cohort_id"] for c in m["lift_at_10_by_cohort"]} == {"2026-05", "2026-06"}
     files = evaluate.write_report(paths, rep)
     text = open(files["markdown"], encoding="utf-8").read()
-    assert "Synthetic data" in text and "Lift at ten reviews per run" in text
+    assert "Synthetic data" in text and "Lift at 10" in text

@@ -224,6 +224,9 @@ class RoutingPolicy:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "RoutingPolicy":
+        if data.get("risk_threshold") is None:
+            raise ContractError("The routing policy has no risk_threshold. It comes from the model release: run `python -m models_eval policy` "
+                                "and pass the file it writes (data/output/policy/routing-policy.json) with --policy.")
         _require(data, ("version", "risk_threshold", "max_score_age_minutes"), "routing policy")
         return cls(
             version=str(data["version"]),

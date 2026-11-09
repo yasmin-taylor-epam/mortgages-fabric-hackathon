@@ -1,0 +1,61 @@
+/// Adviser verdicts on review cases. Empty until an adviser tool writes to it. Nothing writes to it yet.
+table review_outcomes
+
+	column case_key
+		dataType: string
+		isKey
+		summarizeBy: none
+		sourceColumn: case_key
+
+	column decision
+		dataType: string
+		summarizeBy: none
+		sourceColumn: decision
+
+	column decided_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: decided_at
+
+	column decided_by
+		dataType: string
+		summarizeBy: none
+		sourceColumn: decided_by
+
+	measure 'Adviser Agreed' =
+			CALCULATE ( COUNTROWS ( review_outcomes ), review_outcomes[decision] = "action_agreed", RIGHT ( review_outcomes[case_key], 8 ) = "|renewal" )
+		formatString: 0
+		displayFolder: Adviser outcomes
+
+	measure 'Adviser No Action' =
+			CALCULATE ( COUNTROWS ( review_outcomes ), review_outcomes[decision] = "no_action", RIGHT ( review_outcomes[case_key], 8 ) = "|renewal" )
+		formatString: 0
+		displayFolder: Adviser outcomes
+
+	measure 'Adviser Referred' =
+			CALCULATE ( COUNTROWS ( review_outcomes ), review_outcomes[decision] = "referred", RIGHT ( review_outcomes[case_key], 8 ) = "|renewal" )
+		formatString: 0
+		displayFolder: Adviser outcomes
+
+	measure 'Cases Pending Decision' =
+			CALCULATE ( COUNTROWS ( review_outcomes ), review_outcomes[decision] = "pending", RIGHT ( review_outcomes[case_key], 8 ) = "|renewal" )
+		formatString: 0
+		displayFolder: Adviser outcomes
+
+	measure 'Alert Precision (Adviser Outcomes)' =
+			-- Of the decided renewal alerts, the share where the adviser agreed action was needed.
+			-- "Agreed" is the adviser's opinion. It is not a confirmed refinancing. Referred and pending cases are left out.
+			-- Blank until at least one case is decided. Read only: nothing retunes the threshold from this.
+			VAR _agreed = [Adviser Agreed]
+			VAR _noAction = [Adviser No Action]
+			RETURN IF ( _agreed + _noAction > 0, DIVIDE ( _agreed, _agreed + _noAction ) )
+		formatString: 0.0%
+		displayFolder: Adviser outcomes
+
+	partition review_outcomes = entity
+		mode: directLake
+		source
+			entityName: review_outcomes
+			schemaName: dbo
+			expressionSource: DatabaseQuery

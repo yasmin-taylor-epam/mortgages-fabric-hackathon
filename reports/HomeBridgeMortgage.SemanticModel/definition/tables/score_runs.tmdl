@@ -29,6 +29,11 @@ table score_runs
 		summarizeBy: none
 		sourceColumn: completed_at
 
+	column scope_keys
+		dataType: string
+		summarizeBy: none
+		sourceColumn: scope_keys
+
 	partition score_runs = entity
 		mode: directLake
 		source

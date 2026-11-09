@@ -26,11 +26,37 @@ def ensure_hbdata() -> None:
 
 
 TARGET = "confirmed_external_refinancing"
-REVIEWS_PER_RUN = 10
+LIFT_K = 10  # lift is reported for the 10 highest scores per cohort. A metric only. It is not a review capacity.
+MAX_SCORE_AGE_MINUTES = 1440  # placeholder: the team has not confirmed it. The report and the action policy use the same value.
+THRESHOLD_RULES = ("max_f1", "min_cost")
 CLASSIFIER_NAME = "hb-refi-clf"
 CLUSTER_NAME = "hb-segments"
 EXPERIMENT_NAME = "homebridge-refinancing-risk"
 RUN_KINDS = ("scheduled", "checkpoint", "manual")
+
+
+@dataclass(frozen=True)
+class ThresholdRule:
+    """How training picks the alert threshold. A setting, not a number. See thresholds.py."""
+    name: str = "max_f1"
+    cost_missed_leaver: float | None = None
+    cost_review: float | None = None
+
+    def params(self) -> dict:
+        return {"cost_missed_leaver": self.cost_missed_leaver, "cost_review": self.cost_review} if self.name == "min_cost" else {}
+
+
+def threshold_rule(name: str | None = None, cost_missed_leaver: float | None = None, cost_review: float | None = None) -> ThresholdRule:
+    """The rule from the arguments, then the HB_THRESHOLD_RULE, HB_COST_MISSED_LEAVER and HB_COST_REVIEW variables, then max_f1."""
+    name = name or os.environ.get("HB_THRESHOLD_RULE") or "max_f1"
+    if name not in THRESHOLD_RULES:
+        raise ValueError(f"Unknown threshold rule {name!r}. Known: {THRESHOLD_RULES}.")
+
+    def num(value, env):
+        raw = value if value is not None else os.environ.get(env)
+        return None if raw in (None, "") else float(raw)
+
+    return ThresholdRule(name, num(cost_missed_leaver, "HB_COST_MISSED_LEAVER"), num(cost_review, "HB_COST_REVIEW"))
 
 
 @dataclass(frozen=True)

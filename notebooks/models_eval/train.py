@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 
 from . import clusters, contract, features, models, registry
-from .config import REVIEWS_PER_RUN, TARGET, Paths, SplitConfig
+from .config import TARGET, Paths, SplitConfig, ThresholdRule, threshold_rule
 
 
 def load_inputs(paths: Paths) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame | None]:
@@ -26,14 +26,16 @@ def prepare(paths: Paths, cfg: SplitConfig) -> dict:
 
 
 def train_release(paths: Paths, cfg: SplitConfig | None = None, created_at=None, use_mlflow: bool = True,
-                  n_boot: int = 20) -> dict:
+                  n_boot: int = 20, rule: ThresholdRule | None = None) -> dict:
     cfg = cfg or SplitConfig()
+    rule = rule or threshold_rule()
     created_at = pd.Timestamp(created_at) if created_at is not None else pd.Timestamp.now(tz="UTC")
     data = prepare(paths, cfg)
     X, y, parts = data["X"], data["y"], data["parts"]
 
     tuned = models.tune(X["train"], y["train"], X["validation"], y["validation"], seed=cfg.seed % 1000)
-    thresholds = {name: models.freeze_threshold(y["validation"], models.proba(t["model"], X["validation"])) for name, t in tuned.items()}
+    thresholds = {name: models.freeze_threshold(y["validation"], models.proba(t["model"], X["validation"]), rule.name, rule.cost_missed_leaver, rule.cost_review)
+                  for name, t in tuned.items()}
     champion = models.choose_champion(tuned)
 
     seg = clusters.fit_segments(parts["train"], seed=cfg.seed % 1000, n_boot=n_boot)
@@ -53,10 +55,9 @@ def train_release(paths: Paths, cfg: SplitConfig | None = None, created_at=None,
         "validation": {name: {k: v for k, v in t.items() if k not in ("model", "params")} | thresholds[name]
                        for name, t in tuned.items()},
         "alert_threshold": thresholds[champion]["threshold"],
-        "alert_threshold_note": "Candidate frozen on validation data (max F1). The team confirms the routing threshold.",
-        "review_capacity_threshold": round(float(sorted(models.proba(tuned[champion]["model"], X["validation"]), reverse=True)[
-            min(REVIEWS_PER_RUN, len(X["validation"])) - 1]), 4),
-        "review_capacity_note": f"Score of the {REVIEWS_PER_RUN}th highest validation account. Matches ten reviews per checkpoint cohort.",
+        "alert_threshold_rule": rule.name,
+        "alert_threshold_params": rule.params(),
+        "alert_threshold_note": f"Chosen by the rule '{rule.name}' on validation data. The routing policy copies this value. The team confirms the rule.",
         "split": cfg.to_json() | data["split_summary"],
         "segments": {"k": seg["k"], "features": seg["features"], "selection": seg["selection"].to_dict("records"),
                      "segment_map": {str(k): v for k, v in seg["segment_map"].items()},

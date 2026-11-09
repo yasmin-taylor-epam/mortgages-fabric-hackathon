@@ -35,12 +35,15 @@
 # - Each run overwrites the Delta table from the full Parquet file. The Parquet files stay the source of truth, and append-only tables stay append-only there.
 # - `report_calendar` is rebuilt with one row per date from the earliest deal start to the latest deal end. The Dashboard and action package owns this table. This is a stand-in until its own job exists.
 # - `review_cases` is created empty if it does not exist. The real source is the SharePoint review-case list. The copy job is not designed yet.
+# - `review_outcomes` is created empty if it does not exist. It holds adviser verdicts. Nothing writes to it yet.
+# - `report_settings` is rewritten with one row: the report as-of time from the `AS_OF` parameter (empty means the real time).
 #
 # This notebook does not run locally. It needs Spark and the attached Lakehouse. All data is synthetic.
 
 # PARAMETERS CELL ********************
 
 OUTPUT_ROOT_REL = 'Files/hb/output'  # relative to the default Lakehouse
+AS_OF = None  # report as-of time (ISO 8601, UTC). Empty or None: the report uses the real time.
 
 # METADATA ********************
 
@@ -66,7 +69,7 @@ TABLE_SOURCES = {
     'segment_membership': 'gold/segment_membership.parquet',
     'score_runs': 'gold/score_runs.parquet',
 }
-GENERATED_TABLES = ['report_calendar', 'review_cases']
+GENERATED_TABLES = ['report_calendar', 'review_cases', 'review_outcomes', 'report_settings']
 
 # METADATA ********************
 
@@ -114,6 +117,16 @@ if not spark.catalog.tableExists('review_cases'):
     cols = ['case_key', 'account_key', 'mortgage_id', 'cycle_id', 'action_family', 'status', 'assigned_to']
     schema = StructType([StructField(c, StringType()) for c in cols] + [StructField('case_created_at', TimestampType())])
     spark.createDataFrame([], schema).write.format('delta').saveAsTable('review_cases')
+
+if not spark.catalog.tableExists('review_outcomes'):  # adviser verdicts. Nothing writes to it yet
+    o_cols = ['case_key', 'decision', 'decided_by']
+    o_schema = StructType([StructField(c, StringType()) for c in o_cols] + [StructField('decided_at', TimestampType())])
+    spark.createDataFrame([], o_schema).write.format('delta').saveAsTable('review_outcomes')
+
+# One row with the report as-of time. An empty AS_OF writes NULL, and the report then uses the real time.
+as_of = F.to_timestamp(F.lit(AS_OF)) if AS_OF else F.lit(None).cast('timestamp')
+spark.range(1).select(as_of.alias('as_of'), F.current_timestamp().alias('written_at')) \
+    .write.mode('overwrite').option('overwriteSchema', 'true').format('delta').saveAsTable('report_settings')
 {t: spark.table(t).count() for t in GENERATED_TABLES}
 
 # METADATA ********************

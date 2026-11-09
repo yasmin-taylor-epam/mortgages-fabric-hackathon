@@ -12,7 +12,7 @@ Run the flow but not the pytest suites.
 
 .PARAMETER Demo
 After the tests, run a scheduled scoring run and a failed run (T05 demo), then replay again.
-Run this last. The extra live runs score more accounts above the threshold than the review capacity.
+Run this last. The extra runs add scores and cases beyond the plain checkpoint run.
 Rerun the script without -Demo to restore the state that the tests expect.
 #>
 param([switch]$SkipTests, [switch]$Demo)
@@ -41,6 +41,7 @@ Pop-Location
 
 Push-Location notebooks
 Step 'Models: train' { & $py -m models_eval train | Select-Object -Last 12 }
+Step 'Models: routing policy (threshold from the release)' { & $py -m models_eval policy | Select-Object -Last 8 }
 Step 'Models: evaluate' { & $py -m models_eval evaluate | Select-Object -Last 14 }
 Step 'Models: score one checkpoint run and publish' {
     & $py -m models_eval pipeline --cutoff 2026-10-15T00:00:00Z --kind checkpoint --started-at 2026-10-15T00:05:00Z | Select-Object -Last 18
@@ -54,7 +55,7 @@ Pop-Location
 function Replay {
     Push-Location action
     try {
-        $json = & $py -m homebridge_action.cli --hbdata-dir ..\data --policy policy\routing-policy.candidate.json --now 2026-10-15T12:00:00Z | ConvertFrom-Json
+        $json = & $py -m homebridge_action.cli --hbdata-dir ..\data --policy ..\data\output\policy\routing-policy.json --now 2026-10-15T12:00:00Z | ConvertFrom-Json
         $json.decisions | Group-Object outcome, reason | Select-Object Count, Name | Format-Table -AutoSize
         Write-Host "Cases: $($json.cases.Count). Exceptions: $($json.exceptions.Count)."
     } finally { Pop-Location }

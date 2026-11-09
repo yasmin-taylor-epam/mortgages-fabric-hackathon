@@ -87,7 +87,7 @@ dotnet run --project reports\tools\tmdl-check -- reports\HomeBridgeMortgage.Sema
 
 - `review_cases` needs a copy of the SharePoint list in the Lakehouse. The copy job is not designed yet.
 - `report_calendar` needs one row per date. This package owns it. The job that fills it is not designed yet.
-- The real score-age limit, and team confirmation of the candidate threshold 0.5593.
+- The real score-age limit, and team confirmation of the threshold rule (see `docs/alert-threshold.md`).
 
 ## Rules
 

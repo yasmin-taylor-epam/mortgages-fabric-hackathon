@@ -195,3 +195,17 @@ def test_json_matches_published_schema(path, registry):
     validator = jsonschema.Draft7Validator(schema, registry=registry)
     errors = sorted(validator.iter_errors(document), key=lambda e: list(e.path))
     assert not errors, "\n".join(f"{list(e.path)}: {e.message}" for e in errors[:5])
+
+
+def test_the_report_clock_is_read_in_one_place():
+    tables = TMDL / "tables"
+    users = {p.name: p.read_text(encoding="utf-8").count("UTCNOW") for p in tables.glob("*.tmdl")}
+    assert {k: v for k, v in users.items() if v} == {"mortgage_account.tmdl": 1}  # only the 'Report As Of' fallback
+    text = (tables / "mortgage_account.tmdl").read_text(encoding="utf-8")
+    assert "measure 'Report As Of'" in text and "report_settings[as_of]" in text
+
+
+def test_adviser_outcomes_are_read_only_and_empty_by_design():
+    text = (TMDL / "tables" / "review_outcomes.tmdl").read_text(encoding="utf-8")
+    assert "measure 'Alert Precision (Adviser Outcomes)'" in text and "not a confirmed refinancing" in text
+    assert "review_decisions" not in text  # the routing table of notebook 07 is not read here

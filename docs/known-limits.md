@@ -1,0 +1,45 @@
+# Known limits and illustrative values
+
+**Status:** all numbers here are illustrative synthetic-data values. The team has not confirmed them. Nothing here has run in Fabric. This page comes from a review of hidden limits. It says what each limit is, where it lives, and what was done.
+
+## Fixed in code
+
+| Limit | What changed |
+| --- | --- |
+| The alert threshold came from an assumed review capacity of 10 per run (0.5593). It caught about 7% of leavers on the test cohort. | The threshold now comes from a named rule saved with the model release. See `docs/alert-threshold.md`. The test bound "at most 10 cases" is gone. |
+| The 24-hour score age used the real clock. A replay a day after scoring gave 0 cases. | One as-of date (`HB_AS_OF`, `run.as_of`, pipeline parameter `as_of`). The case writer, the replay tools, the scoring run start, the pipeline cutoff, the report and `Customer360(as_of)` use it. With no as-of date they use the real clock, as before. |
+| One failed run for one mortgage made all 303 scores stale. | Each run records the accounts it covers (`score_runs.scope_keys`). A failed run makes stale only the scores of those accounts. Old runs with no scope still cover every account. |
+| A late servicing feed made every account "support unknown" and lost the known active-support case. | A known `active` status is kept. Accounts with no known case become `unknown`, and the router still holds their events. |
+| The report measures and the KQL view used the real clock against data frozen on 15 Oct 2026. | They use the as-of date (see above). |
+| `request_status` dropped an application with no matching "entered" row. | It uses a left join. Days at stage is blank for such a row. |
+| The scoring pipeline had no retry on the snapshot and scoring notebooks. | One retry on each. The count is a placeholder. |
+| The replay sent all events in one Event Hub batch. | It sends in order, in as many batches as the size limit needs. |
+| The Eventstream destination used processed ingestion, which needs streaming ingestion. The deploy turns streaming off on purpose. | The destination uses direct (queued) ingestion. See `docs/fabric-deployment.md`. |
+
+## Kept on purpose (safety and data-quality rules)
+
+These are rules INV-1 to INV-6 and cases T01 to T07 in `site/index.html`. Do not weaken them.
+
+- Identity conflicts go to quarantine. Payment support comes first. A run that did not complete raises no case. A reversal is rechecked.
+- Validation quarantines bad schema, duplicates, unknown links and invalid reversals. Rows stay visible in quarantine or audit tables.
+- Unlabelled outcomes and leaked rows are excluded from training. Wealth-proxy and support features are excluded.
+- A stale or missing payment feed is never shown as zero arrears (T03).
+- The General viewer role hides payment-support cases. A judge who should see the support-first rule needs the Authorised adviser role.
+
+## Placeholders to confirm with the team
+
+- Maximum score age: 1,440 minutes.
+- Feed stale limits: 24 hours (transfer), 72 hours (servicing, payment, contact), 730 days (account). No source is given for these numbers.
+- Pipeline retry count: 1 for the two compute notebooks, 3 for publish. Timeouts: 20 minutes for compute, 10 for publish.
+- Case writer: 3 attempts per write, then the error is recorded.
+- Retrain cadence and the threshold rule (`docs/alert-threshold.md`).
+
+## Documented limits (no change)
+
+- **Checkpoint model, live use.** The model trains on the 90-day checkpoint. A live run scores accounts at other days before deal end. The same threshold gives 6 alerts at the checkpoint and 22 in one live run at the old threshold. The static explainer `docs/overview/homebridge-flow.html` still describes a "cap or separate live threshold". It is not edited. The decision is not to cap. If live scoring stays, validate a live threshold on live-style snapshots.
+- **One request per account row.** The account view shows the latest transfer request per mortgage. Earlier or parallel requests are hidden from that row. Counts are not affected.
+- **Evidence list.** A snapshot keeps the last 5 portal-fault event IDs. The most software errors in 90 days on any snapshot in the synthetic data is 4, so nothing is cut today.
+- **Attributions.** Only the 10 largest feature contributions per account are stored. Scores do not change.
+- **Deal window.** Live and replay windows end 30 days after the deal end. This matches the outcome window in `notebooks/models_eval/MODEL_CARD.md`. With a real-clock cutoff, accounts drop out as time passes. The as-of date prevents that.
+- **Local flow.** With the as-of date at 2026-10-16T09:00:00Z, a local scheduled run still scores 303 accounts. The feed freshness check is made at load time (15 Oct 2026), not at the as-of time. At the as-of time the transfer feed would be older than its 24-hour limit.
+- **Demo profile.** The example settings file has a `demo` environment with the as-of date and the schedule on. Every optional deploy step is otherwise off.

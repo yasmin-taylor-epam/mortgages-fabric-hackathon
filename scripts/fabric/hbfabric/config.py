@@ -37,6 +37,14 @@ class RunSettings:
     run_pipeline: bool = True
     pipeline_cutoff: str = "2026-10-15T00:15:00Z"
     notebook_timeout_minutes: int = 60
+    # One as-of date for the whole run. Empty (the default): the real clock. The demo value is 2026-10-16T09:00:00Z.
+    # When set, it replaces pipeline_cutoff, is the default of the pipeline parameter "as_of", and is written to report_settings.
+    as_of: str = ""
+
+    def problems(self) -> list[str]:
+        if self.as_of and not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", self.as_of):
+            return ["run.as_of must look like 2026-10-16T09:00:00Z, or be empty"]
+        return []
 
 
 @dataclass
@@ -253,7 +261,7 @@ class EnvSettings:
             out.append("capacity_create needs capacity_name, the name of the capacity to create")
         if self.capacity_create.enabled and self.capacity_name and not re.match(r"^[a-z][a-z0-9]{2,62}$", self.capacity_name):
             out.append("capacity_name must be 3 to 63 lower-case letters or digits, starting with a letter, to create it in Azure")
-        return out + self.section_problems()
+        return out + self.run.problems() + self.section_problems()
 
 
 def _walk_keys(node, path=""):

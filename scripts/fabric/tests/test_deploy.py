@@ -123,6 +123,57 @@ def test_model_placeholders_exist_in_the_expressions_file():
         assert entry["replace_value"]["dev"].startswith(f"$items.Lakehouse.{ids.LAKEHOUSE}.$sqlendpoint")
 
 
+# ---------------------------------------------------------------- one as-of date
+
+def test_as_of_is_off_by_default_and_must_be_a_utc_timestamp():
+    assert cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"}).run.as_of == ""
+    assert deploy.core_parameters("dev", "") is None
+    bad = cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"})
+    bad.run.as_of = "16 October"
+    assert any("run.as_of" in x for x in bad.problems())
+    bad.run.as_of = "2026-10-16T09:00:00Z"
+    assert bad.problems() == []
+
+
+def test_demo_profile_in_the_example_sets_the_as_of_date_and_turns_on_the_schedule():
+    cfg = cfgmod.load(EXAMPLE, "demo", overrides={"capacity_name": "cap"})
+    assert cfg.run.as_of == "2026-10-16T09:00:00Z" and cfg.schedule.enabled and cfg.schedule.interval_minutes == 15
+    assert cfg.problems() == [] and cfgmod.load(EXAMPLE, "dev").run.as_of == ""
+
+
+def test_as_of_sets_the_pipeline_parameter_default_through_a_regex_that_fabric_cicd_accepts(deployer, caplog):
+    import logging
+    import re
+
+    from fabric_cicd._parameter._parameter import Parameter
+
+    params = deploy.core_parameters("dev", "2026-10-16T09:00:00Z")
+    deployer._write_config("core", stage.CORE_TYPES, params)
+    p = Parameter(repository_directory=deployer.stage_dir, item_type_in_scope=stage.CORE_TYPES, environment="dev",
+                  parameter_file_path=str(deployer.build_dir / "core.parameter.yml"))
+    with caplog.at_level(logging.DEBUG):
+        assert p._validate_parameter_file()
+    entry = params["find_replace"][0]
+    pipeline = deployer.stage_dir / f"{ids.PIPELINE_SCORING}.DataPipeline" / "pipeline-content.json"
+    text = pipeline.read_text(encoding="utf-8")
+    # The same replacement rule as fabric-cicd: only capture group 1 is replaced.
+    out = re.sub(entry["find_value"], lambda m: m.group(0)[: m.start(1) - m.start(0)] + "2026-10-16T09:00:00Z" + m.group(0)[m.end(1) - m.start(0):], text)
+    assert json.loads(out)["properties"]["parameters"]["as_of"]["defaultValue"] == "2026-10-16T09:00:00Z"
+    assert json.loads(out)["properties"]["parameters"]["cutoff_at"]["defaultValue"] == ""  # nothing else changed
+
+
+def test_as_of_reaches_notebook_06_and_the_pipeline_run_and_replaces_the_pipeline_cutoff(tmp_path, capsys):
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"})
+    assert dict(deploy.notebook_runs(cfg))["06_publish_delta_tables"] == {"AS_OF": ""}
+    cfg.run.as_of = "2026-10-16T09:00:00Z"
+    assert dict(deploy.notebook_runs(cfg))["06_publish_delta_tables"] == {"AS_OF": "2026-10-16T09:00:00Z"}
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=FakeSession([])), build_dir=tmp_path / "b", dry_run=True)
+    d.workspace_id = cfg.workspace_id
+    d.pipeline()
+    out = capsys.readouterr().out
+    assert "'cutoff_at': ''" in out and "'as_of': '2026-10-16T09:00:00Z'" in out
+
+
 # ---------------------------------------------------------------- dry-run and apply order
 
 def test_dry_run_sends_no_change_request(tmp_path):

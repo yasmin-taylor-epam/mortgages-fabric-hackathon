@@ -64,7 +64,7 @@ powershell -File scripts\run_local_flow.ps1            # flow and all tests (sev
 powershell -File scripts\run_local_flow.ps1 -Demo      # then add a scheduled run and a failed run (T05 demo)
 ```
 
-Run `-Demo` last. Its extra live runs flag more accounts than the capacity of ten reviews per run. Then `action/tests/test_action_data_integration.py` fails until you rebuild without `-Demo`. The local flow uses a SQLite file in place of SharePoint. It needs Python (tested with 3.13).
+Run `-Demo` last. Its extra live runs add more scores and cases. Rebuild without `-Demo` to return to the plain local numbers. The local flow uses a SQLite file in place of SharePoint. It needs Python (tested with 3.13).
 
 This repository holds the build for now. The team may move the build to a separate repository later.
 

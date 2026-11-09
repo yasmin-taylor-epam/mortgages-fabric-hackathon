@@ -12,7 +12,7 @@ INSERT INTO mortgage_account VALUES
     ('MTG-JO|CYC-2027-02',   'MTG-JO',   'CYC-2027-02', TIMESTAMP '2027-02-28 00:00:00', 143500.00,  950.00, 'fixed_2y', 'ADV-017');
 
 -- RUN-0003 failed after writing a partial row. Reports must ignore it.
-INSERT INTO score_runs VALUES
+INSERT INTO score_runs (run_id, run_kind, status, started_at, completed_at) VALUES
     ('RUN-0001', 'scheduled', 'completed', TIMESTAMP '2026-11-03 08:45:00', TIMESTAMP '2026-11-03 09:00:00'),
     ('RUN-0002', 'scheduled', 'completed', TIMESTAMP '2026-11-03 09:15:00', TIMESTAMP '2026-11-03 09:30:00'),
     ('RUN-0003', 'scheduled', 'failed',    TIMESTAMP '2026-11-03 09:45:00', NULL);

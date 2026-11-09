@@ -17,6 +17,8 @@ ref table account_scores
 ref table feature_attributions
 ref table segment_membership
 ref table review_cases
+ref table review_outcomes
+ref table report_settings
 ref table report_calendar
 
 ref role 'Authorised adviser'

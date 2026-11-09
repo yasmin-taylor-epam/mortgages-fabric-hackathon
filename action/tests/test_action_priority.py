@@ -119,3 +119,13 @@ def test_scoring_output_drives_the_queue_end_to_end():
     cases = sorted(store.list_cases(), key=lambda c: c.priority_rank)
     assert [c.mortgage_id for c in cases] == [f"MTG-{i}" for i in range(1, 23)]
     store.close()
+
+def test_template_policy_without_a_threshold_is_refused_with_a_clear_message():
+    import json
+
+    from homebridge_action.models import ContractError, RoutingPolicy
+
+    template = json.loads((Path(__file__).resolve().parents[1] / "policy" / "routing-policy.candidate.json").read_text(encoding="utf-8"))
+    assert template["risk_threshold"] is None
+    with pytest.raises(ContractError, match="models_eval policy"):
+        RoutingPolicy.from_dict(template)

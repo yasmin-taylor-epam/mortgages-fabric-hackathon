@@ -31,6 +31,9 @@ environments:
       run_pipeline: true
       pipeline_cutoff: "2026-10-15T00:15:00Z"
       notebook_timeout_minutes: 60
+      # One as-of date for the pipeline, the report and the KQL view. Empty: the real clock.
+      # The synthetic data stops on 15 Oct 2026. The demo profile below sets 2026-10-16T09:00:00Z.
+      as_of: ""
 
     data:
       # Leave empty for the generator defaults (the same data as the local flow).
@@ -109,3 +112,17 @@ environments:
       enabled: false
       backfill: true
       fixture: ""
+
+  # Demo profile. Use it with: --environment demo
+  # It uses one as-of date (the data is frozen on 15 Oct 2026) and turns on the 15-minute schedule,
+  # so that the demo does not drift away from the data as the real date moves on.
+  # Copy your workspace and capacity names into it. UNTESTED in Fabric.
+  demo:
+    workspace_name: HomeBridge-Demo
+    capacity_name: ""
+    create_workspace: true
+    run:
+      as_of: "2026-10-16T09:00:00Z"
+    schedule:
+      enabled: true
+      interval_minutes: 15
