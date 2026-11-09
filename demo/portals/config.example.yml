@@ -1,0 +1,16 @@
+# Copy this file to config.local.yml (git ignores that file) and change what you need.
+# Do not put a password or a key here. Sign-in uses your own Microsoft account.
+# The Eventstream connection string is read from Fabric at start-up and kept in memory only.
+
+workspace_name: azure-mafia-branch-luke
+tenant_id: ""            # the Entra tenant ID of the Fabric workspace
+auth: interactive        # interactive (browser pop-up) | device (code on screen) | azcli (az login)
+login_hint: ""           # your own account, for example you@example.com. Never a shared sandbox account.
+
+# The synthetic data ends on 15 Oct 2026. The demo clock starts after it, not on today's real date.
+demo_start: "2026-10-16T09:00:00Z"
+demo_step_minutes: 60
+
+cache_seconds: 15
+policy_file: action/policy/routing-policy.candidate.json
+notebook_name: 07_route_review_cases

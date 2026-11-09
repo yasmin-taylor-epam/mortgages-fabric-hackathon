@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "macros.html" import source, explain, staff_nav, days, who with context %}
+{% block title %}Adviser portal · Worklist{% endblock %}
+{% block header %}{{ staff_nav('work') }}{% endblock %}
+{% block body %}
+<h1>Worklist</h1>
+{{ explain("the customers an adviser should contact first. The top list is customers who asked for help or hit a fault in our renewal website. The second list is customers the model says are likely to leave when their deal ends, in priority order. Each row says why, who owns it, and whether a review case is open.") }}
+<p class="small">Demo date: {{ w.today|when }} (the demo clock, not today's real date). Scores from run {{ w.run.run_id if w.run else 'none' }}{% if w.run %}, finished {{ w.run.completed_at|when }}{% endif %}.</p>
+
+<section class="panel" id="process">
+  <h2>Process new events</h2>
+  <p>New customer events wait in the Eventhouse until the routing notebook runs. The notebook applies the routing rules and writes review cases to the Lakehouse.
+  {% if not offline %}It is a Fabric job. It usually takes 1 to 3 minutes.{% endif %}</p>
+  <form method="post" action="/staff/process" class="buttons">
+    <button class="primary">Process new events now</button>
+    {% if links.notebook %}<a class="button" href="{{ links.notebook }}" target="_blank" rel="noopener">Open notebook 07 in Fabric ↗</a>{% endif %}
+  </form>
+  <p id="job" class="small">{% if job %}Started at {{ job_started }}. Checking …{% else %}Not started from this portal yet.{% endif %}</p>
+</section>
+
+<section class="panel">
+  <h2>1. Asked for help with payments <span class="count">{{ w.support|length }}</span></h2>
+  <p class="small">Customers who told us they are struggling. Treat these first. A payment-help case also stops sales calls about renewal.</p>
+  {% if w.support %}
+  <table>
+    <thead><tr><th>Customer</th><th>Why it is here</th><th>Opened</th><th>Owner</th><th>Case status</th></tr></thead>
+    <tbody>{% for c in w.support %}
+    <tr class="{{ 'live' if c.live }}">
+      <td>{{ who(c.name, c.mortgage_id) }}</td>
+      <td>{{ c.family_text }}{% if c.live %} <span class="tag">from the demo</span>{% endif %}</td>
+      <td>{{ c.opened }}</td><td>{{ c.assigned_to }}</td><td><span class="status {{ c.status }}">{{ c.status_text }}</span></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<p class="empty">No open payment-help cases.</p>{% endif %}
+  {{ source("Lakehouse table review_cases (written by notebook 07)", "lakehouse", "review_cases, routed on this laptop") }}
+</section>
+
+<section class="panel">
+  <h2>2. Likely to leave at renewal <span class="count">{{ w.renewals|length }}</span></h2>
+  <p class="small">The model scores each customer from 0% to 100%: the chance they refinance with another lender. Customers at or above {{ w.threshold|pct }} get a priority number. 1 is the most urgent.</p>
+  {% if w.renewals %}
+  <table>
+    <thead><tr><th>Priority</th><th>Customer</th><th>Chance of leaving</th><th>Main reason</th><th>Deal ends</th><th>Owner</th><th>Case status</th></tr></thead>
+    <tbody>{% for r in w.renewals %}
+    <tr>
+      <td class="rank">{{ r.priority_rank }}</td>
+      <td>{{ who(r.name, r.mortgage_id) }}</td>
+      <td><span class="score">{{ r.score|pct }}</span></td>
+      <td>{{ r.reason }}</td>
+      <td>{{ r.deal_end }}<div class="small">{{ days(r.days_left) }}</div></td>
+      <td>{{ r.owner }}</td>
+      <td><span class="status {{ r.case.status if r.case else 'none' }}">{{ r.case_status }}</span></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<p class="empty">No customer is above the threshold in the latest run.</p>{% endif %}
+  {{ source("Lakehouse tables account_scores, feature_attributions, mortgage_account and review_cases", "lakehouse", "lakehouse/gold/account_scores.parquet") }}
+</section>
+
+<section class="panel">
+  <h2>3. Renewal website faults <span class="count">{{ w.technical_total }}</span></h2>
+  <p class="small">Our renewal website failed for these customers, and the fault was checked. The technical team owns them. The newest {{ w.technical|length }} are shown.</p>
+  {% if w.technical %}
+  <table>
+    <thead><tr><th>Customer</th><th>Opened</th><th>Owner</th><th>Case status</th></tr></thead>
+    <tbody>{% for c in w.technical %}
+    <tr class="{{ 'live' if c.live }}"><td>{{ who(c.name, c.mortgage_id) }}{% if c.live %} <span class="tag">from the demo</span>{% endif %}</td>
+      <td>{{ c.opened }}</td><td>{{ c.assigned_to }}</td><td><span class="status {{ c.status }}">{{ c.status_text }}</span></td></tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<p class="empty">No open fault cases.</p>{% endif %}
+  {{ source("Lakehouse table review_cases", "lakehouse", "review_cases, routed on this laptop") }}
+</section>
+{% endblock %}
+{% block scripts %}
+{% if job %}
+<script>
+async function poll() {
+  const el = document.getElementById('job');
+  try {
+    const j = await (await fetch('/api/routing')).json();
+    const words = {NotStarted: 'waiting to start', InProgress: 'running', Completed: 'finished', Failed: 'failed', Cancelled: 'cancelled', Deduped: 'skipped (already running)'};
+    el.textContent = `Started at ${j.started}. Fabric job status: ${words[j.status] || j.status}${j.failureReason ? ' (' + JSON.stringify(j.failureReason) + ')' : ''}.`;
+    if (j.status === 'Completed') { el.textContent += ' Reloading the worklist …'; setTimeout(() => location.reload(), 1500); return; }
+    if (['Failed', 'Cancelled'].includes(j.status)) return;
+  } catch (e) { el.textContent = 'Could not check the job: ' + e; }
+  setTimeout(poll, 8000);
+}
+{% if offline %}document.getElementById('job').textContent = 'Finished on this laptop (offline preview).';{% else %}poll();{% endif %}
+</script>
+{% endif %}
+{% endblock %}

@@ -9,6 +9,9 @@ data/output/
 fabric/config/fabric.config.yml
 build/
 
+# Demo portals: local settings
+demo/portals/config.local.yml
+
 # Python
 .venv/
 __pycache__/

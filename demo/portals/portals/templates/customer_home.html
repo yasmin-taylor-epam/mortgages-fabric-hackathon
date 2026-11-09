@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "macros.html" import source, explain with context %}
+{% block title %}HomeBridge · My mortgage{% endblock %}
+{% block theme %}customer{% endblock %}
+{% block header %}
+<div class="brand"><span class="logo">HB</span> HomeBridge <span class="sub">My mortgage</span></div>
+<form class="who" method="get" action="/customer">
+  <label>Presenter: show the site as
+  <select name="who" onchange="this.form.submit()">
+    {% for p in settings.personas %}<option value="{{ p.mortgage_id }}" {{ 'selected' if p.mortgage_id == home.mortgage_id }}>{{ p.name }} ({{ p.mortgage_id }})</option>{% endfor %}
+  </select></label>
+</form>
+{% endblock %}
+{% block body %}
+{{ explain("a pretend customer website. Each button sends one event to the Fabric Eventstream, in the same format as the real renewal portal and servicing feeds. Nothing is changed on this page itself.") }}
+<h1>Hello {{ home.name }}</h1>
+{% set a = home.acct %}
+<section class="panel">
+  <h2>Your current deal</h2>
+  {% if a %}
+  <dl class="facts">
+    <dt>Mortgage</dt><dd>{{ home.mortgage_id }}</dd>
+    <dt>Rate now</dt><dd>{{ '%.2f' % a.fixed_rate_pct }}% fixed</dd>
+    <dt>Deal ends</dt><dd>{{ home.deal_end }}{% if home.days_left is not none %} ({% if home.days_left < 0 %}ended {{ -home.days_left }} days before {{ home.today|day }}{% else %}{{ home.days_left }} days from {{ home.today|day }}{% endif %}){% endif %}</dd>
+    <dt>Rate after the deal ends</dt><dd>{{ '%.2f' % a.follow_on_rate_pct }}% (standard variable rate)</dd>
+    <dt>Monthly payment</dt><dd>{{ a.current_payment|money }}</dd>
+  </dl>
+  {% else %}<p>No deal found.</p>{% endif %}
+  {{ source("Lakehouse tables mortgage and mortgage_account", "lakehouse", "lakehouse/clean/mortgage_account.parquet") }}
+</section>
+
+<section class="panel">
+  <h2>Your renewal</h2>
+  {% if home.latest %}
+  <p>Last step: <strong>{{ home.stage_text }}</strong> ({{ home.latest.status|replace('_', ' ') }}), on {{ home.latest.occurred_at|when }}.</p>
+  <p class="small">Request {{ home.latest.application_id or '-' }}. Read from {{ home.latest.source }}.</p>
+  {% else %}<p>You have not started a renewal.</p>{% endif %}
+</section>
+
+<section class="panel actions">
+  <h2>What would you like to do?</h2>
+  <form method="post" action="/customer/send" class="buttons">
+    <input type="hidden" name="who" value="{{ home.mortgage_id }}">
+    <button name="action" value="renew" class="primary">Renew my deal</button>
+    <button name="action" value="payment_help" class="secondary">I need help with payments</button>
+    <details class="presenter">
+      <summary>Presenter option</summary>
+      <label><input type="checkbox" name="fault"> Make the renewal website fail (sends error SYS-503, a checked software fault)</label>
+    </details>
+  </form>
+  <p class="small">Sends to: {% if offline %}the local Eventhouse copy (offline preview){% else %}Fabric Eventstream HomeBridgeRiskEvents{% if links.eventstream %} · <a href="{{ links.eventstream }}" target="_blank" rel="noopener">open in Fabric</a>{% endif %}{% endif %}.
+  The event time is the demo clock, which starts on {{ settings.demo_start[:10] }} because the synthetic data ends on 15 Oct 2026.</p>
+</section>
+{% endblock %}

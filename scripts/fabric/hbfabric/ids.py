@@ -28,6 +28,7 @@ NOTEBOOKS = [
     "04_score_and_segment",
     "05_evaluate",
     "06_publish_delta_tables",
+    "07_route_review_cases",
 ]
 
 NOTEBOOK_DESCRIPTIONS = {
@@ -38,6 +39,7 @@ NOTEBOOK_DESCRIPTIONS = {
     "04_score_and_segment": "Scores accounts, assigns segments and publishes risk_updated.",
     "05_evaluate": "Later-cohort evaluation report.",
     "06_publish_delta_tables": "Copies the Parquet tables that the semantic model reads into Delta tables.",
+    "07_route_review_cases": "Routes scores and service events into review cases with the action package.",
 }
 
 
