@@ -18,7 +18,11 @@
 
 ## Open: the Eventstream destination is a manual portal step
 
-Live results on 9 November 2026: the processed-ingestion destination failed; direct ingestion with the Eventhouse `itemId` failed at compatibility levels 1.0 and 1.1 (`UnsupportedArtifactType`, "is of type 'KustoEventHouse'"); direct ingestion with the KQL database `itemId` gave a "Warning" and no rows. Fabric also cannot upgrade an Eventstream from 1.0 to 1.1 in place. So no definition in this repository delivers events yet. Until a portal setup is proven, treat the destination as a manual step. The steps are in `docs/fabric-deployment.md`, section "Eventstream destination: portal steps (proposed, untested)". The proposed fix is not proven.
+Live results on 9 November 2026: the processed-ingestion destination failed; direct ingestion with the Eventhouse `itemId` failed at compatibility levels 1.0 and 1.1 (`UnsupportedArtifactType`, "is of type 'KustoEventHouse'"); direct ingestion with the KQL database `itemId` gave a "Warning" and no rows. Fabric also cannot upgrade an Eventstream from 1.0 to 1.1 in place. So no definition in this repository makes a working destination.
+
+The portal flow worked as far as creating the destination and the KQL data connection: delete a broken API-made destination, add an Eventhouse direct-ingestion destination, link the stream to it, publish, then use "Configure KQL data connection" in Live mode. The wizard needs sample events in the stream. Its "use existing mapping" list was empty, so it created the mapping `RawEventsLanding_mapping` (9 columns, by name) instead of using `RawEventsLanding_json`. The steps are in `docs/fabric-deployment.md`, section "Eventstream destination: portal steps".
+
+Still open: rows landing in `RawEventsLanding` is not confirmed, and a redeploy may remove the destination.
 
 ## Kept on purpose (safety and data-quality rules)
 
