@@ -144,11 +144,13 @@ def test_apply_runs_the_steps_in_order(tmp_path):
     session = FakeSession([
         (("POST", "/jobs/instances"), Resp(202, headers={"Location": "https://api.fabric.microsoft.com/job/1", "Retry-After": "0"})),
         (("GET", "/items"), Resp(body={"value": [{"id": f"id-{n}", "type": t, "displayName": n} for n, t in
-                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline"), (ids.KQL_DATABASE, "KQLDatabase")] + [(ids.LAKEHOUSE, "SQLEndpoint")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
+                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline"), (ids.KQL_DATABASE, "KQLDatabase")] + [(ids.LAKEHOUSE, "SQLEndpoint"), (ids.SEMANTIC_MODEL, "SemanticModel")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
         (("GET", "/v1/workspaces"), Resp(body={"value": []})),
         (("GET", "/v1/capacities"), Resp(body={"value": [{"displayName": "cap", "id": "cccccccc-0000-1111-2222-bbbbbbbbbbbb"}]})),
         (("POST", "/v1/workspaces"), Resp(201, {"id": "wwwwwwww-0000-1111-2222-bbbbbbbbbbbb"})),
         (("GET", "/job/1"), Resp(body={"status": "Completed"})),
+        (("POST", "/datasets/"), Resp(202, {})),
+        (("GET", "/datasets/"), Resp(body={"value": [{"status": "Completed"}]})),
     ])
     events, uploaded, cicd = [], [], []
     d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session, sleep=lambda s: None),
@@ -217,7 +219,10 @@ def test_cli_validate_needs_no_config_and_no_sign_in(capsys):
 
 # ---------------------------------------------------------------- SQL endpoint refresh before the model
 
-SQLE = (("GET", "/items"), Resp(body={"value": [{"id": "sqle-1", "type": "SQLEndpoint", "displayName": ids.LAKEHOUSE}]}))
+SQLE = (("GET", "/items"), Resp(body={"value": [{"id": "sqle-1", "type": "SQLEndpoint", "displayName": ids.LAKEHOUSE},
+                                                {"id": "model-1", "type": "SemanticModel", "displayName": ids.SEMANTIC_MODEL}]}))
+MODEL_REFRESH = [(("POST", "/datasets/model-1/refreshes"), Resp(202, {})),
+                 (("GET", "/datasets/model-1/refreshes"), Resp(body={"value": [{"status": "Completed", "refreshType": "DirectLakeFraming"}]}))]
 
 
 def _model_deployer(tmp_path, routes, dry_run=False):
@@ -232,12 +237,13 @@ def _model_deployer(tmp_path, routes, dry_run=False):
 
 
 def test_model_step_refreshes_the_sql_endpoint_before_it_publishes(tmp_path):
-    routes = [SQLE, (("POST", "/sqlEndpoints/sqle-1/refreshMetadata"), Resp(200, {"value": [{"tableName": "mortgage", "status": "Success"}, {"tableName": "payment", "status": "NotRun"}]}))]
+    routes = [SQLE, (("POST", "/sqlEndpoints/sqle-1/refreshMetadata"), Resp(200, {"value": [{"tableName": "mortgage", "status": "Success"}, {"tableName": "payment", "status": "NotRun"}]}))] + MODEL_REFRESH
     d, s, lines, cicd = _model_deployer(tmp_path, routes)
     order = []
     d.cicd = lambda p: order.append(("publish", [c[1] for c in s.calls if c[0] == "POST"]))
     d.model()
     assert order and order[0][1][0].endswith("/sqlEndpoints/sqle-1/refreshMetadata")
+    assert s.calls[-2][0] == "POST" and s.calls[-2][1].endswith("/datasets/model-1/refreshes")  # the model refresh follows the publish
     assert any("refresh done for 2 table" in x for x in lines)
 
 
@@ -245,7 +251,7 @@ def test_model_step_follows_a_long_running_refresh(tmp_path):
     routes = [SQLE,
               (("POST", "/refreshMetadata"), Resp(202, headers={"Location": "https://api.fabric.microsoft.com/v1/operations/op1", "Retry-After": "0"})),
               (("GET", "/operations/op1/result"), Resp(body={"value": [{"tableName": "mortgage", "status": "Success"}]})),
-              (("GET", "/operations/op1"), Resp(body={"status": "Succeeded"}))]
+              (("GET", "/operations/op1"), Resp(body={"status": "Succeeded"}))] + MODEL_REFRESH
     d, s, lines, cicd = _model_deployer(tmp_path, routes)
     d.model()
     assert len(cicd) == 1 and any("done for 1 table" in x for x in lines)
@@ -263,3 +269,30 @@ def test_model_step_dry_run_does_not_refresh(tmp_path):
     d, s, lines, cicd = _model_deployer(tmp_path, [], dry_run=True)
     d.model()
     assert s.calls == [] and cicd == [] and any("Would refresh the SQL analytics endpoint" in x for x in lines)
+
+
+def test_sql_endpoint_refresh_sends_the_documented_timeout_shape():
+    s = FakeSession([(("POST", "/refreshMetadata"), Resp(200, {"value": []}))])
+    FabricClient(FakeCredential(), session=s).refresh_sql_endpoint("w", "e", timeout_minutes=15)
+    assert s.calls[0][2] == {"timeout": {"value": 15, "timeUnit": "Minutes"}}  # a "00:15:00" string was refused by Fabric
+
+
+def test_model_refresh_waits_until_completed_and_uses_the_power_bi_scope():
+    scopes = []
+
+    class Cred:
+        def get_token(self, scope):
+            scopes.append(scope)
+            return type("T", (), {"token": "t"})()
+    s = FakeSession([(("POST", "/datasets/m/refreshes"), Resp(202, {})),
+                     (("GET", "/datasets/m/refreshes"), [Resp(body={"value": [{"status": "Unknown"}]}), Resp(body={"value": [{"status": "Completed"}]})])])
+    out = FabricClient(Cred(), session=s, sleep=lambda x: None).refresh_semantic_model("w", "m")
+    assert out["status"] == "Completed" and set(scopes) == {"https://analysis.windows.net/powerbi/api/.default"}
+    assert s.calls[0][2] == {"type": "full"}
+
+
+def test_model_refresh_failure_stops_the_deploy(tmp_path):
+    s = FakeSession([(("POST", "/datasets/m/refreshes"), Resp(202, {})),
+                     (("GET", "/datasets/m/refreshes"), Resp(body={"value": [{"status": "Failed", "serviceExceptionJson": "boom"}]}))])
+    with pytest.raises(FabricError, match="Failed"):
+        FabricClient(FakeCredential(), session=s, sleep=lambda x: None).refresh_semantic_model("w", "m")

@@ -25,6 +25,8 @@ ARM_SCOPE = f"{ARM}/.default"
 ARM_CAPACITY_API = "2023-11-01"
 GRAPH = "https://graph.microsoft.com/v1.0"
 GRAPH_SCOPE = "https://graph.microsoft.com/.default"
+PBI_SCOPE = "https://analysis.windows.net/powerbi/api/.default"
+PBI_API = "https://api.powerbi.com/v1.0/myorg"
 TERMINAL = {"Completed", "Failed", "Cancelled", "Deduped"}
 
 
@@ -133,11 +135,31 @@ class FabricClient:
     def refresh_sql_endpoint(self, workspace_id: str, sql_endpoint_id: str, timeout_minutes: int = 15) -> list[dict]:
         """Sync the SQL analytics endpoint with the Delta tables. Returns one status row per table."""
         resp = self.request("POST", f"/v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
-                            json={"timeout": f"00:{timeout_minutes:02d}:00"})
+                            json={"timeout": {"value": timeout_minutes, "timeUnit": "Minutes"}})
         body = self.wait_operation(resp, poll_seconds=10, timeout_seconds=timeout_minutes * 60 + 60)
         if resp.status_code == 202:
             body = self.request("GET", f"{resp.headers['Location'].rstrip('/')}/result").json()
         return body.get("value", [])
+
+    def refresh_semantic_model(self, workspace_id: str, model_id: str, timeout_seconds: float = 900, poll_seconds: float = 10) -> dict:
+        """Refresh a Direct Lake model (this frames it on the Delta tables) and wait for the result.
+
+        A published Direct Lake model has not been framed. Until it is refreshed, queries fall back to DirectQuery,
+        and the large ones fail with "Query has exceeded the available resources" (seen on 9 Nov 2026).
+        """
+        base = f"{PBI_API}/groups/{workspace_id}/datasets/{model_id}"
+        self.request("POST", f"{base}/refreshes", scope=PBI_SCOPE, json={"type": "full"})
+        waited = 0.0
+        while waited <= timeout_seconds:
+            self.sleep(poll_seconds)
+            waited += poll_seconds
+            rows = self.request("GET", f"{base}/refreshes?$top=1", scope=PBI_SCOPE).json().get("value", [])
+            last = rows[0] if rows else {}
+            if last.get("status") == "Completed":
+                return last
+            if last.get("status") in {"Failed", "Disabled", "Cancelled"}:
+                raise FabricError(f"The model refresh ended as {last.get('status')}: {str(last.get('serviceExceptionJson', ''))[:300]}")
+        raise FabricError("Timed out waiting for the semantic model refresh.")
 
     # ----- labels
     def set_labels(self, label_id: str, items: list[dict]) -> list[dict]:

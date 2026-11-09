@@ -165,13 +165,19 @@ table mortgage_account
 		displayFolder: Request
 
 	measure 'Days At Stage' =
+			-- Iterators instead of column filters in CALCULATE: the earlier form ran out of memory on an F2 capacity.
 			VAR _stage = [Current Request Stage]
-			VAR _leftOther = CALCULATE ( MAX ( transfer_request_event[occurred_at] ), transfer_request_event[stage] <> _stage )
+			VAR _events = transfer_request_event
+			VAR _leftOther =
+			    MAXX ( FILTER ( _events, transfer_request_event[stage] <> _stage ), transfer_request_event[occurred_at] )
 			VAR _entered =
-			    CALCULATE (
-			        MIN ( transfer_request_event[occurred_at] ),
-			        transfer_request_event[stage] = _stage,
-			        transfer_request_event[occurred_at] > _leftOther
+			    MINX (
+			        FILTER (
+			            _events,
+			            transfer_request_event[stage] = _stage
+			                && ( ISBLANK ( _leftOther ) || transfer_request_event[occurred_at] > _leftOther )
+			        ),
+			        transfer_request_event[occurred_at]
 			    )
 			RETURN IF ( NOT ISBLANK ( _entered ), DATEDIFF ( _entered, UTCNOW (), DAY ) )
 		formatString: 0
