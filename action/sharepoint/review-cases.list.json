@@ -25,6 +25,7 @@
         {"name": "run_id", "type": "Text", "required": false},
         {"name": "snapshot_id", "type": "Text", "required": false},
         {"name": "needs_recheck", "type": "Boolean", "required": false},
+        {"name": "priority_rank", "type": "Number", "required": false, "description": "Review queue order from the scoring run. 1 = work first. Renewal cases only. It orders the queue. It never decides whether a case exists."},
         {"name": "store", "type": "Text", "required": true, "description": "Always 'sharepoint' in this list. The local reference writes 'local'."},
         {"name": "reviewer_decision", "type": "Choice", "required": false, "choices": ["pending", "action_agreed", "no_action", "referred"], "description": "Set by the assigned person."},
         {"name": "reviewer_decision_at", "type": "DateTime", "required": false}

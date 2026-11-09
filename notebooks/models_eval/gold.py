@@ -29,7 +29,7 @@ TABLES: dict[str, dict] = {
         "key": ["mortgage_id", "cycle_id", "run_id"], "append_only": True,
         "columns": {"account_key": str, "mortgage_id": str, "cycle_id": str, "run_id": str, "snapshot_id": str,
                     "model_version": str, "cluster_model_version": str, "segment_id": str, "score": float,
-                    "scored_at": TS, "cutoff_at": TS, "target": str},
+                    "scored_at": TS, "cutoff_at": TS, "target": str, "priority_rank": "Int64"},
     },
     "feature_attributions": {
         "key": ["mortgage_id", "cycle_id", "run_id", "feature_name"], "append_only": True,

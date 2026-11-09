@@ -109,6 +109,7 @@ class RiskUpdated:
     score: float
     evidence_ids: tuple[str, ...] = ()
     ingested_at: Optional[datetime] = None
+    priority_rank: Optional[int] = None
 
     REQUIRED = (
         "event_id", "mortgage_id", "cycle_id", "run_id", "snapshot_id",
@@ -137,6 +138,7 @@ class RiskUpdated:
             score=score,
             evidence_ids=_evidence(data.get("evidence_ids")),
             ingested_at=_opt_ts(data.get("ingested_at"), "ingested_at"),
+            priority_rank=None if data.get("priority_rank") is None else int(data["priority_rank"]),
         )
 
 
@@ -275,3 +277,4 @@ class ReviewCase:
     snapshot_id: Optional[str] = None
     needs_recheck: bool = False
     store: str = "local"
+    priority_rank: Optional[int] = None  # position in the review queue, 1 = work first. Only renewal cases from a risk_updated event have one.

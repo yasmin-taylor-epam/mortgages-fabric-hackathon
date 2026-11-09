@@ -56,6 +56,7 @@ BUILD_LIVE_SNAPSHOTS = False  # local convenience: build live snapshots here ins
 INJECT_FAILURE = None  # T05 demo: 'before_outputs' or 'after_outputs'
 PUBLISH = True  # publish risk_updated after a completed run
 PUBLISH_ONLY = False  # retry pending publication without scoring
+ALERT_THRESHOLD = None  # default: the release's ten-review capacity threshold, which the routing policy copies
 
 # METADATA ********************
 
@@ -83,6 +84,7 @@ else:
 sys.path.insert(0, str(NOTEBOOKS_DIR))
 CUTOFF, STARTED_AT, MODEL_VERSION = CUTOFF or None, STARTED_AT or None, MODEL_VERSION or None  # a pipeline passes empty strings
 CLUSTER_MODEL_VERSION, INJECT_FAILURE = CLUSTER_MODEL_VERSION or None, INJECT_FAILURE or None
+ALERT_THRESHOLD = globals().get('ALERT_THRESHOLD') or None  # a caller may omit it. A pipeline passes an empty string
 import json
 import pandas as pd
 from models_eval import config
@@ -111,7 +113,8 @@ if not PUBLISH_ONLY:
     print(len(snap), 'snapshots at cutoff', cutoff)
     # A failure raises ScoringRunFailed. The pipeline activity then fails and the publish step does not run.
     result = scoring.run_scoring(PATHS, snap, RUN_KIND, cutoff, MODEL_VERSION, CLUSTER_MODEL_VERSION,
-                                 started_at=STARTED_AT, inject_failure=INJECT_FAILURE)
+                                 started_at=STARTED_AT, inject_failure=INJECT_FAILURE,
+                                 alert_threshold=float(ALERT_THRESHOLD) if ALERT_THRESHOLD else None)
 result
 
 # METADATA ********************

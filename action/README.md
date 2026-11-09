@@ -101,6 +101,10 @@ On 22 October 2026, a local checkpoint run had these results (synthetic data):
 
 `test_models_scoring_run_flows_into_renewal_cases` checks the renewal cases against an independent calculation. It also checks the 10-review capacity.
 
+## Review queue order
+
+Every account at or above the threshold gets a renewal case. There is no cap and no suppression. The scoring run ranks those accounts (`priority_rank`, 1 = highest score, ties by `mortgage_id` then `cycle_id`) and the case keeps the rank. Reviewers work from the top of the queue down. Cases that nobody has worked yet wait in the queue. The rank never decides whether a case exists. Tests: `tests/test_action_priority.py`.
+
 ## Rules
 
 - INV-3: at most one open review case exists per `mortgage_id` + `cycle_id` + `action_family`. A duplicate write reads the existing case (T01, T06).

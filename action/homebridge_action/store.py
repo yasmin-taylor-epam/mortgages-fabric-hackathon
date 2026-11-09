@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS review_cases (
     run_id                TEXT,
     snapshot_id           TEXT,
     needs_recheck         INTEGER NOT NULL DEFAULT 0,
-    store                 TEXT NOT NULL DEFAULT 'local'
+    store                 TEXT NOT NULL DEFAULT 'local',
+    priority_rank         INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -91,7 +92,7 @@ _CASE_COLUMNS = (
     "case_key", "mortgage_id", "cycle_id", "action_family", "status", "assigned_to",
     "routing_policy", "decision_reason", "source_event_id", "evidence_ids",
     "alert_received_at", "case_created_at", "ingested_at", "scored_at", "model_version",
-    "cluster_model_version", "run_id", "snapshot_id", "needs_recheck", "store",
+    "cluster_model_version", "run_id", "snapshot_id", "needs_recheck", "store", "priority_rank",
 )
 
 
@@ -108,6 +109,8 @@ class SQLiteCaseStore:
         self.conn = sqlite3.connect(path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        if "priority_rank" not in {r[1] for r in self.conn.execute("PRAGMA table_info(review_cases)")}:
+            self.conn.execute("ALTER TABLE review_cases ADD COLUMN priority_rank INTEGER")  # a case file made before the rank existed
         self.conn.commit()
 
     def close(self) -> None:
@@ -120,6 +123,7 @@ class SQLiteCaseStore:
             case.source_event_id, json.dumps(list(case.evidence_ids)), _ts(case.alert_received_at),
             _ts(case.case_created_at), _ts(case.ingested_at), _ts(case.scored_at), case.model_version,
             case.cluster_model_version, case.run_id, case.snapshot_id, int(case.needs_recheck), case.store,
+            case.priority_rank,
         )
         placeholders = ", ".join("?" for _ in _CASE_COLUMNS)
         try:
@@ -203,4 +207,5 @@ class SQLiteCaseStore:
             snapshot_id=row["snapshot_id"],
             needs_recheck=bool(row["needs_recheck"]),
             store=row["store"],
+            priority_rank=row["priority_rank"],
         )

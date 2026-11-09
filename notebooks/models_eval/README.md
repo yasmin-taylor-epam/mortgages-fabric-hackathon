@@ -66,7 +66,9 @@ Gold tables go in `lakehouse/gold/`. Each table stores `account_key = mortgage_i
 | `account_scores` | One account, cycle and run. Has the score, the segment, the snapshot and the model versions. | Append only. |
 | `feature_attributions` | The 10 largest contributions for each account and run, with `rank`, `feature_value` and `contribution_unit`. | Append only. |
 | `segment_membership` | One account, cycle and run. `valid_to` stays null. The current segment is the latest row. | Append only. |
-| `risk_outbox` | One `risk_updated` event. It has a stable `event_id` and the publication status. | Status changes in place. |
+| `risk_outbox` | One `risk_updated` event. It has a stable `event_id`, the publication status, and for accounts at or above the threshold a `priority_rank`. | Status changes in place. |
+
+`account_scores` also holds `priority_rank`. Accounts at or above the alert threshold are ranked by score, highest first (ties by `mortgage_id`, then `cycle_id`). Every one of them raises an alert. The rank only orders the review queue. Tests: `tests/test_priority_rank.py`.
 
 The `risk_updated` payloads match `data/contracts/risk_updated.schema.json`. Locally they go to `data/output/eventstream/risk_updated.jsonl`.
 

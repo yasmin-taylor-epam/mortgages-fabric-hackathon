@@ -21,6 +21,7 @@ IDs follow the Data and replay patterns: `mortgage_id` is `HB-M-` and six digits
 | `cycle_id` | string | Identifies the fixed-rate deal, not the scoring run. |
 | `run_id` | string | The scoring run. Its status is in `score_runs`. |
 | `snapshot_id` | string | The frozen feature snapshot. |
+| `priority_rank` | integer, optional | Position among the accounts at or above the threshold in this run. 1 = highest score. Ties go to the lower `mortgage_id`, then `cycle_id`. It orders the review queue. It never suppresses an alert: every account at or above the threshold gets a case. The case keeps the rank. Missing below the threshold. |
 | `model_version` | string | Registered classifier version. |
 | `cluster_model_version` | string | Registered cluster model version. |
 | `segment_id` | string | |

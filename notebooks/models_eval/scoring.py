@@ -9,6 +9,9 @@ Order of work in one run:
 6. Write one risk_outbox row per account with a stable event_id.
 7. Mark the run completed. Completion is the visibility gate.
 
+Priority rank: every account at or above the alert threshold raises an alert. The rank only orders the review queue,
+so reviewers work from the top down. It never suppresses an alert. See apply_priority_rank.
+
 INV-5 / T05: any failure marks the run failed. A failed run writes no outbox
 rows, so it publishes no risk_updated event. Rows that a failed run already
 appended stay invisible because consumers read completed runs only. The last
@@ -76,8 +79,23 @@ def score_frame(loaded: dict, snap: pd.DataFrame) -> dict:
     return {"score": score, "segment_id": seg.to_numpy(), "attributions": attr}
 
 
+def apply_priority_rank(scores: pd.DataFrame, threshold: float) -> pd.DataFrame:
+    """Add priority_rank to the accounts at or above the alert threshold. Pure: no writes.
+
+    1 = highest score. The tie-break is mortgage_id, then cycle_id, ascending, so the same scores always give the same
+    ranks. Accounts below the threshold get no rank. Every ranked account is an alert. No rank removes an alert.
+    """
+    out = scores.copy()
+    ordered = out[out["score"] >= threshold].sort_values(["score", "mortgage_id", "cycle_id"], ascending=[False, True, True], kind="mergesort")
+    rank = pd.Series(pd.array([pd.NA] * len(out), dtype="Int64"), index=out.index)
+    rank.loc[ordered.index] = range(1, len(ordered) + 1)
+    out["priority_rank"] = rank
+    return out
+
+
 def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at, model_version: str | None = None,
-                cluster_model_version: str | None = None, started_at=None, inject_failure: str | None = None) -> dict:
+                cluster_model_version: str | None = None, started_at=None, inject_failure: str | None = None,
+                alert_threshold: float | None = None) -> dict:
     if run_kind not in RUN_KINDS:
         raise ValueError(f"run_kind must be one of {RUN_KINDS}.")
     if inject_failure not in (None, *FAILURE_POINTS):
@@ -111,6 +129,9 @@ def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at,
             "snapshot_id": snap["snapshot_id"], "model_version": rel["model_version"],
             "cluster_model_version": rel["cluster_model_version"], "segment_id": res["segment_id"],
             "score": res["score"].round(6), "scored_at": scored_at, "cutoff_at": snap["cutoff_at"], "target": TARGET})
+        # The threshold is the routing policy's. By default it is the release's ten-review capacity threshold, which the policy copies.
+        threshold = float(alert_threshold if alert_threshold is not None else rel["review_capacity_threshold"])
+        scores = apply_priority_rank(scores, threshold)
         attr = res["attributions"].assign(run_id=run_id, model_version=rel["model_version"])
         attr["account_key"] = attr["mortgage_id"] + "|" + attr["cycle_id"]
         segs = pd.DataFrame({
@@ -129,6 +150,7 @@ def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at,
         run.update(status="completed", completed_at=clock())
         gold.upsert(paths.gold, "score_runs", pd.DataFrame([run]))
         return {"run_id": run_id, "status": "completed", "accounts": int(len(scores)), "outbox_rows": int(len(outbox)),
+                "alert_threshold": threshold, "alerts": int(scores["priority_rank"].notna().sum()),
                 "model_version": rel["model_version"], "cluster_model_version": rel["cluster_model_version"],
                 "model_source": loaded["source"]}
     except Exception as exc:  # noqa: BLE001 - any failure must mark the run failed (INV-5)
@@ -151,6 +173,8 @@ def build_outbox(scores: pd.DataFrame, snap: pd.DataFrame, run_id: str, created_
             "scored_at": _iso(r.scored_at), "cutoff_at": _iso(r.cutoff_at), "target": TARGET, "score": float(r.score),
             "evidence_ids": [str(x) for x in (list(ev) if ev is not None else [])],
         }
+        if pd.notna(getattr(r, "priority_rank", pd.NA)):
+            payload["priority_rank"] = int(r.priority_rank)
         rows.append(payload)
     errors = hb_contracts.validate_records(rows, "risk_updated")
     if errors:
