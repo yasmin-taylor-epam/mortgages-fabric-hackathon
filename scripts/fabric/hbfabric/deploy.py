@@ -241,11 +241,29 @@ class Deployer(ExtraSteps):
                     c.assign_capacity(self.workspace_id, cap)
                     self.say(f"Assigned workspace to capacity {cap}.")
 
+    def check_eventstream_level(self) -> None:
+        """Stop early when the live Eventstream is at an older compatibility level than the repository file.
+
+        Fabric refuses to upgrade an Eventstream in place (400 "Upgrading the compatibility level from Compat_1_0 to
+        Compat_1_1 is not allowed."). fabric-cicd would fail late, after other items were published.
+        """
+        es = self.client.find_item(self.workspace_id, "Eventstream", ids.EVENTSTREAM)
+        if not es:
+            return
+        want = payloads.eventstream_level(self.stage_dir)
+        have = str(self.client.eventstream_topology(self.workspace_id, es["id"]).get("compatibilityLevel") or "")
+        if have and want and payloads.level_key(have) < payloads.level_key(want):
+            raise FabricError(
+                f"The Eventstream '{ids.EVENTSTREAM}' in this workspace is at compatibility level {have}. The repository needs {want}, "
+                "and Fabric cannot upgrade an Eventstream in place. Nothing was published. Delete that one Eventstream in the Fabric "
+                "portal (its data is only the live event feed) and run the 'core' step again, or deploy to a new workspace. See docs/fabric-deployment.md.")
+
     def core(self) -> None:
         types = stage.CORE_TYPES
         if self.dry_run:
-            self.say(f"Would deploy {types} with fabric-cicd to workspace {self.workspace_id}.")
+            self.say(f"Would check the Eventstream compatibility level, then deploy {types} with fabric-cicd to workspace {self.workspace_id}.")
             return
+        self.check_eventstream_level()
         self.say(f"Deploying {types} with fabric-cicd.")
         config = self._write_config("core", types, core_parameters(self.cfg.environment, self.cfg.run.as_of))
         if not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):

@@ -6,7 +6,7 @@ import yaml
 
 from conftest import REPO
 from hbfabric import config as cfgmod
-from hbfabric import deploy, ids, onelake, stage
+from hbfabric import deploy, ids, onelake, payloads, stage
 from hbfabric.api import FabricClient, FabricError
 
 EXAMPLE = REPO / "fabric" / "config" / "fabric.config.example.yml"
@@ -172,6 +172,53 @@ def test_as_of_reaches_notebook_06_and_the_pipeline_run_and_replaces_the_pipelin
     d.pipeline()
     out = capsys.readouterr().out
     assert "'cutoff_at': ''" in out and "'as_of': '2026-10-16T09:00:00Z'" in out
+
+
+# ---------------------------------------------------------------- Eventstream compatibility level
+
+def _core_with_live_eventstream(tmp_path, topology, published):
+    ws = "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"
+    session = FakeSession([
+        (("GET", f"/v1/workspaces/{ws}/items"), Resp(body={"value": [{"id": "es-1", "type": "Eventstream", "displayName": ids.EVENTSTREAM}]})),
+        (("GET", "/eventstreams/es-1/topology"), Resp(body=topology)),
+    ])
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": ws})
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session), build_dir=tmp_path / "b",
+                        cicd=lambda config: published.append(config))
+    d.workspace_id = ws
+    d.prepare()
+    return d, session
+
+
+def test_level_helpers_read_both_spellings_and_the_repository_file(tmp_path):
+    assert payloads.level_key("1.1") == payloads.level_key("Compat_1_1") == (1, 1) and payloads.level_key("1.0") < payloads.level_key("1.1")
+    assert payloads.level_key("") == (0,)
+    es = tmp_path / "x.Eventstream"
+    es.mkdir()
+    (es / "eventstream.json").write_text('{"compatibilityLevel": "1.1"}', encoding="utf-8")
+    assert payloads.eventstream_level(tmp_path) == "1.1" and payloads.eventstream_level(tmp_path / "none") == ""
+
+
+def test_core_stops_before_publishing_when_the_live_eventstream_is_at_1_0(tmp_path):
+    published = []
+    d, session = _core_with_live_eventstream(tmp_path, {"sources": [], "compatibilityLevel": "1.0"}, published)
+    with pytest.raises(FabricError, match=r"compatibility level 1\.0.*cannot upgrade an Eventstream in place.*Nothing was published"):
+        d.core()
+    assert published == [] and all(m == "GET" for m, _, _ in session.calls)  # nothing changed in the workspace
+
+
+def test_core_goes_on_when_the_live_eventstream_is_at_1_1_or_does_not_exist_or_reports_no_level(tmp_path):
+    for topology in ({"compatibilityLevel": "1.1"}, {"compatibilityLevel": "Compat_1_1"}, {"sources": []}):
+        published = []
+        d, _ = _core_with_live_eventstream(tmp_path, topology, published)
+        d.client.find_item = lambda ws, t, n: {"id": "es-1"} if t == "Eventstream" else {"id": "x"}  # other items already exist
+        d.core()
+        assert published, topology
+    published = []
+    d, _ = _core_with_live_eventstream(tmp_path, {"compatibilityLevel": "1.0"}, published)
+    d.client.find_item = lambda ws, t, n: None if t == "Eventstream" else {"id": "x"}  # a fresh workspace has no Eventstream
+    d.core()
+    assert published
 
 
 # ---------------------------------------------------------------- dry-run and apply order
