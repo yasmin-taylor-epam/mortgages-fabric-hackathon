@@ -328,9 +328,16 @@ class Deployer(ExtraSteps):
         self.refresh_endpoint()
         if self.dry_run:
             self.say(f"Would deploy {types} with fabric-cicd. Placeholders in expressions.tmdl get the SQL endpoint of {ids.LAKEHOUSE}.")
+            self.say(f"Would then refresh the semantic model '{ids.SEMANTIC_MODEL}' so that it is framed on the Delta tables.")
             return
         self.say(f"Deploying {types} with fabric-cicd.")
         self.cicd(self._write_config("model", types, model_parameters(self.cfg.environment)))
+        model = self.client.find_item(self.workspace_id, "SemanticModel", ids.SEMANTIC_MODEL)
+        if not model:
+            raise FabricError(f"Semantic model '{ids.SEMANTIC_MODEL}' not found after the publish.")
+        self.say("Refreshing the semantic model (frames Direct Lake on the Delta tables) ...")
+        self.client.refresh_semantic_model(self.workspace_id, model["id"])
+        self.say("  Semantic model refresh completed.")
 
     def labels(self) -> None:
         if not self.cfg.sensitivity_label_id:
