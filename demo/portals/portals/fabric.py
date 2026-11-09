@@ -75,7 +75,7 @@ class Fabric:
             if self._ready:
                 return self
             token = self.credential.get_token(SCOPE)
-            check_account(_token_account(token.token))
+            check_account(_token_account(token.token), self.settings.allow_lab_account)
             ws = self.client.find_workspace(self.settings.workspace_name)
             if not ws:
                 raise FabricError(f"You cannot see a workspace named '{self.settings.workspace_name}'.")

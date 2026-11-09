@@ -14,8 +14,8 @@ PORTALS_DIR = Path(__file__).resolve().parents[1]
 REPO = PORTALS_DIR.parents[1]
 LOCAL_CONFIG = PORTALS_DIR / "config.local.yml"
 
-# The shared sandbox account of a teammate must never be used by these portals.
-FORBIDDEN_ACCOUNT_MARKERS = ("odl_user", "sandboxailabs")
+# Shared hackathon lab accounts are refused unless config.local.yml sets allow_lab_account: true.
+LAB_ACCOUNT_MARKERS = ("odl_user", "sandboxailabs")
 
 
 @dataclass
@@ -31,6 +31,7 @@ class Settings:
     tenant_id: str = ""
     auth: str = "interactive"  # interactive | device | azcli
     login_hint: str = ""
+    allow_lab_account: bool = False  # true only when the hackathon lab account is the account that owns the workspace
     demo_start: str = "2026-10-16T09:00:00Z"  # the synthetic data ends on 15 Oct 2026. The demo clock starts after it
     demo_step_minutes: int = 60  # each event the customer portal sends moves the demo clock on by this much
     cache_seconds: int = 15
@@ -47,9 +48,12 @@ class Settings:
         return REPO / self.policy_file
 
 
-def check_account(name: str | None) -> None:
-    if name and any(m in name.lower() for m in FORBIDDEN_ACCOUNT_MARKERS):
-        raise SystemExit(f"Sign-in account '{name}' is a shared sandbox account. Use your own account.")
+def check_account(name: str | None, allow_lab_account: bool = False) -> None:
+    if allow_lab_account:
+        return
+    if name and any(m in name.lower() for m in LAB_ACCOUNT_MARKERS):
+        raise SystemExit(f"Sign-in account '{name}' is a shared lab account. Use your own account, "
+                         "or set allow_lab_account: true in config.local.yml if the lab account owns the workspace.")
 
 
 def load(path: Path | None = None) -> Settings:
@@ -63,5 +67,5 @@ def load(path: Path | None = None) -> Settings:
     if "personas" in data:
         data["personas"] = [Persona(**p) for p in data["personas"]]
     settings = Settings(**data)
-    check_account(settings.login_hint)
+    check_account(settings.login_hint, settings.allow_lab_account)
     return settings

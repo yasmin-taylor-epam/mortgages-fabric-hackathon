@@ -5,7 +5,9 @@
 workspace_name: azure-mafia-branch-luke
 tenant_id: ""            # the Entra tenant ID of the Fabric workspace
 auth: interactive        # interactive (browser pop-up) | device (code on screen) | azcli (az login)
-login_hint: ""           # your own account, for example you@example.com. Never a shared sandbox account.
+login_hint: ""           # optional. Leave blank to pick the account in the browser window.
+allow_lab_account: false # true only if the hackathon lab account (odl_user_...) owns the workspace.
+                         # You still sign in yourself in the browser. Never write its password anywhere.
 
 # The synthetic data ends on 15 Oct 2026. The demo clock starts after it, not on today's real date.
 demo_start: "2026-10-16T09:00:00Z"

@@ -26,7 +26,7 @@ From the repository root, with the repository virtual environment:
 
 ```powershell
 .\.venv\Scripts\python -m pip install -r demo\portals\requirements.txt
-Copy-Item demo\portals\config.example.yml demo\portals\config.local.yml   # then fill in tenant_id and login_hint
+Copy-Item demo\portals\config.example.yml demo\portals\config.local.yml   # then change what you need
 $env:PYTHONPATH = "demo\portals"
 .\.venv\Scripts\python -m portals            # live: reads and writes Fabric
 .\.venv\Scripts\python -m portals --offline  # rehearsal: local files only
@@ -36,7 +36,9 @@ Open http://127.0.0.1:8360/. The server listens on this laptop only.
 
 ### Live mode
 
-- Sign in with **your own** Microsoft account. The app refuses the shared sandbox account.
+- You sign in yourself in a browser window. The app never asks for, stores or fills in a user name or password.
+- By default the app refuses the shared hackathon lab account (`odl_user_...`). If that lab account owns the
+  workspace, set `allow_lab_account: true` in `config.local.yml`. Only do this on your own laptop.
 - The account needs a Fabric licence and access to the workspace in `config.local.yml`.
 - `config.local.yml` holds no secret. Git ignores it anyway.
 - The Eventstream connection string is read from Fabric at start-up. It stays in memory. It is never written to disk.

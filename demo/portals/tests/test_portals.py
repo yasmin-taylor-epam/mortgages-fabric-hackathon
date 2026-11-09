@@ -109,3 +109,19 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     assert len(cases) == 1
     sent = client.get(f"/customer/sent/{eid}?again=1").text
     assert "second time" in sent
+
+
+def test_lab_account_blocked_unless_allowed():
+    with pytest.raises(SystemExit):
+        config.check_account("odl_user_1@sandboxailabs1.onmicrosoft.com")
+    config.check_account("odl_user_1@sandboxailabs1.onmicrosoft.com", allow_lab_account=True)
+    config.check_account("someone@example.com")
+
+
+def test_load_reads_allow_lab_account(tmp_path):
+    path = tmp_path / "config.local.yml"
+    path.write_text("login_hint: odl_user_1@sandboxailabs1.onmicrosoft.com\n", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        config.load(path)
+    path.write_text("login_hint: odl_user_1@sandboxailabs1.onmicrosoft.com\nallow_lab_account: true\n", encoding="utf-8")
+    assert config.load(path).allow_lab_account is True
