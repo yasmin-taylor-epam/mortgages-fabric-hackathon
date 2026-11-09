@@ -81,7 +81,7 @@ class Fabric:
                 raise FabricError(f"You cannot see a workspace named '{self.settings.workspace_name}'.")
             self.workspace_id = ws["id"]
             wanted = {("Lakehouse", ids.LAKEHOUSE), ("Eventhouse", ids.EVENTHOUSE), ("KQLDatabase", ids.KQL_DATABASE),
-                      ("Eventstream", ids.EVENTSTREAM), ("Report", ids.SEMANTIC_MODEL), ("Notebook", self.settings.notebook_name),
+                      ("Eventstream", self.settings.eventstream_name), ("Report", ids.SEMANTIC_MODEL), ("Notebook", self.settings.notebook_name),
                       ("DataPipeline", ids.PIPELINE_SCORING), ("SemanticModel", ids.SEMANTIC_MODEL)}
             for it in self.client.list_items(self.workspace_id):
                 if (it.get("type"), it.get("displayName")) in wanted:
@@ -151,7 +151,7 @@ class Fabric:
             self.connect()
             es = self.items.get("Eventstream")
             if not es:
-                raise FabricError("The workspace has no Eventstream named HomeBridgeRiskEvents.")
+                raise FabricError(f"The workspace has no Eventstream named {self.settings.eventstream_name}.")
             sources = [s for s in self.client.eventstream_topology(self.workspace_id, es.id).get("sources", [])
                        if s.get("type") == "CustomEndpoint"]
             if not sources:

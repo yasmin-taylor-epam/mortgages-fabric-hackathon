@@ -16,3 +16,6 @@ demo_step_minutes: 60
 cache_seconds: 15
 policy_file: action/policy/routing-policy.candidate.json
 notebook_name: 07_route_review_cases
+# The Eventstream that receives the portal's events. HomeBridgeRiskEventsV2 is the item with the direct-ingestion
+# destination (compatibility level 1.1). The older HomeBridgeRiskEvents item cannot deliver to the Eventhouse.
+eventstream_name: HomeBridgeRiskEventsV2

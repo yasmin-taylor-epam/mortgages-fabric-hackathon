@@ -48,7 +48,7 @@
       <label><input type="checkbox" name="fault"> Make the renewal website fail (sends error SYS-503, a checked software fault)</label>
     </details>
   </form>
-  <p class="small">Sends to: {% if offline %}the local Eventhouse copy (offline preview){% else %}Fabric Eventstream HomeBridgeRiskEvents{% if links.eventstream %} · <a href="{{ links.eventstream }}" target="_blank" rel="noopener">open in Fabric</a>{% endif %}{% endif %}.
+  <p class="small">Sends to: {% if offline %}the local Eventhouse copy (offline preview){% else %}Fabric Eventstream {{ settings.eventstream_name }}{% if links.eventstream %} · <a href="{{ links.eventstream }}" target="_blank" rel="noopener">open in Fabric</a>{% endif %}{% endif %}.
   The event time is the demo clock, which starts on {{ settings.demo_start[:10] }} because the synthetic data ends on 15 Oct 2026.</p>
 </section>
 {% endblock %}

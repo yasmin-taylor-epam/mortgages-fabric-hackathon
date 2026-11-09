@@ -10,7 +10,7 @@ Fabric stays the system of record. The apps keep no copy of the data. Each page 
 ## How the parts fit
 
 ```
-Customer website ──event──▶ Eventstream HomeBridgeRiskEvents ──▶ Eventhouse RawEvents / ServiceEvents()
+Customer website ──event──▶ Eventstream (eventstream_name) ──▶ Eventhouse RawEvents / ServiceEvents()
                                                                      │
 Adviser portal "Process new events" ──starts──▶ Notebook 07_route_review_cases
                                                                      │ routing rules (action/policy)
@@ -42,6 +42,11 @@ Open http://127.0.0.1:8360/. The server listens on this laptop only.
 - The account needs a Fabric licence and access to the workspace in `config.local.yml`.
 - `config.local.yml` holds no secret. Git ignores it anyway.
 - The Eventstream connection string is read from Fabric at start-up. It stays in memory. It is never written to disk.
+- `eventstream_name` names the Eventstream the customer website sends to. In the workspace `azure-mafia-branch-luke`
+  use `HomeBridgeRiskEventsV2`. That item uses direct ingestion into the Eventhouse (compatibility level 1.1).
+  The older `HomeBridgeRiskEvents` item is at level 1.0. Fabric cannot upgrade it, and its destination does not deliver.
+  The same applies to `python -m hbdata replay --target eventstream`: set `HB_EVENTSTREAM_CONNECTION` and
+  `HB_EVENTSTREAM_NAME` from the V2 item's custom endpoint (in the Fabric portal), in your shell only.
 - Before the first live demo, notebook 07 must exist in the workspace (`python scripts/fabric/deploy.py`, see `docs/fabric-deployment.md`).
 
 ### Offline mode

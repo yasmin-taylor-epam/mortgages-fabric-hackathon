@@ -37,6 +37,7 @@ class Settings:
     cache_seconds: int = 15
     policy_file: str = "action/policy/routing-policy.candidate.json"
     notebook_name: str = "07_route_review_cases"
+    eventstream_name: str = "HomeBridgeRiskEvents"
     personas: list[Persona] = field(default_factory=lambda: [
         Persona("HB-M-900001", "Alex", "Renewal stuck at documents received. Asks for payment help."),
         Persona("HB-M-003121", "Customer HB-M-003121", "High risk. Renewal case for adviser ADV-027."),

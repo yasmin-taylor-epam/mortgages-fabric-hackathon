@@ -52,7 +52,7 @@
   <h2>Open the Fabric items</h2>
   <ul class="links">
     {% for key, label in [('lakehouse', 'Lakehouse HomeBridgeLakehouse'), ('eventhouse', 'Eventhouse HomeBridgeEventhouse'), ('kql', 'KQL database HomeBridgeEvents'),
-                          ('eventstream', 'Eventstream HomeBridgeRiskEvents'), ('notebook', 'Notebook 07_route_review_cases'), ('pipeline', 'Pipeline pl_scheduled_scoring'), ('report', 'Power BI report HomeBridgeMortgage')] %}
+                          ('eventstream', 'Eventstream ' ~ settings.eventstream_name), ('notebook', 'Notebook 07_route_review_cases'), ('pipeline', 'Pipeline pl_scheduled_scoring'), ('report', 'Power BI report HomeBridgeMortgage')] %}
       {% if links.get(key) %}<li><a href="{{ links[key] }}" target="_blank" rel="noopener">{{ label }} ↗</a></li>{% endif %}
     {% endfor %}
   </ul>
