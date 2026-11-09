@@ -129,6 +129,16 @@ class FabricClient:
         data = {"parameters": dict(params)} if params else None
         return self.run_job(workspace_id, item_id, "Pipeline", data, timeout_minutes)
 
+    # ----- SQL analytics endpoint
+    def refresh_sql_endpoint(self, workspace_id: str, sql_endpoint_id: str, timeout_minutes: int = 15) -> list[dict]:
+        """Sync the SQL analytics endpoint with the Delta tables. Returns one status row per table."""
+        resp = self.request("POST", f"/v1/workspaces/{workspace_id}/sqlEndpoints/{sql_endpoint_id}/refreshMetadata",
+                            json={"timeout": f"00:{timeout_minutes:02d}:00"})
+        body = self.wait_operation(resp, poll_seconds=10, timeout_seconds=timeout_minutes * 60 + 60)
+        if resp.status_code == 202:
+            body = self.request("GET", f"{resp.headers['Location'].rstrip('/')}/result").json()
+        return body.get("value", [])
+
     # ----- labels
     def set_labels(self, label_id: str, items: list[dict]) -> list[dict]:
         body = {"items": [{"id": i["id"], "type": i["type"]} for i in items], "labelId": label_id, "assignmentMethod": "Standard"}

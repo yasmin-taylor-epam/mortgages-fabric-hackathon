@@ -304,8 +304,28 @@ class Deployer(ExtraSteps):
         self.client.run_pipeline(self.workspace_id, p["id"], params, self.cfg.run.notebook_timeout_minutes)
         self._run_notebooks([("06_publish_delta_tables", {})])
 
+    def refresh_endpoint(self) -> None:
+        """Sync the Lakehouse SQL analytics endpoint with the Delta tables that the notebooks just wrote.
+
+        Without this, the endpoint can lag behind new tables. The Direct Lake model then fails with
+        "Invalid object name 'dbo.mortgage'" (seen on 6 Nov 2026 after the first deploy).
+        """
+        if self.dry_run:
+            self.say(f"Would refresh the SQL analytics endpoint of {ids.LAKEHOUSE} so that it sees the Delta tables.")
+            return
+        ep = self.client.find_item(self.workspace_id, "SQLEndpoint", ids.LAKEHOUSE)
+        if not ep:
+            raise FabricError(f"SQL analytics endpoint of '{ids.LAKEHOUSE}' not found. Run the 'core' step first.")
+        self.say("Refreshing the SQL analytics endpoint ...")
+        rows = self.client.refresh_sql_endpoint(self.workspace_id, ep["id"])
+        failed = [r for r in rows if r.get("status") == "Failure"]
+        if failed:
+            raise FabricError("The SQL endpoint could not sync: " + "; ".join(f"{r.get('tableName')}: {(r.get('error') or {}).get('errorCode', 'Failure')}" for r in failed))
+        self.say(f"  SQL endpoint refresh done for {len(rows)} table(s).")
+
     def model(self) -> None:
         types = stage.MODEL_TYPES
+        self.refresh_endpoint()
         if self.dry_run:
             self.say(f"Would deploy {types} with fabric-cicd. Placeholders in expressions.tmdl get the SQL endpoint of {ids.LAKEHOUSE}.")
             return

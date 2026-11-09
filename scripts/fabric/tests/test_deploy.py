@@ -144,7 +144,7 @@ def test_apply_runs_the_steps_in_order(tmp_path):
     session = FakeSession([
         (("POST", "/jobs/instances"), Resp(202, headers={"Location": "https://api.fabric.microsoft.com/job/1", "Retry-After": "0"})),
         (("GET", "/items"), Resp(body={"value": [{"id": f"id-{n}", "type": t, "displayName": n} for n, t in
-                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline"), (ids.KQL_DATABASE, "KQLDatabase")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
+                                              [(ids.LAKEHOUSE, "Lakehouse"), (ids.PIPELINE_SCORING, "DataPipeline"), (ids.KQL_DATABASE, "KQLDatabase")] + [(ids.LAKEHOUSE, "SQLEndpoint")] + [(x, "Notebook") for x in ids.NOTEBOOKS]]})),
         (("GET", "/v1/workspaces"), Resp(body={"value": []})),
         (("GET", "/v1/capacities"), Resp(body={"value": [{"displayName": "cap", "id": "cccccccc-0000-1111-2222-bbbbbbbbbbbb"}]})),
         (("POST", "/v1/workspaces"), Resp(201, {"id": "wwwwwwww-0000-1111-2222-bbbbbbbbbbbb"})),
@@ -213,3 +213,53 @@ def test_a_missing_item_reports_which_step_to_run(tmp_path):
 def test_cli_validate_needs_no_config_and_no_sign_in(capsys):
     assert deploy.main(["--validate", "--config", str(REPO / "does-not-exist.yml")]) == 0
     assert "Nothing was sent to Fabric" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- SQL endpoint refresh before the model
+
+SQLE = (("GET", "/items"), Resp(body={"value": [{"id": "sqle-1", "type": "SQLEndpoint", "displayName": ids.LAKEHOUSE}]}))
+
+
+def _model_deployer(tmp_path, routes, dry_run=False):
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"})
+    session = FakeSession(routes)
+    lines, cicd = [], []
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session, sleep=lambda s: None),
+                        dry_run=dry_run, log=lines.append, build_dir=tmp_path / "b", cicd=lambda p: cicd.append(p), env={})
+    d.workspace_id = cfg.workspace_id
+    d.prepare()
+    return d, session, lines, cicd
+
+
+def test_model_step_refreshes_the_sql_endpoint_before_it_publishes(tmp_path):
+    routes = [SQLE, (("POST", "/sqlEndpoints/sqle-1/refreshMetadata"), Resp(200, {"value": [{"tableName": "mortgage", "status": "Success"}, {"tableName": "payment", "status": "NotRun"}]}))]
+    d, s, lines, cicd = _model_deployer(tmp_path, routes)
+    order = []
+    d.cicd = lambda p: order.append(("publish", [c[1] for c in s.calls if c[0] == "POST"]))
+    d.model()
+    assert order and order[0][1][0].endswith("/sqlEndpoints/sqle-1/refreshMetadata")
+    assert any("refresh done for 2 table" in x for x in lines)
+
+
+def test_model_step_follows_a_long_running_refresh(tmp_path):
+    routes = [SQLE,
+              (("POST", "/refreshMetadata"), Resp(202, headers={"Location": "https://api.fabric.microsoft.com/v1/operations/op1", "Retry-After": "0"})),
+              (("GET", "/operations/op1/result"), Resp(body={"value": [{"tableName": "mortgage", "status": "Success"}]})),
+              (("GET", "/operations/op1"), Resp(body={"status": "Succeeded"}))]
+    d, s, lines, cicd = _model_deployer(tmp_path, routes)
+    d.model()
+    assert len(cicd) == 1 and any("done for 1 table" in x for x in lines)
+
+
+def test_model_step_stops_when_the_endpoint_cannot_sync(tmp_path):
+    routes = [SQLE, (("POST", "/refreshMetadata"), Resp(200, {"value": [{"tableName": "mortgage", "status": "Failure", "error": {"errorCode": "SomeError"}}]}))]
+    d, _, _, cicd = _model_deployer(tmp_path, routes)
+    with pytest.raises(FabricError, match="mortgage: SomeError"):
+        d.model()
+    assert cicd == []
+
+
+def test_model_step_dry_run_does_not_refresh(tmp_path):
+    d, s, lines, cicd = _model_deployer(tmp_path, [], dry_run=True)
+    d.model()
+    assert s.calls == [] and cicd == [] and any("Would refresh the SQL analytics endpoint" in x for x in lines)
