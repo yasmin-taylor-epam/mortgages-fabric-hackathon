@@ -14,7 +14,11 @@
 | `request_status` dropped an application with no matching "entered" row. | It uses a left join. Days at stage is blank for such a row. |
 | The scoring pipeline had no retry on the snapshot and scoring notebooks. | One retry on each. The count is a placeholder. |
 | The replay sent all events in one Event Hub batch. | It sends in order, in as many batches as the size limit needs. |
-| The Eventstream destination used processed ingestion, which needs streaming ingestion. The deploy turns streaming off on purpose. | The destination uses direct (queued) ingestion. See `docs/fabric-deployment.md`. |
+| The Eventstream destination used processed ingestion, which needs streaming ingestion. The deploy turns streaming off on purpose. | **Not fixed.** The repository definition now uses direct ingestion, but a live test on 9 November 2026 showed that Fabric rejected it (see below). |
+
+## Open: the Eventstream destination is a manual portal step
+
+Live results on 9 November 2026: the processed-ingestion destination failed; direct ingestion with the Eventhouse `itemId` failed at compatibility levels 1.0 and 1.1 (`UnsupportedArtifactType`, "is of type 'KustoEventHouse'"); direct ingestion with the KQL database `itemId` gave a "Warning" and no rows. Fabric also cannot upgrade an Eventstream from 1.0 to 1.1 in place. So no definition in this repository delivers events yet. Until a portal setup is proven, treat the destination as a manual step. The steps are in `docs/fabric-deployment.md`, section "Eventstream destination: portal steps (proposed, untested)". The proposed fix is not proven.
 
 ## Kept on purpose (safety and data-quality rules)
 
