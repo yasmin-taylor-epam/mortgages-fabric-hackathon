@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS account_scores (
     score          DOUBLE NOT NULL,
     scored_at      TIMESTAMP NOT NULL,
     cutoff_at      TIMESTAMP NOT NULL,
+    priority_rank  INTEGER,   -- review queue order among accounts at or above the threshold. NULL below it and in runs before the rank
     PRIMARY KEY (account_key, run_id)
 );
 

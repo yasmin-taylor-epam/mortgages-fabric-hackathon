@@ -24,6 +24,7 @@
     "cutoff_at": {"type": "string", "format": "date-time"},
     "target": {"const": "confirmed_external_refinancing"},
     "score": {"type": "number", "minimum": 0, "maximum": 1},
-    "evidence_ids": {"type": "array", "items": {"type": "string"}}
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "priority_rank": {"type": "integer", "minimum": 1, "description": "Optional. Position of this account among the accounts at or above the alert threshold in this run. 1 = highest score. Ties go to the lower mortgage_id, then cycle_id. It orders the review queue. It never suppresses an alert. Missing below the threshold."}
   }
 }

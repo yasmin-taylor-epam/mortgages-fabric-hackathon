@@ -141,6 +141,8 @@ class CaseWriter:
             case.cluster_model_version = candidate.cluster_model_version
             case.run_id = candidate.run_id
             case.snapshot_id = candidate.snapshot_id
+            if family == ActionFamily.RENEWAL:  # a support case from a risk event does not enter the renewal queue
+                case.priority_rank = candidate.priority_rank
         return case
 
 

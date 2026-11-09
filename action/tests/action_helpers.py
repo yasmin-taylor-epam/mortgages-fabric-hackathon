@@ -24,12 +24,12 @@ def make_context(mortgage_id="MTG-1", cycle_id="CYC-1", identity="ok", support="
 
 
 def make_risk(event_id="EVT-R-1", mortgage_id="MTG-1", cycle_id="CYC-1", score=0.8, run_id="RUN-OK",
-              scored_at=NOW - timedelta(minutes=30), evidence=("EV-1",)):
+              scored_at=NOW - timedelta(minutes=30), evidence=("EV-1",), priority_rank=None):
     return RiskUpdated(
         event_id=event_id, mortgage_id=mortgage_id, cycle_id=cycle_id, run_id=run_id, snapshot_id="SNP-1",
         model_version="clf-test", cluster_model_version="clu-test", segment_id="SEG-1", scored_at=scored_at,
         cutoff_at=scored_at - timedelta(minutes=5), target="confirmed_external_refinancing", score=score,
-        evidence_ids=tuple(evidence), ingested_at=scored_at + timedelta(minutes=1),
+        evidence_ids=tuple(evidence), ingested_at=scored_at + timedelta(minutes=1), priority_rank=priority_rank,
     )
 
 

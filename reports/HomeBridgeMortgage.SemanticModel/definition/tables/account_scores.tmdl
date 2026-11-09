@@ -49,6 +49,27 @@ table account_scores
 		summarizeBy: none
 		sourceColumn: cutoff_at
 
+	/// Review queue order among the accounts at or above the alert threshold in this run. 1 = work first. Blank below the threshold and in runs before the rank existed.
+	column priority_rank
+		dataType: int64
+		formatString: 0
+		summarizeBy: none
+		sourceColumn: priority_rank
+
+	/// Alerts raised by the latest completed run: every account at or above the threshold. Each one has a priority rank.
+	measure 'Alerts In Latest Run' =
+			VAR _done = FILTER ( score_runs, score_runs[status] = "completed" )
+			VAR _last = MAXX ( _done, score_runs[completed_at] )
+			VAR _run = MAXX ( FILTER ( _done, score_runs[completed_at] = _last ), score_runs[run_id] )
+			RETURN
+			    CALCULATE (
+			        COUNTROWS ( account_scores ),
+			        account_scores[run_id] = _run,
+			        NOT ISBLANK ( account_scores[priority_rank] )
+			    )
+		formatString: 0
+		displayFolder: Scores
+
 	partition account_scores = entity
 		mode: directLake
 		source

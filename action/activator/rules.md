@@ -39,6 +39,7 @@ Activator passes these fields to the flow. Names match `../contracts/consumer-co
 | `occurred_at`, `ingested_at` | yes | `ingested_at` |
 | `run_id`, `snapshot_id`, `model_version`, `cluster_model_version`, `segment_id` | — | yes |
 | `scored_at`, `cutoff_at`, `target`, `score` | — | yes |
+| `priority_rank` | — | yes (optional). Orders the review queue. It does not filter. |
 | `evidence_ids` | yes | yes |
 
 ## Rules
