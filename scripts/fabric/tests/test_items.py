@@ -87,9 +87,10 @@ def test_eventstream_routes_to_the_landing_table_of_the_kql_database():
     node = doc["destinations"][0]
     dest = node["properties"]
     # Direct (queued) ingestion: the processed mode needs streaming ingestion, which the deploy turns off on purpose.
-    assert dest["dataIngestionMode"] == "DirectIngestion" and doc["compatibilityLevel"] == "1.0"  # the live item kept 1.0
-    # Fabric refused the Eventhouse item here ("is not a database artifact. It is of type 'KustoEventHouse'").
-    assert dest["itemId"] == ids.logical_id("KQLDatabase", ids.KQL_DATABASE)
+    # The pair is needed. At 1.0, an Eventhouse itemId fails ("is not a database artifact. It is of type 'KustoEventHouse'")
+    # and a KQL database itemId gives a silent "Warning" with no data. At 1.1, direct mode takes the Eventhouse item.
+    assert dest["dataIngestionMode"] == "DirectIngestion" and doc["compatibilityLevel"] == "1.1"
+    assert dest["itemId"] == ids.logical_id("Eventhouse", ids.EVENTHOUSE)
     assert dest["tableName"] == "RawEventsLanding" and dest["mappingRuleName"] == "RawEventsLanding_json"
     assert len(dest["connectionName"]) <= 40 and "databaseName" not in dest
     # Fabric refuses to change the type of an existing node (KustoPushMode to KustoPullMode), so the node has a new name.
