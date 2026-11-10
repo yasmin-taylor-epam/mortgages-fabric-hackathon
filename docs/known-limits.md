@@ -26,6 +26,10 @@ The portal flow worked once on a new Eventstream: delete a broken API-made desti
 
 Still open: whether a redeploy removes the destination, and whether the flow works a second time.
 
+## Open: "latest run" is chosen by completed_at
+
+Notebook 07 (`latest_completed_run`) and the report measures pick the latest completed run by its `completed_at` or `scored_at`. A run that uses the as-of date (16 October 2026) has an earlier time than older runs that used the real clock (5 and 9 November). So after the first as-of run on a workspace with real-clock runs, the old run still looks "latest". On 10 November 2026 this was fixed by hand: the three old runs got new times just after their own cutoff (15 October 00:16 to 00:18), by timestamp updates only, with backups. Nothing was deleted. For a fresh workspace, run everything with `run.as_of` set from the start. Do not mix real-clock and as-of runs. A code fix (order by `cutoff_at` first) was not made.
+
 ## Kept on purpose (safety and data-quality rules)
 
 These are rules INV-1 to INV-6 and cases T01 to T07 in `site/index.html`. Do not weaken them.
