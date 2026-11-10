@@ -13,6 +13,14 @@ Events are processed in arrival order (published_at or ingested_at). The case wr
 published_at for a risk_updated event (the 24-hour freshness rule uses it), occurred_at for a service event (so a
 case opened by a demo event shows the demo time). So the result does not depend on when the notebook runs, and a
 rerun gives the same cases. Older scoring runs are left out: the latest completed run is the current score.
+
+Open faults only: a verified portal fault opens a technical case only if the fault is still unresolved at the as-of
+time (`open_faults`). The replayed history holds faults from more than a year ago that the customer got past. The
+router cannot judge this itself, because its clock is each event's own time. Faults that are left out still get a
+decision row (outcome no_case), so the reason stays visible.
+
+`before` keeps only events that happened before a given time. Notebook 07 uses it to build a baseline without the
+live demo events.
 All data is synthetic.
 """
 from __future__ import annotations
@@ -38,11 +46,98 @@ DECISION_COLUMNS = [
     "created", "routed_at",
 ]
 TIMESTAMP_COLUMNS = ["case_created_at", "alert_received_at", "ingested_at", "scored_at", "routed_at"]
+STEP_COLUMNS = ["application_id", "occurred_at", "status"]
+
+FAULT_EVENT = "portal_fault_verified"
+PROGRESS_STATUSES = frozenset({"in_progress", "completed"})  # the customer got further after the fault
+CLOSED_STATUSES = frozenset({"completed", "abandoned", "rejected"})  # the application is over
+# Reasons on the decision rows of faults that open no case
+FAULT_RECOVERED, APPLICATION_CLOSED, DEAL_ENDED = "fault_recovered", "application_closed", "deal_ended"
 
 
 def _utc(value: Any) -> pd.Timestamp:
     ts = pd.Timestamp(value)
     return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+
+
+def _evidence(event: dict) -> list:
+    ids = event.get("evidence_ids") or []
+    return json.loads(ids) if isinstance(ids, str) else list(ids)
+
+
+def before(rows: Iterable[dict], events_before: Any) -> list[dict]:
+    """Rows whose occurred_at is strictly before `events_before`. None or empty text keeps every row.
+
+    It uses occurred_at, not ingested_at: the replayed history arrived on the real clock, after the demo time."""
+    rows = list(rows)
+    if events_before is None or (isinstance(events_before, str) and not events_before.strip()):
+        return rows
+    cut = _utc(events_before)
+    return [r for r in rows if _utc(r["occurred_at"]) < cut]
+
+
+def transfer_steps(rows: Iterable[dict]) -> pd.DataFrame:
+    """Renewal steps (transfer_request_event rows) as application_id, occurred_at, status.
+
+    A row may carry `status` itself (a KQL projection) or a `payload` (JSON text or a dict) that holds it."""
+    out = []
+    for row in rows:
+        status = row.get("status")
+        if status is None:
+            payload = row.get("payload") or {}
+            payload = json.loads(payload) if isinstance(payload, str) else payload
+            status = payload.get("status")
+        out.append({"application_id": str(row["application_id"]), "occurred_at": _utc(row["occurred_at"]),
+                    "status": status})
+    return pd.DataFrame(out, columns=STEP_COLUMNS)
+
+
+def deal_ends(context: pd.DataFrame) -> dict[tuple[str, str], pd.Timestamp]:
+    """deal_end_at by (mortgage_id, cycle_id), from the account context."""
+    if "deal_end_at" not in context.columns:
+        return {}
+    return {(str(m), str(c)): _utc(d) for m, c, d in zip(context["mortgage_id"], context["cycle_id"], context["deal_end_at"])
+            if pd.notna(d)}
+
+
+def open_faults(service_rows: Iterable[dict], steps: pd.DataFrame, ends: dict[tuple[str, str], pd.Timestamp],
+                as_of: Any) -> tuple[list[dict], list[dict]]:
+    """Keep a verified portal fault only if it is still unresolved at `as_of`. Return (kept rows, left-out rows).
+
+    Faults are judged per mortgage and deal cycle (the technical case key), by the latest fault and its application:
+    - fault_recovered: a later step on the same application went on (in_progress or completed);
+    - application_closed: the application's latest step is completed, abandoned or rejected;
+    - deal_ended: the deal ended on or before `as_of`.
+    Otherwise every fault of that key is kept, and the case writer opens one technical case. Other service events
+    pass through unchanged. A fault with no account context passes through, so the router quarantines it."""
+    rows = [dict(r) for r in service_rows]
+    as_of = _utc(as_of)
+    faults: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        if r.get("event_type") == FAULT_EVENT:
+            faults.setdefault((str(r["mortgage_id"]), str(r.get("cycle_id"))), []).append(r)
+    steps = steps if steps is not None else pd.DataFrame(columns=STEP_COLUMNS)
+    by_app = {app: g.sort_values("occurred_at") for app, g in steps.groupby("application_id")} if len(steps) else {}
+    reasons: dict[tuple[str, str], str] = {}
+    for key, items in faults.items():
+        last = max(items, key=lambda r: (_utc(r["occurred_at"]), str(r["event_id"])))
+        at, ids = _utc(last["occurred_at"]), _evidence(last)
+        app = by_app.get(str(ids[1])) if len(ids) > 1 else None
+        if app is not None and ((app["occurred_at"] > at) & app["status"].isin(PROGRESS_STATUSES)).any():
+            reasons[key] = FAULT_RECOVERED
+        elif app is not None and app.iloc[-1]["status"] in CLOSED_STATUSES:
+            reasons[key] = APPLICATION_CLOSED
+        elif key in ends and ends[key] <= as_of:
+            reasons[key] = DEAL_ENDED
+    kept, left_out = [], []
+    for r in rows:
+        key = (str(r["mortgage_id"]), str(r.get("cycle_id")))
+        if r.get("event_type") == FAULT_EVENT and key in reasons:
+            left_out.append({"event_id": str(r["event_id"]), "event_type": FAULT_EVENT, "mortgage_id": key[0],
+                             "cycle_id": key[1], "arrived_at": _utc(r["ingested_at"]), "reason": reasons[key]})
+        else:
+            kept.append(r)
+    return kept, left_out
 
 
 def latest_completed_run(score_runs: pd.DataFrame) -> Optional[str]:
@@ -88,8 +183,11 @@ def contexts(context: pd.DataFrame) -> dict[tuple[str, str], AccountContext]:
 
 
 def route(accounts: dict[tuple[str, str], AccountContext], candidates: list[tuple[pd.Timestamp, str, dict]],
-          runs: dict[str, str], policy: RoutingPolicy, routed_at: Any) -> dict[str, Any]:
-    """Run every candidate through the case writer in arrival order. Return case rows and decision rows."""
+          runs: dict[str, str], policy: RoutingPolicy, routed_at: Any,
+          left_out: Optional[list[dict]] = None) -> dict[str, Any]:
+    """Run every candidate through the case writer in arrival order. Return case rows and decision rows.
+
+    `left_out` holds the faults that `open_faults` dropped. Each gets a decision row (no_case, with its reason)."""
     routed_at = _utc(routed_at)
     clock_now: list[datetime] = [routed_at.to_pydatetime()]
     store = SQLiteCaseStore(":memory:")
@@ -111,6 +209,8 @@ def route(accounts: dict[tuple[str, str], AccountContext], candidates: list[tupl
             "case_key": result.case.case_key if result.case else None, "created": bool(result.created),
             "routed_at": routed_at,
         })
+    for row in left_out or []:
+        decisions.append({**row, "outcome": "no_case", "case_key": None, "created": False, "routed_at": routed_at})
     cases = []
     for c in store.list_cases():
         cases.append({

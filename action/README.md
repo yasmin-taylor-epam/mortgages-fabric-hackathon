@@ -105,6 +105,19 @@ On 22 October 2026, a local checkpoint run had these results (synthetic data):
 
 Every account at or above the threshold gets a renewal case. There is no cap and no suppression. The scoring run ranks those accounts (`priority_rank`, 1 = highest score, ties by `mortgage_id` then `cycle_id`) and the case keeps the rank. Reviewers work from the top of the queue down. Cases that nobody has worked yet wait in the queue. The rank never decides whether a case exists. Tests: `tests/test_action_priority.py`.
 
+## Technical cases: open faults only (notebook 07)
+
+The CLI run above routes every verified portal fault in the history. Notebook 07 does not. It opens a technical case only for a fault that is still unresolved on the demo clock (`AS_OF`, default 16 Oct 2026 09:00 UTC).
+
+- A fault is left out when the customer went on with the same application later (`fault_recovered`).
+- A fault is left out when that application is completed, abandoned or rejected (`application_closed`).
+- A fault is left out when the deal ended on or before the demo clock (`deal_ended`).
+- Each left-out fault gets a `no_case` decision row with that reason.
+
+On the local synthetic data, 918 of 921 faults are left out. One technical case stays open: HB-M-900001 C02 (Alex, a fictional customer). The rule is in `notebooks/review_routing/route.py` (`open_faults`). Tests: `notebooks/review_routing/tests/test_route.py`.
+
+`EVENTS_BEFORE` builds a baseline. With `EVENTS_BEFORE = 2026-10-16T09:00:00Z`, notebook 07 routes only the events that happened before the demo starts. A live portal event sent later then opens its own case when the portal reruns notebook 07 with no cut-off.
+
 ## Rules
 
 - INV-3: at most one open review case exists per `mortgage_id` + `cycle_id` + `action_family`. A duplicate write reads the existing case (T01, T06).

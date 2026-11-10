@@ -28,12 +28,14 @@
 
 # # 07_route_review_cases
 #
-# **Owner:** Dashboard and action (demo portals). **Blueprint step:** 7 (route alerts to a named owner). **Status:** Runs locally through its helper tests. Not yet run in Fabric.
+# **Owner:** Dashboard and action (demo portals). **Blueprint step:** 7 (route alerts to a named owner). **Status:** Runs locally through its helper tests. It ran in the Fabric workspace azure-mafia-branch-luke on 10 Nov 2026, before the open-faults rule was added.
 #
 # Turns scores and service events into review cases, and writes them to the Lakehouse table `review_cases`. The staff portal and the Power BI model read that table.
 #
 # - The routing rules are not in this notebook. They are the action package (`action/homebridge_action`): the router, the idempotent case writer and the routing policy. The helper `notebooks/review_routing` only collects the inputs.
 # - Inputs: the account context (built from the clean Lakehouse files), the published `risk_outbox` rows of the latest completed scoring run, the run statuses in `score_runs`, and the service events from the KQL function `ServiceEvents()` in the Eventhouse.
+# - Open faults only: a verified portal fault opens a technical case only if it is still unresolved at `AS_OF` (the demo clock). A fault is left out when the customer went on with the same application later, when the application is closed (completed, abandoned or rejected), or when the deal ended. The renewal steps come from `RawEvents`. Left-out faults get a decision row (`no_case`) with the reason.
+# - `EVENTS_BEFORE` builds a baseline: only service events and renewal steps that happened before that time are routed. Leave it empty in the demo, so a live event opens its case.
 # - Each event is routed at its own arrival time. A rerun gives the same cases. One case per `case_key` (mortgage, deal cycle and case family), so a repeated event does not create a second case.
 # - `review_cases` is updated with a MERGE by `case_key`. Rows are never deleted. Missing columns are added. `review_decisions` holds the decision for each event of the latest run. `review_routing_runs` gets one summary row per run.
 #
@@ -45,7 +47,9 @@ OUTPUT_ROOT_REL = 'Files/hb/output'  # relative to the default Lakehouse
 CONTEXT_AS_OF = '2026-10-15T00:00:00Z'  # data as-of time for the account context. The synthetic data ends here
 KUSTO_URI = ''  # query URI of the HomeBridge Eventhouse. Empty: route scores only, with no service events
 KUSTO_DB = ''  # KQL database name (the item ID in Fabric)
-POLICY_REL = 'action/policy/routing-policy.candidate.json'  # under the uploaded code folder
+POLICY_REL = 'action/policy/routing-policy.candidate.json'  # under the uploaded code folder. With no risk_threshold, see below
+AS_OF = '2026-10-16T09:00:00Z'  # the demo clock. A portal fault opens a case only if it is still unresolved at this time
+EVENTS_BEFORE = ''  # empty: route every event. A time such as 2026-10-16T09:00:00Z: route only events that happened before it
 
 # METADATA ********************
 
@@ -76,9 +80,20 @@ from homebridge_action.models import RoutingPolicy  # noqa: E402
 from review_routing import route as rr  # noqa: E402
 
 LAKEHOUSE = Path('/lakehouse/default') / OUTPUT_ROOT_REL / 'lakehouse'
-POLICY = RoutingPolicy.from_dict(json.loads((CODE / POLICY_REL).read_text(encoding='utf-8')))
+POLICY_DOC, POLICY_SOURCE = json.loads((CODE / POLICY_REL).read_text(encoding='utf-8')), POLICY_REL
+if POLICY_DOC.get('risk_threshold') is None:
+    # The policy file can be a template with no threshold. Then the threshold comes from the model release:
+    # the working policy file written by `python -m models_eval policy`, or else the release itself.
+    working = Path('/lakehouse/default') / OUTPUT_ROOT_REL / 'policy' / 'routing-policy.json'
+    if working.exists():
+        POLICY_DOC, POLICY_SOURCE = json.loads(working.read_text(encoding='utf-8')), str(working)
+    else:
+        from models_eval import config as me_config, policy as me_policy  # noqa: E402
+        POLICY_DOC, POLICY_SOURCE = me_policy.build(me_config.paths(Path('/lakehouse/default') / OUTPUT_ROOT_REL)), 'model release'
+POLICY = RoutingPolicy.from_dict(POLICY_DOC)
 ROUTED_AT = datetime.now(timezone.utc)
-print('Policy:', POLICY.version, '| threshold:', POLICY.risk_threshold, '| routed at:', ROUTED_AT.isoformat())
+print('Policy:', POLICY.version, 'from', POLICY_SOURCE, '| threshold:', POLICY.risk_threshold, '| routed at:', ROUTED_AT.isoformat())
+print('As of:', AS_OF, '| events before:', EVENTS_BEFORE or '(all events)')
 
 # METADATA ********************
 
@@ -128,9 +143,22 @@ def kql_rows(query: str) -> list[dict]:
     names = [c['ColumnName'] for c in table['Columns']]
     return [dict(zip(names, row)) for row in table['Rows']]
 
-service_rows = kql_rows('ServiceEvents()') if KUSTO_URI and KUSTO_DB else []
+# Renewal steps of the applications that had a verified fault, once per event_id (a resend is a copy)
+STEPS_KQL = '''let fault_apps = RawEvents
+    | where event_type == 'transfer_request_event' and tostring(payload.error_class) == 'software_fault' and tobool(payload.fault_verified)
+    | distinct application_id;
+RawEvents
+| where event_type == 'transfer_request_event' and application_id in (fault_apps)
+| summarize arg_max(ingested_at, application_id, occurred_at, payload) by event_id
+| project application_id, occurred_at, status = tostring(payload.status)'''
+
+live = bool(KUSTO_URI and KUSTO_DB)
+service_rows = rr.before(kql_rows('ServiceEvents()'), EVENTS_BEFORE) if live else []
+steps = rr.transfer_steps(rr.before(kql_rows(STEPS_KQL), EVENTS_BEFORE)) if live else rr.transfer_steps([])
+service_rows, LEFT_OUT = rr.open_faults(service_rows, steps, rr.deal_ends(context), AS_OF)
 service = rr.service_candidates(service_rows)
-print(len(service), 'service events from ServiceEvents()' if KUSTO_URI else 'service events (KUSTO_URI not set)')
+print(len(service), 'service events routed' if live else 'service events (KUSTO_URI not set)', '|',
+      len(LEFT_OUT), 'resolved portal faults left out |', len(steps), 'renewal steps read')
 
 # METADATA ********************
 
@@ -146,8 +174,9 @@ print(len(service), 'service events from ServiceEvents()' if KUSTO_URI else 'ser
 # CELL ********************
 
 result = rr.route(rr.contexts(context), risk + service, dict(zip(score_runs['run_id'], score_runs['status'])),
-                  POLICY, ROUTED_AT)
+                  POLICY, ROUTED_AT, LEFT_OUT)
 SUMMARY = rr.summary(result, RUN_ID, len(service), ROUTED_AT)
+SUMMARY.update({'as_of': AS_OF, 'events_before': EVENTS_BEFORE or None, 'faults_left_out': len(LEFT_OUT)})
 SUMMARY
 
 # METADATA ********************

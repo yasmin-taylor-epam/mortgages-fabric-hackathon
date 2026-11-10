@@ -48,6 +48,8 @@ Open http://127.0.0.1:8360/. The server listens on this laptop only.
   The same applies to `python -m hbdata replay --target eventstream`: set `HB_EVENTSTREAM_CONNECTION` and
   `HB_EVENTSTREAM_NAME` from the V2 item's custom endpoint (in the Fabric portal), in your shell only.
 - Before the first live demo, notebook 07 must exist in the workspace (`python scripts/fabric/deploy.py`, see `docs/fabric-deployment.md`).
+- The **Process new events now** button (staff worklist) runs notebook 07 with `AS_OF` set to `demo_start` and no `EVENTS_BEFORE`, so every event is routed. A portal fault opens a technical case only if it is still unresolved on the demo clock (see `action/README.md`, "Technical cases: open faults only").
+- To set up a clean baseline before a recording, run notebook 07 once in Fabric with `EVENTS_BEFORE = 2026-10-16T09:00:00Z`. It leaves out the portal events sent earlier, so they open their cases live.
 
 ### Offline mode
 

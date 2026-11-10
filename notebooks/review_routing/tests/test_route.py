@@ -47,12 +47,12 @@ RUNS = pd.DataFrame([
 ])
 
 
-def run(outbox_rows, service_rows, contexts):
+def run(outbox_rows, service_rows, contexts, left_out=None):
     run_id = rr.latest_completed_run(RUNS)
     cands = rr.risk_candidates(pd.DataFrame(outbox_rows), run_id) + rr.service_candidates(service_rows)
     accounts = rr.contexts(pd.DataFrame(contexts))
     runs = dict(zip(RUNS["run_id"], RUNS["status"]))
-    return rr.route(accounts, cands, runs, POLICY, "2026-11-10T10:00:00Z")
+    return rr.route(accounts, cands, runs, POLICY, "2026-11-10T10:00:00Z", left_out)
 
 
 def test_latest_completed_run_ignores_failed_runs():
@@ -95,6 +95,59 @@ def test_unknown_account_is_not_routed_to_a_person():
     assert out["decisions"].iloc[0]["outcome"] == "quarantine"
 
 
+# ---------------------------------------------------------------- open faults only
+
+AS_OF = "2026-10-16T09:00:00Z"
+ENDS = {("M1", "C01"): pd.Timestamp("2027-01-31T00:00:00Z"), ("M2", "C01"): pd.Timestamp("2027-01-31T00:00:00Z"),
+        ("M3", "C01"): pd.Timestamp("2026-08-31T00:00:00Z"), ("M4", "C01"): pd.Timestamp("2027-01-31T00:00:00Z")}
+
+
+def fault(mortgage_id, app, occurred_at, n=1):
+    return {"event_id": f"PTE-{mortgage_id}-{n}", "event_type": "portal_fault_verified", "mortgage_id": mortgage_id,
+            "cycle_id": "C01", "occurred_at": occurred_at, "ingested_at": "2026-11-10T09:00:00Z",
+            "evidence_ids": json.dumps([f"PTE-{mortgage_id}-{n}", app])}
+
+
+def step(app, occurred_at, status):
+    return {"application_id": app, "occurred_at": occurred_at, "payload": json.dumps({"status": status})}
+
+
+def test_only_unresolved_faults_open_a_technical_case():
+    faults = [fault("M1", "A1", "2026-09-25T19:12:00Z", 1), fault("M1", "A1", "2026-09-26T19:06:00Z", 2),  # stuck
+              fault("M2", "A2", "2025-12-01T10:00:00Z"),  # the customer went on afterwards
+              fault("M3", "A3", "2026-07-01T10:00:00Z"),  # the deal has ended
+              fault("M4", "A4", "2026-05-01T10:00:00Z")]  # the application was abandoned
+    steps = rr.transfer_steps([
+        step("A1", "2026-09-20T10:00:00Z", "in_progress"), step("A1", "2026-09-26T19:06:00Z", "error"),
+        step("A2", "2025-12-01T10:00:00Z", "error"), step("A2", "2025-12-03T10:00:00Z", "in_progress"),
+        step("A3", "2026-07-01T10:00:00Z", "error"),
+        step("A4", "2026-04-30T10:00:00Z", "in_progress"), step("A4", "2026-05-01T10:00:00Z", "abandoned")])
+    kept, left_out = rr.open_faults(faults + [support_event("M2")], steps, ENDS, AS_OF)
+    assert [r["event_id"] for r in kept] == ["PTE-M1-1", "PTE-M1-2", "EV-M2"]
+    assert {r["mortgage_id"]: r["reason"] for r in left_out} == {
+        "M2": rr.FAULT_RECOVERED, "M3": rr.DEAL_ENDED, "M4": rr.APPLICATION_CLOSED}
+    out = run([], kept, [ctx(m) for m in ("M1", "M2", "M3", "M4")], left_out)
+    assert sorted(out["cases"]["case_key"]) == ["M1|C01|technical", "M2|C01|support"]
+    skipped = out["decisions"][out["decisions"]["reason"].isin([rr.FAULT_RECOVERED, rr.DEAL_ENDED, rr.APPLICATION_CLOSED])]
+    assert len(skipped) == 3 and set(skipped["outcome"]) == {"no_case"} and not skipped["created"].any()
+    assert rr.summary(out, "RUN-B", 6, "2026-11-10T10:00:00Z")["decisions"]["no_case:fault_recovered"] == 1
+
+
+def test_a_new_live_fault_after_progress_is_open_again():
+    faults = [fault("M1", "A1", "2026-09-01T10:00:00Z", 1), fault("M1", "A1", "2026-10-16T10:00:00Z", 2)]
+    steps = rr.transfer_steps([{"application_id": "A1", "occurred_at": "2026-09-02T10:00:00Z", "status": "in_progress"},
+                               {"application_id": "A1", "occurred_at": "2026-10-16T10:00:00Z", "status": "error"}])
+    kept, left_out = rr.open_faults(faults, steps, ENDS, AS_OF)
+    assert len(kept) == 2 and not left_out
+
+
+def test_events_before_builds_a_baseline_without_the_live_events():
+    history, live = support_event("M1"), {**support_event("M2"), "occurred_at": "2026-10-16T09:00:00Z"}
+    history["occurred_at"] = "2026-10-15T08:00:00Z"
+    assert [r["event_id"] for r in rr.before([history, live], AS_OF)] == ["EV-M1"]
+    assert len(rr.before([history, live], "")) == 2 and len(rr.before([history, live], None)) == 2
+
+
 OUTPUT = REPO / "data" / "output"
 
 
@@ -118,3 +171,21 @@ def test_local_flow_output_matches_the_action_cli():
     assert set(out["cases"]["case_key"]) == {c["case_key"] for c in expected["cases"]}
     renewal = out["cases"][out["cases"]["action_family"] == "renewal"]
     assert renewal["priority_rank"].notna().all()
+
+
+@pytest.mark.skipif(not (OUTPUT / "eventhouse" / "account_context.parquet").exists(),
+                    reason="needs the local flow output: scripts/run_local_flow.ps1")
+def test_local_history_leaves_only_alex_with_an_open_fault():
+    """The synthetic history has 428 fault keys. On the demo clock only Alex's fault is still unresolved."""
+    from hbdata import replay
+
+    context = pd.read_parquet(OUTPUT / "eventhouse" / "account_context.parquet")
+    raw, _ = replay.read_local(OUTPUT / "eventhouse")
+    service = json.loads(replay.service_events(raw, context).to_json(orient="records", date_format="iso"))
+    transfers = raw[raw["event_type"] == "transfer_request_event"]
+    steps = rr.transfer_steps(transfers[["application_id", "occurred_at", "payload"]].to_dict("records"))
+    kept, left_out = rr.open_faults(rr.before(service, AS_OF), steps, rr.deal_ends(context), AS_OF)
+    open_keys = {(r["mortgage_id"], r["cycle_id"]) for r in kept if r["event_type"] == rr.FAULT_EVENT}
+    assert open_keys == {("HB-M-900001", "C02")}
+    assert len({(r["mortgage_id"], r["cycle_id"]) for r in left_out}) + 1 == len(
+        {(r["mortgage_id"], r["cycle_id"]) for r in service if r["event_type"] == rr.FAULT_EVENT})

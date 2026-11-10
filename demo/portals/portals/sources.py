@@ -194,7 +194,8 @@ class LiveSource:
 
     def start_routing(self) -> str:
         f = self.fabric.connect()
-        return f.start_notebook({"KUSTO_URI": f.kusto_uri, "KUSTO_DB": f.kusto_db})
+        # No EVENTS_BEFORE: every event is routed, so a live event opens its case. AS_OF judges open portal faults
+        return f.start_notebook({"KUSTO_URI": f.kusto_uri, "KUSTO_DB": f.kusto_db, "AS_OF": self.settings.demo_start})
 
     def routing_status(self, ref: str) -> dict:
         body = self.fabric.job_status(ref) if ref else {}
@@ -323,9 +324,13 @@ class OfflineSource:
         run_id = rr.latest_completed_run(score_runs)
         risk = rr.risk_candidates(pd.read_parquet(gold / "risk_outbox.parquet"), run_id)
         raw, _ = self._raw()
-        service = rr.service_candidates(_rows(replay.service_events(raw, self.context)))
+        # Same rule as notebook 07: a portal fault opens a technical case only if it is unresolved on the demo clock
+        steps = raw[raw["event_type"] == "transfer_request_event"].sort_values("ingested_at").drop_duplicates("event_id", keep="last")
+        kept, left_out = rr.open_faults(_rows(replay.service_events(raw, self.context)), rr.transfer_steps(_rows(steps)),
+                                        rr.deal_ends(self.context), self.settings.demo_start)
+        service = rr.service_candidates(kept)
         result = rr.route(rr.contexts(self.context), risk + service, dict(zip(score_runs["run_id"], score_runs["status"])),
-                          policy, routed_at)
+                          policy, routed_at, left_out)
         summary = rr.summary(result, run_id, len(service), routed_at)
         self.routing_runs.append({"routed_at": routed_at, "score_run_id": run_id, "service_events": len(service),
                                   "cases": len(result["cases"]), "rejected_events": len(result["rejected"]),
