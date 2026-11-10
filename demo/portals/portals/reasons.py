@@ -92,5 +92,5 @@ def event_text(event_type: str, payload: dict | None) -> str:
             return f"Renewal website error ({p.get('error_code') or 'no code'}): {kind}. Step: {stage}."
         return f"Renewal website: {stage} ({STATUSES.get(p.get('status') or '', p.get('status') or '')})."
     if event_type == "payment_support_requested":
-        return f"Asked for help with payments by {(p.get('channel') or 'unknown channel').replace('_', ' ')}. Case {p.get('case_id') or '-'}."
+        return f"Asked for help with payments by {(p.get('channel') or 'unknown channel').replace('_', ' ')}. Request reference {p.get('case_id') or '-'} (from the servicing system, not a review case)."
     return EVENT_TYPES.get(event_type, event_type)

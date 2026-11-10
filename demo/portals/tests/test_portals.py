@@ -133,6 +133,11 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     assert len(cases) == 1
     sent = client.get(f"/customer/sent/{eid}?again=1").text
     assert "second time" in sent
+    assert "Request reference CASE-" in sent and "not a review case" in sent and "Case CASE-" not in sent
+    job_line = lambda: re.search(r'<p id="job"[^>]*>(.*?)</p>', client.get("/staff").text).group(1)
+    assert "Finished at" not in job_line()  # not polled yet
+    assert client.get("/api/routing").json()["finished"]
+    assert job_line().startswith("Finished at") and "poll()" not in client.get("/staff").text
 
 
 def test_lab_account_blocked_unless_allowed():

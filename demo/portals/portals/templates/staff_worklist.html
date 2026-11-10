@@ -15,7 +15,7 @@
     <button class="primary">Process new events now</button>
     {% if links.notebook %}<a class="button" href="{{ links.notebook }}" target="_blank" rel="noopener">Open notebook 07 in Fabric ↗</a>{% endif %}
   </form>
-  <p id="job" class="small">{% if job %}Started at {{ job_started }}. Checking …{% else %}Not started from this portal yet.{% endif %}</p>
+  <p id="job" class="small">{% if job_done %}Finished at {{ job_done }}. The lists below include the new cases.{% elif job %}Started at {{ job_started }}. Checking …{% else %}Not started from this portal yet.{% endif %}</p>
 </section>
 
 <section class="panel">
@@ -71,7 +71,7 @@
 </section>
 {% endblock %}
 {% block scripts %}
-{% if job %}
+{% if job and not job_done %}
 <script>
 async function poll() {
   const el = document.getElementById('job');
@@ -79,7 +79,7 @@ async function poll() {
     const j = await (await fetch('/api/routing')).json();
     const words = {NotStarted: 'waiting to start', InProgress: 'running', Completed: 'finished', Failed: 'failed', Cancelled: 'cancelled', Deduped: 'skipped (already running)'};
     el.textContent = `Started at ${j.started}. Fabric job status: ${words[j.status] || j.status}${j.failureReason ? ' (' + JSON.stringify(j.failureReason) + ')' : ''}.`;
-    if (j.status === 'Completed') { el.textContent += ' Reloading the worklist …'; setTimeout(() => location.reload(), 1500); return; }
+    if (j.status === 'Completed') { el.textContent = `Finished at ${j.finished}. Loading the new cases …`; setTimeout(() => location.reload(), 1500); return; }
     if (['Failed', 'Cancelled'].includes(j.status)) return;
   } catch (e) { el.textContent = 'Could not check the job: ' + e; }
   setTimeout(poll, 8000);
