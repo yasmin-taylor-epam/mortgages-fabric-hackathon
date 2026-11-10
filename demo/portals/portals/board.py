@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 
 from . import reasons
-from .config import Settings
+from .config import REPO, Settings
 from .events import next_demo_time
 from .sources import arrival_delay, check_mortgage_id, is_live
 
@@ -60,6 +60,7 @@ class Board:
     settings: Settings
     source: Any
     problems: list[Problem] = field(default_factory=list)
+    _policy: dict | None = field(default=None, repr=False)
 
     # ----- helpers
     def _try(self, what: str, fn, default):
@@ -70,7 +71,10 @@ class Board:
             return default
 
     def policy(self) -> dict:
-        return json.loads(self.settings.policy_path.read_text(encoding="utf-8"))
+        if self._policy is None:
+            from review_routing import route as rr
+            self._policy = rr.load_policy(self.settings.policy_path, REPO / "data" / "output")[0]
+        return self._policy
 
     def threshold(self) -> float:
         return float(self.policy()["risk_threshold"])

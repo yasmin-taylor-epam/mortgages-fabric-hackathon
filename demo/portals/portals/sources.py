@@ -318,7 +318,7 @@ class OfflineSource:
         from homebridge_action.models import RoutingPolicy
         from review_routing import route as rr
         routed_at = datetime.now(timezone.utc)
-        policy = RoutingPolicy.from_dict(json.loads(self.settings.policy_path.read_text(encoding="utf-8")))
+        policy = RoutingPolicy.from_dict(rr.load_policy(self.settings.policy_path, self.output)[0])
         gold = self.output / "lakehouse" / "gold"
         score_runs = pd.read_parquet(gold / "score_runs.parquet")
         run_id = rr.latest_completed_run(score_runs)

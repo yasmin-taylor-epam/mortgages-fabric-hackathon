@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import pandas as pd
@@ -63,6 +64,22 @@ def _utc(value: Any) -> pd.Timestamp:
 def _evidence(event: dict) -> list:
     ids = event.get("evidence_ids") or []
     return json.loads(ids) if isinstance(ids, str) else list(ids)
+
+
+def load_policy(policy_file: str | Path, output_root: str | Path) -> tuple[dict, str]:
+    """The routing policy document and where it came from.
+
+    The policy file can be a template with no risk_threshold. Then the threshold comes from the model release:
+    first the working policy that `python -m models_eval policy` writes (<output_root>/policy/routing-policy.json),
+    else a policy built from the release itself."""
+    doc = json.loads(Path(policy_file).read_text(encoding="utf-8"))
+    if doc.get("risk_threshold") is not None:
+        return doc, str(policy_file)
+    working = Path(output_root) / "policy" / "routing-policy.json"
+    if working.exists():
+        return json.loads(working.read_text(encoding="utf-8")), str(working)
+    from models_eval import config as me_config, policy as me_policy
+    return me_policy.build(me_config.paths(output_root)), "model release"
 
 
 def before(rows: Iterable[dict], events_before: Any) -> list[dict]:

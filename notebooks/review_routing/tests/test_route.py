@@ -16,7 +16,9 @@ for p in (REPO / "notebooks", REPO / "action", REPO / "data"):
 from homebridge_action.models import RoutingPolicy  # noqa: E402
 from review_routing import route as rr  # noqa: E402
 
-POLICY = RoutingPolicy.from_dict(json.loads((REPO / "action" / "policy" / "routing-policy.candidate.json").read_text("utf-8")))
+# The test fixture policy (threshold 0.6). The candidate policy can be a template with no threshold.
+POLICY_FILE = REPO / "action" / "tests" / "fixtures" / "policy.json"
+POLICY = RoutingPolicy.from_dict(json.loads(POLICY_FILE.read_text("utf-8")))
 
 
 def ctx(mortgage_id, support="none", owner="ADV-001"):
@@ -148,6 +150,20 @@ def test_events_before_builds_a_baseline_without_the_live_events():
     assert len(rr.before([history, live], "")) == 2 and len(rr.before([history, live], None)) == 2
 
 
+def test_load_policy_uses_the_file_or_the_working_policy(tmp_path):
+    fixed = tmp_path / "fixed.json"
+    fixed.write_text(json.dumps({"version": "v1", "risk_threshold": 0.5}), "utf-8")
+    assert rr.load_policy(fixed, tmp_path / "out") == ({"version": "v1", "risk_threshold": 0.5}, str(fixed))
+
+    template = tmp_path / "template.json"
+    template.write_text(json.dumps({"version": "template", "risk_threshold": None}), "utf-8")
+    working = tmp_path / "out" / "policy" / "routing-policy.json"
+    working.parent.mkdir(parents=True)
+    working.write_text(json.dumps({"version": "from-release", "risk_threshold": 0.2}), "utf-8")
+    doc, source = rr.load_policy(template, tmp_path / "out")
+    assert (doc["risk_threshold"], source) == (0.2, str(working))
+
+
 OUTPUT = REPO / "data" / "output"
 
 
@@ -166,7 +182,7 @@ def test_local_flow_output_matches_the_action_cli():
     cands = rr.risk_candidates(pd.read_parquet(gold / "risk_outbox.parquet"), run_id) + rr.service_candidates(service)
     out = rr.route(rr.contexts(context), cands, dict(zip(score_runs["run_id"], score_runs["status"])), POLICY,
                    "2026-10-15T12:00:00Z")
-    expected = cli.replay(None, None, REPO / "action" / "policy" / "routing-policy.candidate.json", ":memory:",
+    expected = cli.replay(None, None, POLICY_FILE, ":memory:",
                           "2026-10-15T12:00:00Z", REPO / "data")
     assert set(out["cases"]["case_key"]) == {c["case_key"] for c in expected["cases"]}
     renewal = out["cases"][out["cases"]["action_family"] == "renewal"]

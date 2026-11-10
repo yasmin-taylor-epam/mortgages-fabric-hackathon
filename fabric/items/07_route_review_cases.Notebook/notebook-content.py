@@ -80,16 +80,8 @@ from homebridge_action.models import RoutingPolicy  # noqa: E402
 from review_routing import route as rr  # noqa: E402
 
 LAKEHOUSE = Path('/lakehouse/default') / OUTPUT_ROOT_REL / 'lakehouse'
-POLICY_DOC, POLICY_SOURCE = json.loads((CODE / POLICY_REL).read_text(encoding='utf-8')), POLICY_REL
-if POLICY_DOC.get('risk_threshold') is None:
-    # The policy file can be a template with no threshold. Then the threshold comes from the model release:
-    # the working policy file written by `python -m models_eval policy`, or else the release itself.
-    working = Path('/lakehouse/default') / OUTPUT_ROOT_REL / 'policy' / 'routing-policy.json'
-    if working.exists():
-        POLICY_DOC, POLICY_SOURCE = json.loads(working.read_text(encoding='utf-8')), str(working)
-    else:
-        from models_eval import config as me_config, policy as me_policy  # noqa: E402
-        POLICY_DOC, POLICY_SOURCE = me_policy.build(me_config.paths(Path('/lakehouse/default') / OUTPUT_ROOT_REL)), 'model release'
+# A policy file with no threshold is a template. Then the threshold comes from the model release (see rr.load_policy)
+POLICY_DOC, POLICY_SOURCE = rr.load_policy(CODE / POLICY_REL, Path('/lakehouse/default') / OUTPUT_ROOT_REL)
 POLICY = RoutingPolicy.from_dict(POLICY_DOC)
 ROUTED_AT = datetime.now(timezone.utc)
 print('Policy:', POLICY.version, 'from', POLICY_SOURCE, '| threshold:', POLICY.risk_threshold, '| routed at:', ROUTED_AT.isoformat())
