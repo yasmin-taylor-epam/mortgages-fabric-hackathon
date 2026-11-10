@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}HomeBridge demo portals{% endblock %}
+{% block header %}<div class="brand"><span class="logo">HB</span> HomeBridge demo</div>{% endblock %}
+{% block body %}
+<h1>Two demo apps</h1>
+<p class="lead">HomeBridge is a fictional mortgage lender. These two apps show the Fabric build from the outside.</p>
+<div class="cards">
+  <a class="card big" href="/customer">
+    <h2>Customer website</h2>
+    <p>What a customer sees. Each button sends one real event into the Fabric Eventstream.</p>
+  </a>
+  <a class="card big" href="/staff">
+    <h2>Adviser portal</h2>
+    <p>What HomeBridge staff see. It reads the Lakehouse and the Eventhouse in Fabric each time a page opens.</p>
+  </a>
+</div>
+<p class="note">The scoring, the routing rules and the review cases live in Fabric. These apps only show them and send events.</p>
+{% endblock %}

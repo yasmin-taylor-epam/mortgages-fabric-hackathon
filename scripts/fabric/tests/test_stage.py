@@ -13,7 +13,7 @@ def staged(tmp_path):
 
 def test_stage_contains_all_items_side_by_side(staged):
     names = sorted(p.name for p in stage.item_dirs(staged))
-    assert len(names) == 15
+    assert len(names) == 16  # 8 notebooks, the pipeline, Lakehouse, Environment, Eventhouse, KQL database, Eventstream, model and report
     assert "HomeBridgeMortgage.SemanticModel" in names and "HomeBridgeMortgage.Report" in names
     assert all("/" not in n for n in names)
 

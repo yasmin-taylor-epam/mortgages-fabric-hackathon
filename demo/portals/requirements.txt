@@ -1,0 +1,15 @@
+# Demo portals. Install into the repository virtual environment:
+#   python -m pip install -r demo/portals/requirements.txt
+fastapi>=0.110
+uvicorn>=0.29
+jinja2>=3.1
+python-multipart>=0.0.9  # form posts from the portal buttons
+httpx>=0.27              # FastAPI test client
+azure-identity>=1.17     # sign in as the presenter (browser or Azure CLI)
+azure-eventhub>=5.11     # send customer events to the Eventstream custom endpoint
+mssql-python>=0.10       # Lakehouse SQL analytics endpoint, no ODBC driver install needed
+duckdb>=1.0              # offline rehearsal only: reads the local parquet files
+pandas>=2
+requests>=2.31
+pyyaml>=6
+pytest>=8

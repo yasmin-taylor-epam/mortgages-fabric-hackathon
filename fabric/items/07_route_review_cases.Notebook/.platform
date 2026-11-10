@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "07_route_review_cases",
+    "description": "Routes scores and service events into review cases with the action package. Synthetic data only."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "787a6192-f95b-5ce7-a1c6-6c3faf105fd6"
+  }
+}

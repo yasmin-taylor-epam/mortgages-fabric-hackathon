@@ -32,6 +32,10 @@ def code_files(repo: Path) -> list[tuple[Path, str]]:
     files += collect(repo / "data" / "hbdata", "hb/code/data/hbdata")
     files += collect(repo / "data" / "contracts", "hb/code/data/contracts", skip_dirs=SKIP_DIRS - {"output"})
     files += collect(repo / "notebooks" / "models_eval", "hb/code/notebooks/models_eval")
+    # Notebook 07 routes review cases with the unchanged action package.
+    files += collect(repo / "notebooks" / "review_routing", "hb/code/notebooks/review_routing")
+    files += collect(repo / "action" / "homebridge_action", "hb/code/action/homebridge_action")
+    files += collect(repo / "action" / "policy", "hb/code/action/policy")
     return files
 
 

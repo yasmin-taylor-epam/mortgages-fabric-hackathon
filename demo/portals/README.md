@@ -1,0 +1,98 @@
+# HomeBridge demo portals
+
+Two small local web apps for the demo. HomeBridge is a fictional lender. All data is synthetic.
+
+- **Customer website** (`/customer`). A pretend HomeBridge site. The buttons "Renew my deal" and "I need help with payments" each send one real event to the Fabric Eventstream. The event uses the `live_event` contract (`data/contracts/live_event.schema.json`).
+- **Adviser portal** (`/staff`). What HomeBridge staff see: a worklist, a customer page and a summary. Every page says what it shows. Every panel names the Fabric table it reads.
+
+Fabric stays the system of record. The apps keep no copy of the data. Each page reads the Lakehouse SQL endpoint and the Eventhouse. See "Speed and caching" for how long an answer is reused.
+
+## How the parts fit
+
+```
+Customer website ──event──▶ Eventstream (eventstream_name) ──▶ Eventhouse RawEvents / ServiceEvents()
+                                                                     │
+Adviser portal "Process new events" ──starts──▶ Notebook 07_route_review_cases
+                                                                     │ routing rules (action/policy)
+                                                                     ▼
+Adviser portal ◀──reads── Lakehouse: account_scores, feature_attributions, review_cases, review_decisions
+```
+
+Notebook 07 writes the review cases. It runs as a Fabric job, so it takes 1 to 3 minutes. In a recorded video you can skip that wait.
+
+## Run it
+
+From the repository root, with the repository virtual environment:
+
+```powershell
+.\.venv\Scripts\python -m pip install -r demo\portals\requirements.txt
+Copy-Item demo\portals\config.example.yml demo\portals\config.local.yml   # then change what you need
+$env:PYTHONPATH = "demo\portals"
+.\.venv\Scripts\python -m portals            # live: reads and writes Fabric
+.\.venv\Scripts\python -m portals --offline  # rehearsal: local files only
+```
+
+Open http://127.0.0.1:8360/. The server listens on this laptop only.
+
+### Live mode
+
+- You sign in yourself in a browser window. The app never asks for, stores or fills in a user name or password.
+- By default the app refuses the shared hackathon lab account (`odl_user_...`). If that lab account owns the
+  workspace, set `allow_lab_account: true` in `config.local.yml`. Only do this on your own laptop.
+- The account needs a Fabric licence and access to the workspace in `config.local.yml`.
+- `config.local.yml` holds no secret. Git ignores it anyway.
+- The Eventstream connection string is read from Fabric at start-up. It stays in memory. It is never written to disk.
+- `eventstream_name` names the Eventstream the customer website sends to. In the workspace `azure-mafia-branch-luke`
+  use `HomeBridgeRiskEventsV2`. That item uses direct ingestion into the Eventhouse (compatibility level 1.1).
+  The older `HomeBridgeRiskEvents` item is at level 1.0. Fabric cannot upgrade it, and its destination does not deliver.
+  The same applies to `python -m hbdata replay --target eventstream`: set `HB_EVENTSTREAM_CONNECTION` and
+  `HB_EVENTSTREAM_NAME` from the V2 item's custom endpoint (in the Fabric portal), in your shell only.
+- Before the first live demo, notebook 07 must exist in the workspace (`python scripts/fabric/deploy.py`, see `docs/fabric-deployment.md`).
+- The **Process new events now** button (staff worklist) runs notebook 07 with `AS_OF` set to `demo_start` and no `EVENTS_BEFORE`, so every event is routed. A portal fault opens a technical case only if it is still unresolved on the demo clock (see `action/README.md`, "Technical cases: open faults only").
+- To set up a clean baseline before a recording, run notebook 07 once in Fabric with `EVENTS_BEFORE = 2026-10-16T09:00:00Z`. It leaves out the portal events sent earlier, so they open their cases live.
+
+### Offline mode
+
+- Needs the generated data in `data/output` (`python -m hbdata ...`).
+- It reads the parquet files with DuckDB and copies the Eventhouse files to a temporary folder. It runs the same routing code as notebook 07, on this laptop.
+- Every page shows a red "Offline preview" banner. Use it to rehearse only. Do not show it as Fabric.
+
+## The demo clock
+
+The synthetic data ends on 15 Oct 2026. The apps use a demo clock, not today's date. The first event is dated 16 Oct 2026 09:00 UTC. Each new event moves the clock on by one hour. This avoids "stale" labels and negative "days left".
+
+The pages show story times on the demo clock only:
+
+- An event shows when it happened (`occurred_at`).
+- An event sent by the customer website also shows when it arrived. That is the demo time plus the real delay from the click to the Eventhouse, for example "arrived 16 Oct 2026 09:01, 60 s after sending". The app keeps the real send time of each of its events in `demo/portals/sent-times.local.json`. Git ignores that file. It holds event IDs and times only.
+- Replayed history has no arrival line. The replay loaded it in one batch on the real clock, so its real arrival time means nothing in the story.
+- A renewal case opened from the scoring run shows "Scoring run (data to 15 Oct 2026)". Notebook 07 stamps those cases with the real run time.
+- Only the Summary page shows real times, and it labels them "(real time)".
+
+## Speed and caching
+
+- At start-up the app signs in, opens the Lakehouse SQL connection and the Eventstream sender, and reads the pages of the demo customers. This takes about 20 to 30 seconds. Without it, the first click took about 20 seconds.
+- The Eventstream sender stays open between clicks.
+- Eventhouse (KQL) answers are reused for `cache_seconds` (15). Lakehouse (SQL) answers are reused for `sql_cache_seconds` (300), because the Lakehouse changes only when notebook 07 runs.
+- A send forgets only the Eventhouse answers. When the arrival check finds the event, it forgets them again, so the next page shows the event.
+- When a notebook 07 job finishes, the app forgets everything. For the next 3 minutes it re-reads the Lakehouse every 15 seconds, because the SQL endpoint shows new rows about a minute late.
+
+## Demo customers
+
+| Customer | Story |
+|---|---|
+| Alex, HB-M-900001 | Renewal stuck at "documents received". Alex asks for help with payments. A payment-support case opens and goes to the top of the worklist. |
+| HB-M-003121 | High score, priority 3. A renewal case is open for adviser ADV-027. |
+| Sam, HB-M-900002 | Renewed. No cases. |
+
+## Judging risk
+
+The blueprint (`site/index.html`, section "Out of scope") lists building a custom software application as out of scope. These apps are presenter tools. The scoring, the routing rules and the review cases all run in Fabric. Show the Fabric items (the source links on each page, and the Power BI report) during the demo.
+
+## Tests
+
+```powershell
+.\.venv\Scripts\python -m pytest demo\portals\tests -q
+```
+
+The tests use offline mode and the generated data. They do not touch Fabric.
