@@ -7,7 +7,7 @@
 <form class="who" method="get" action="/customer">
   <label>Presenter: show the site as
   <select name="who" onchange="this.form.submit()">
-    {% for p in settings.personas %}<option value="{{ p.mortgage_id }}" {{ 'selected' if p.mortgage_id == home.mortgage_id }}>{{ p.name }} ({{ p.mortgage_id }})</option>{% endfor %}
+    {% for p in settings.personas %}<option value="{{ p.mortgage_id }}" {{ 'selected' if p.mortgage_id == home.mortgage_id }}>{{ p.name }}{% if p.mortgage_id not in p.name %} ({{ p.mortgage_id }}){% endif %}</option>{% endfor %}
   </select></label>
 </form>
 {% endblock %}
@@ -21,7 +21,7 @@
   <dl class="facts">
     <dt>Mortgage</dt><dd>{{ home.mortgage_id }}</dd>
     <dt>Rate now</dt><dd>{{ '%.2f' % a.fixed_rate_pct }}% fixed</dd>
-    <dt>Deal ends</dt><dd>{{ home.deal_end }}{% if home.days_left is not none %} ({% if home.days_left < 0 %}ended {{ -home.days_left }} days before {{ home.today|day }}{% else %}{{ home.days_left }} days from {{ home.today|day }}{% endif %}){% endif %}</dd>
+    <dt>Deal ends</dt><dd>{{ home.deal_end }}{% if home.days_left is not none %} ({% if home.days_left < 0 %}ended {{ -home.days_left }} day{{ 's' if home.days_left != -1 }} before {{ home.today|day }}{% else %}{{ home.days_left }} day{{ 's' if home.days_left != 1 }} from {{ home.today|day }}{% endif %}){% endif %}</dd>
     <dt>Rate after the deal ends</dt><dd>{{ '%.2f' % a.follow_on_rate_pct }}% (standard variable rate)</dd>
     <dt>Monthly payment</dt><dd>{{ a.current_payment|money }}</dd>
   </dl>
@@ -32,7 +32,7 @@
 <section class="panel">
   <h2>Your renewal</h2>
   {% if home.latest %}
-  <p>Last step: <strong>{{ home.stage_text }}</strong> ({{ home.latest.status|replace('_', ' ') }}), on {{ home.latest.occurred_at|when }}.</p>
+  <p>Last step: <strong>{{ home.stage_text }}</strong>{% if home.latest.status != home.latest.stage %} ({{ home.latest.status|replace('_', ' ') }}){% endif %}, on {{ home.latest.occurred_at|when }}.</p>
   <p class="small">Request {{ home.latest.application_id or '-' }}. Read from {{ home.latest.source }}.</p>
   {% else %}<p>You have not started a renewal.</p>{% endif %}
 </section>

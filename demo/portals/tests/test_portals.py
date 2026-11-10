@@ -91,6 +91,35 @@ def test_pages_render_and_explain_themselves(client, path):
     assert "Some data could not be read" not in r.text
 
 
+def test_day_counts_use_the_singular_for_one():
+    import jinja2
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(config.REPO / "demo" / "portals" / "portals" / "templates")))
+    days = env.get_template("macros.html").module.days
+    assert str(days(-1)) == "ended 1 day ago"
+    assert str(days(-3)) == "ended 3 days ago"
+    assert str(days(1)) == "1 day left"
+
+
+def test_page_wording_reads_well(client):
+    sam = client.get("/customer?who=HB-M-900002").text
+    assert "not started" not in sam and "renewed, the new deal is in place" in sam
+    staff_3121 = re.sub(r"<[^>]+>", " ", client.get("/staff/customer/HB-M-003121").text)
+    assert not re.search(r"HB-M-003121\s+HB-M-003121", staff_3121)
+    assert "Customer HB-M-003121 (HB-M-003121)" not in client.get("/customer?who=HB-M-003121").text
+    assert "(real time)" not in client.get("/staff/summary").text.split("Scoring</dt>")[1].split("</dd>")[0]
+    worklist = client.get("/staff").text
+    assert "The newest 1 are shown" not in worklist
+    assert "1 newest" not in client.get("/staff/customer/HB-M-900001").text
+
+
+def test_live_cases_sort_first():
+    from portals.board import live_first
+    baseline = {"case_id": "a", "case_created_at": "2026-10-16T09:01:00", "source_event_id": "PSE-000000123"}
+    older = {"case_id": "b", "case_created_at": "2026-10-15T09:00:00", "source_event_id": None}
+    live = {"case_id": "c", "case_created_at": "2026-10-16T09:00:00", "source_event_id": "PSE-971883756"}
+    assert [c["case_id"] for c in live_first([baseline, older, live])] == ["c", "a", "b"]
+
+
 def test_alex_payment_help_opens_a_support_case(client, source):
     r = client.post("/customer/send", data={"who": "HB-M-900001", "action": "payment_help"}, follow_redirects=False)
     assert r.status_code == 303
@@ -104,6 +133,8 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     client.post("/staff/process", follow_redirects=False)
     page = client.get("/staff").text
     assert "from the demo" in page and "Payment support" in page
+    support_rows = page.split("Asked for help with payments", 1)[1].split("</tbody>", 1)[0].split("<tr")[2:]
+    assert "HB-M-900001" in support_rows[0]
     # the same event again: stored twice, still one case (T01)
     client.post(f"/customer/resend/{eid}", follow_redirects=False)
     client.post("/staff/process", follow_redirects=False)
@@ -112,6 +143,11 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     assert len(cases) == 1
     sent = client.get(f"/customer/sent/{eid}?again=1").text
     assert "second time" in sent
+    assert "Request reference CASE-" in sent and "not a review case" in sent and "Case CASE-" not in sent
+    job_line = lambda: re.search(r'<p id="job"[^>]*>(.*?)</p>', client.get("/staff").text).group(1)
+    assert "Finished at" not in job_line()  # not polled yet
+    assert client.get("/api/routing").json()["finished"]
+    assert job_line().startswith("Finished at") and "poll()" not in client.get("/staff").text
 
 
 def test_lab_account_blocked_unless_allowed():

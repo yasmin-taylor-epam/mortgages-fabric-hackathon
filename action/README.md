@@ -124,4 +124,5 @@ On the local synthetic data, 918 of 921 faults are left out. One technical case 
 - INV-6: the prototype sends no customer messages. It makes no rate or credit decisions. A test checks that the package imports no mail or network module.
 - Payment-support priority does not depend on refinancing risk or loan balance. The account context holds no balance.
 - The risk threshold in `tests/fixtures/policy.json` is illustrative and used only by the tests. The working policy is written from the model release by `python -m models_eval policy`. The team still confirms the threshold rule and the score-age limit.
+- The current release uses the rule `min_precision` 0.6. Its threshold is 0.5062, and the live scores flag 27 accounts. See `docs/alert-threshold.md`. All numbers are synthetic.
 - Never put credentials or connection secrets in an exported flow, rule or script.

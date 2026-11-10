@@ -48,6 +48,13 @@ def _payload(value) -> dict:
         return {}
 
 
+def live_first(cases: list[dict]) -> list[dict]:
+    """Cases from events sent on the demo website first, then newest first.
+    Needed because the baseline run stamps its cases after the demo-clock time of a live event."""
+    by_time = sorted(cases, key=lambda c: str(c.get("case_created_at") or ""), reverse=True)
+    return sorted(by_time, key=lambda c: not is_live(c.get("source_event_id") or ""))
+
+
 @dataclass
 class Problem:
     """A query that failed. The page shows it in plain words instead of crashing."""
@@ -135,8 +142,7 @@ class Board:
                     "case": case, "case_status": reasons.CASE_STATUSES.get(case["status"], case["status"]) if case else "No case yet",
                     "owner": (case or {}).get("assigned_to") or r.get("owner_id") or "-",
                 })
-        help_cases = [c for c in all_cases if c.get("action_family") in ("support", "technical") and c.get("status") in OPEN]
-        help_cases.sort(key=lambda c: str(c.get("case_created_at") or ""), reverse=True)
+        help_cases = live_first([c for c in all_cases if c.get("action_family") in ("support", "technical") and c.get("status") in OPEN])
         support = [self._case_row(c, today, run) for c in help_cases if c["action_family"] == "support"]
         technical = [self._case_row(c, today, run) for c in help_cases if c["action_family"] == "technical"]
         return {"run": run, "today": today, "renewals": renewals, "support": support, "technical": technical[:8],
@@ -195,7 +201,7 @@ class Board:
                              "kind": reasons.EVENT_TYPES.get(e["event_type"], e["event_type"]),
                              "text": reasons.event_text(e["event_type"], p), "live": is_live(e["event_id"]),
                              "fault": p.get("status") == "error"})
-        cases = [self._case_row(c, today, run) for c in self.cases(mid)]
+        cases = [self._case_row(c, today, run) for c in live_first(self.cases(mid))]
         decisions = self._try("routing decisions (Lakehouse table review_decisions)", lambda: self.source.sql(
             "SELECT * FROM review_decisions WHERE mortgage_id = ?", (mid,)), [])
         happened = {e["event_id"]: e.get("occurred_at") for e in timeline}
@@ -203,6 +209,7 @@ class Board:
             at = happened.get(d.get("event_id")) or (d.get("arrived_at") if on_demo_clock(d.get("arrived_at"), today) else None)
             d["when"] = when(at) if at else (f"Scoring run (data to {day(run['cutoff_at'])})" if run else "-")
             d["sort"] = str(at or "")
+        decisions_total = len(decisions)
         decisions = sorted(decisions, key=lambda d: d["sort"], reverse=True)[:10]
         servicing = self._try("service history (Lakehouse table servicing_case)", lambda: self.source.sql(
             "SELECT case_id, category, support_route, opened_at, latest_status, is_resolved, contact_count FROM servicing_case WHERE mortgage_id = ?",
@@ -210,7 +217,7 @@ class Board:
         end = ts(acct["deal_end_at"]) if acct else None
         return {"mortgage_id": mid, "name": self.name(mid), "acct": acct, "run": run, "score": score, "scored": scored,
                 "rank_by_score": rank_by_score, "threshold": self.threshold(), "factors": factors, "timeline": timeline,
-                "cases": cases, "decisions": decisions, "servicing": sorted(servicing, key=lambda s: str(s["opened_at"]), reverse=True),
+                "cases": cases, "decisions": decisions, "decisions_total": decisions_total, "servicing": sorted(servicing, key=lambda s: str(s["opened_at"]), reverse=True),
                 "today": today, "deal_end": day(end), "days_left": (end - today).days if end is not None else None}
 
     # ----- customer portal

@@ -38,7 +38,7 @@ def create_app(settings: config.Settings, source) -> FastAPI:
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.filters.update(money=_money, pct=_pct, day=day, when=when)
-    state = {"sent": {}, "job": "", "job_started": None}
+    state = {"sent": {}, "job": "", "job_started": None, "job_done": None}
     lock = threading.Lock()
 
     def board() -> Board:
@@ -122,7 +122,8 @@ def create_app(settings: config.Settings, source) -> FastAPI:
     def staff_worklist(request: Request):
         b = board()
         data = b.worklist()
-        return page(request, "staff_worklist.html", w=data, problems=b.problems, job=state["job"], job_started=state["job_started"])
+        return page(request, "staff_worklist.html", w=data, problems=b.problems, job=state["job"], job_started=state["job_started"],
+                    job_done=state["job_done"])
 
     @app.post("/staff/process")
     def staff_process():
@@ -130,6 +131,7 @@ def create_app(settings: config.Settings, source) -> FastAPI:
         ref = source.start_routing()
         with lock:
             state["job"], state["job_started"] = ref, datetime.now(timezone.utc).strftime("%H:%M:%S")
+            state["job_done"] = None
         return RedirectResponse("/staff#process", status_code=303)
 
     @app.get("/api/routing")
@@ -140,7 +142,12 @@ def create_app(settings: config.Settings, source) -> FastAPI:
             body = source.routing_status(state["job"])
         except Exception as exc:  # noqa: BLE001
             return JSONResponse({"status": "Unknown", "error": str(exc)[:300]}, status_code=502)
-        return JSONResponse({"status": body.get("status"), "failureReason": body.get("failureReason"), "started": state["job_started"]})
+        if body.get("status") == "Completed" and not state["job_done"]:
+            from datetime import datetime, timezone
+            with lock:
+                state["job_done"] = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        return JSONResponse({"status": body.get("status"), "failureReason": body.get("failureReason"), "started": state["job_started"],
+                             "finished": state["job_done"]})
 
     @app.get("/staff/customer/{mortgage_id}", response_class=HTMLResponse)
     def staff_customer(request: Request, mortgage_id: str):
