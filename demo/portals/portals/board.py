@@ -10,7 +10,7 @@ import pandas as pd
 from . import reasons
 from .config import Settings
 from .events import next_demo_time
-from .sources import check_mortgage_id, is_live
+from .sources import arrival_delay, check_mortgage_id, is_live
 
 OPEN = ("open", "on_hold")
 
@@ -30,6 +30,13 @@ def day(value) -> str:
 def when(value) -> str:
     t = ts(value)
     return t.strftime("%d %b %Y %H:%M") if t is not None else "-"
+
+
+def on_demo_clock(value, today: pd.Timestamp) -> bool:
+    """True when a time belongs to the story (on or before the demo 'today'). Times written by Fabric jobs and by the
+    replay carry the real date (November 2026 or later), which is after the story, so they are not shown as story times."""
+    t = ts(value)
+    return t is not None and t <= today + pd.Timedelta(days=1)
 
 
 def _payload(value) -> dict:
@@ -126,15 +133,30 @@ class Board:
                 })
         help_cases = [c for c in all_cases if c.get("action_family") in ("support", "technical") and c.get("status") in OPEN]
         help_cases.sort(key=lambda c: str(c.get("case_created_at") or ""), reverse=True)
-        support = [self._case_row(c) for c in help_cases if c["action_family"] == "support"]
-        technical = [self._case_row(c) for c in help_cases if c["action_family"] == "technical"]
+        support = [self._case_row(c, today, run) for c in help_cases if c["action_family"] == "support"]
+        technical = [self._case_row(c, today, run) for c in help_cases if c["action_family"] == "technical"]
         return {"run": run, "today": today, "renewals": renewals, "support": support, "technical": technical[:8],
                 "technical_total": len(technical), "threshold": self.threshold(), "counts": counts}
 
-    def _case_row(self, c: dict) -> dict:
+    def _case_row(self, c: dict, today: pd.Timestamp, run: dict | None) -> dict:
+        created = c.get("case_created_at")
+        if on_demo_clock(created, today):
+            opened = when(created)
+        else:  # a case from the scoring run: notebook 07 stamps it with the real run time
+            opened = f"Scoring run (data to {day(run['cutoff_at'])})" if run else "Scoring run"
         return {**c, "name": self.name(c["mortgage_id"]), "family_text": reasons.CASE_FAMILIES.get(c["action_family"], c["action_family"]),
-                "opened": when(c.get("case_created_at")), "status_text": reasons.CASE_STATUSES.get(c["status"], c["status"]),
+                "opened": opened, "status_text": reasons.CASE_STATUSES.get(c["status"], c["status"]),
                 "live": is_live(c.get("source_event_id") or "")}
+
+    def _arrival(self, e: dict, today: pd.Timestamp) -> str:
+        """When the event reached the Eventhouse, on the demo clock. Empty when that is not known."""
+        log = getattr(self.source, "sent_log", None)
+        delay = arrival_delay(log.get(e["event_id"]) if log else None, e.get("ingested_at"))
+        if delay is not None and ts(e.get("occurred_at")) is not None:
+            return f"arrived {when(ts(e['occurred_at']) + pd.Timedelta(seconds=delay))}, {delay} s after sending"
+        if on_demo_clock(e.get("ingested_at"), today):
+            return f"arrived {when(e.get('ingested_at'))}"
+        return ""  # replayed history: Fabric got it in one batch on the real clock
 
     # ----- staff customer page
     def customer(self, mortgage_id: str) -> dict:
@@ -165,14 +187,19 @@ class Board:
         timeline = []
         for e in self._try("event timeline (Eventhouse table RawEvents)", lambda: self.source.raw_events(mid), []):
             p = _payload(e.get("payload"))
-            timeline.append({**e, "when": when(e.get("occurred_at")), "arrived": when(e.get("ingested_at")),
+            timeline.append({**e, "when": when(e.get("occurred_at")), "arrived": self._arrival(e, today),
                              "kind": reasons.EVENT_TYPES.get(e["event_type"], e["event_type"]),
                              "text": reasons.event_text(e["event_type"], p), "live": is_live(e["event_id"]),
                              "fault": p.get("status") == "error"})
-        cases = [self._case_row(c) for c in self.cases(mid)]
+        cases = [self._case_row(c, today, run) for c in self.cases(mid)]
         decisions = self._try("routing decisions (Lakehouse table review_decisions)", lambda: self.source.sql(
             "SELECT * FROM review_decisions WHERE mortgage_id = ?", (mid,)), [])
-        decisions = sorted(decisions, key=lambda d: str(d.get("arrived_at") or ""), reverse=True)[:10]
+        happened = {e["event_id"]: e.get("occurred_at") for e in timeline}
+        for d in decisions:
+            at = happened.get(d.get("event_id")) or (d.get("arrived_at") if on_demo_clock(d.get("arrived_at"), today) else None)
+            d["when"] = when(at) if at else (f"Scoring run (data to {day(run['cutoff_at'])})" if run else "-")
+            d["sort"] = str(at or "")
+        decisions = sorted(decisions, key=lambda d: d["sort"], reverse=True)[:10]
         servicing = self._try("service history (Lakehouse table servicing_case)", lambda: self.source.sql(
             "SELECT case_id, category, support_route, opened_at, latest_status, is_resolved, contact_count FROM servicing_case WHERE mortgage_id = ?",
             (mid,)), [])

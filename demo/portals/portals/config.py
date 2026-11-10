@@ -34,7 +34,8 @@ class Settings:
     allow_lab_account: bool = False  # true only when the hackathon lab account is the account that owns the workspace
     demo_start: str = "2026-10-16T09:00:00Z"  # the synthetic data ends on 15 Oct 2026. The demo clock starts after it
     demo_step_minutes: int = 60  # each event the customer portal sends moves the demo clock on by this much
-    cache_seconds: int = 15
+    cache_seconds: int = 15  # how long an Eventhouse (KQL) answer is reused
+    sql_cache_seconds: int = 300  # how long a Lakehouse (SQL) answer is reused. It changes only when notebook 07 runs
     policy_file: str = "action/policy/routing-policy.candidate.json"
     notebook_name: str = "07_route_review_cases"
     eventstream_name: str = "HomeBridgeRiskEvents"

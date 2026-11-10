@@ -5,7 +5,7 @@ Two small local web apps for the demo. HomeBridge is a fictional lender. All dat
 - **Customer website** (`/customer`). A pretend HomeBridge site. The buttons "Renew my deal" and "I need help with payments" each send one real event to the Fabric Eventstream. The event uses the `live_event` contract (`data/contracts/live_event.schema.json`).
 - **Adviser portal** (`/staff`). What HomeBridge staff see: a worklist, a customer page and a summary. Every page says what it shows. Every panel names the Fabric table it reads.
 
-Fabric stays the system of record. The apps keep no copy of the data. Each page reads the Lakehouse SQL endpoint and the Eventhouse when it opens. Results are cached for 15 seconds.
+Fabric stays the system of record. The apps keep no copy of the data. Each page reads the Lakehouse SQL endpoint and the Eventhouse. See "Speed and caching" for how long an answer is reused.
 
 ## How the parts fit
 
@@ -58,6 +58,22 @@ Open http://127.0.0.1:8360/. The server listens on this laptop only.
 ## The demo clock
 
 The synthetic data ends on 15 Oct 2026. The apps use a demo clock, not today's date. The first event is dated 16 Oct 2026 09:00 UTC. Each new event moves the clock on by one hour. This avoids "stale" labels and negative "days left".
+
+The pages show story times on the demo clock only:
+
+- An event shows when it happened (`occurred_at`).
+- An event sent by the customer website also shows when it arrived. That is the demo time plus the real delay from the click to the Eventhouse, for example "arrived 16 Oct 2026 09:01, 60 s after sending". The app keeps the real send time of each of its events in `demo/portals/sent-times.local.json`. Git ignores that file. It holds event IDs and times only.
+- Replayed history has no arrival line. The replay loaded it in one batch on the real clock, so its real arrival time means nothing in the story.
+- A renewal case opened from the scoring run shows "Scoring run (data to 15 Oct 2026)". Notebook 07 stamps those cases with the real run time.
+- Only the Summary page shows real times, and it labels them "(real time)".
+
+## Speed and caching
+
+- At start-up the app signs in, opens the Lakehouse SQL connection and the Eventstream sender, and reads the pages of the demo customers. This takes about 20 to 30 seconds. Without it, the first click took about 20 seconds.
+- The Eventstream sender stays open between clicks.
+- Eventhouse (KQL) answers are reused for `cache_seconds` (15). Lakehouse (SQL) answers are reused for `sql_cache_seconds` (300), because the Lakehouse changes only when notebook 07 runs.
+- A send forgets only the Eventhouse answers. When the arrival check finds the event, it forgets them again, so the next page shows the event.
+- When a notebook 07 job finishes, the app forgets everything. For the next 3 minutes it re-reads the Lakehouse every 15 seconds, because the SQL endpoint shows new rows about a minute late.
 
 ## Demo customers
 

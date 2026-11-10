@@ -1,7 +1,7 @@
 """Live connections to Fabric: sign-in, Lakehouse SQL endpoint, Eventhouse KQL, Eventstream and the notebook job.
 
 Nothing here stores data. Each call reads Fabric at the time of the call. The Eventstream key is read from the
-Fabric API and kept in memory only.
+Fabric API and kept in memory only. The Eventstream sender stays open between clicks.
 """
 from __future__ import annotations
 
@@ -68,6 +68,8 @@ class Fabric:
         self.kusto_uri = ""
         self.kusto_db = ""
         self._eventstream: dict | None = None
+        self._producer = None
+        self._send_lock = threading.Lock()
 
     # ----- discovery
     def connect(self) -> "Fabric":
@@ -161,14 +163,51 @@ class Fabric:
                                  "connection": (conn.get("accessKeys") or {}).get("primaryConnectionString", "")}
         return self._eventstream
 
+    def _get_producer(self):
+        """One sender, kept open between clicks. Opening a new one for each click took several seconds."""
+        if self._producer is None:
+            from azure.eventhub import EventHubProducerClient
+            ep = self._eventstream_endpoint()
+            self._producer = EventHubProducerClient.from_connection_string(ep["connection"], eventhub_name=ep["name"])
+        return self._producer
+
+    def _drop_producer(self) -> None:
+        producer, self._producer = self._producer, None
+        if producer is not None:
+            try:
+                producer.close()
+            except Exception:  # noqa: BLE001 - the connection is already broken
+                pass
+
     def send_event(self, envelope: dict) -> None:
-        from azure.eventhub import EventData, EventHubProducerClient
-        ep = self._eventstream_endpoint()
+        from azure.eventhub import EventData
         body = {k: v for k, v in envelope.items() if k != "simulated_ingested_at"}
-        with EventHubProducerClient.from_connection_string(ep["connection"], eventhub_name=ep["name"]) as producer:
-            batch = producer.create_batch()
-            batch.add(EventData(json.dumps(body)))
-            producer.send_batch(batch)
+        with self._send_lock:
+            for attempt in (1, 2):
+                producer = self._get_producer()
+                try:
+                    batch = producer.create_batch()
+                    batch.add(EventData(json.dumps(body)))
+                    producer.send_batch(batch)
+                    return
+                except Exception:
+                    self._drop_producer()  # a stale connection: open a new one and try once more
+                    if attempt == 2:
+                        raise
+
+    def warm_up(self) -> None:
+        """Do the slow first steps before the demo starts: sign-in, the first SQL connection and the Eventstream sender."""
+        self.connect()
+        if self.sql_host:
+            self.sql("SELECT 1 AS ok")
+        if "Eventstream" in self.items:
+            with self._send_lock:
+                producer = self._get_producer()
+                producer.get_eventhub_properties()
+
+    def close(self) -> None:
+        with self._send_lock:
+            self._drop_producer()
 
     # ----- notebook 07 (starts a job and returns at once)
     def start_notebook(self, params: dict | None = None) -> str:

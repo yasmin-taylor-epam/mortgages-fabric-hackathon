@@ -1,6 +1,8 @@
 """Where the portals get their data.
 
-LiveSource reads Fabric on every call: the Lakehouse SQL analytics endpoint (T-SQL) and the Eventhouse (KQL).
+LiveSource reads Fabric: the Lakehouse SQL analytics endpoint (T-SQL) and the Eventhouse (KQL). It keeps each
+answer for a short time (cache_seconds for the Eventhouse, sql_cache_seconds for the Lakehouse). A send forgets
+only the Eventhouse answers. A finished routing job forgets everything.
 It sends events to the Eventstream and starts notebook 07 as a Fabric job.
 
 OfflineSource is for rehearsal and tests without Fabric. It reads the local synthetic files in data/output with
@@ -29,6 +31,7 @@ MORTGAGE_ID = re.compile(r"^HB-M-\d{6}$")
 EVENT_ID = re.compile(r"^[A-Z]+-[A-Za-z0-9-]{4,40}$")
 LIVE_RANGE = "97"  # portal events use IDs like PTE-97xxxxxxx and PSE-97xxxxxxx
 LIVE_KQL = "(event_id startswith 'PTE-97' or event_id startswith 'PSE-97')"
+SQL_SETTLING_SECONDS = 180
 
 
 def is_live(event_id: str) -> bool:
@@ -64,32 +67,95 @@ def _rows(df: pd.DataFrame) -> list[dict]:
     return json.loads(df.to_json(orient="records", date_format="iso")) if len(df) else []
 
 
+SENT_LOG = Path(__file__).resolve().parents[1] / "sent-times.local.json"
+
+
+class SentLog:
+    """The real time this laptop sent each portal event. It turns Fabric's real arrival time into a delay in seconds,
+    so the pages can show arrivals on the demo clock. Git ignores the file. It holds event IDs and times only."""
+
+    def __init__(self, path: Path | None = SENT_LOG):
+        self.path = path
+        self._lock = threading.Lock()
+        self.times: dict[str, str] = {}
+        if path and path.exists():
+            try:
+                self.times = json.loads(path.read_text(encoding="utf-8-sig"))
+            except (OSError, ValueError):
+                self.times = {}
+
+    def record(self, event_id: str) -> None:
+        with self._lock:
+            self.times.setdefault(event_id, datetime.now(timezone.utc).isoformat())
+            if self.path:
+                try:
+                    self.path.write_text(json.dumps(self.times, indent=1), encoding="utf-8")
+                except OSError:
+                    pass  # the delay is shown for this run only
+
+    def get(self, event_id: str) -> str | None:
+        return self.times.get(event_id)
+
+
+def arrival_delay(sent_at_real: str | None, ingested_at) -> int | None:
+    """Seconds from the click to the first copy in RawEvents. None when this laptop did not send the event."""
+    if not sent_at_real or not ingested_at:
+        return None
+    sent, ing = pd.Timestamp(sent_at_real), pd.Timestamp(ingested_at)
+    sent = sent.tz_localize("UTC") if sent.tzinfo is None else sent
+    ing = ing.tz_localize("UTC") if ing.tzinfo is None else ing
+    return max(0, round((ing - sent).total_seconds()))
+
+
+def _with_delay(found: dict, sent_log: SentLog, event_id: str) -> dict:
+    first = found["accepted"][0]["ingested_at"] if found["accepted"] else None
+    found["delay_seconds"] = arrival_delay(sent_log.get(event_id), first)
+    return found
+
+
 # ---------------------------------------------------------------- live Fabric
 
 class LiveSource:
     kind = "fabric"
 
-    def __init__(self, settings: Settings, fabric=None):
+    def __init__(self, settings: Settings, fabric=None, sent_log: SentLog | None = None):
         from .fabric import Fabric
         self.settings = settings
         self.fabric = fabric or Fabric(settings)
+        self.sent_log = sent_log if sent_log is not None else SentLog()
         self._cache: dict[tuple, tuple[float, Any]] = {}
         self._lock = threading.Lock()
+        self._cleared_jobs: set[str] = set()
+        self._sql_settling_until = 0.0
 
-    def clear_cache(self) -> None:
+    def clear_cache(self, kind: str | None = None) -> None:
+        """Forget cached reads. kind 'kql' is the Eventhouse, 'sql' is the Lakehouse, None is both."""
         with self._lock:
-            self._cache.clear()
+            for key in [k for k in self._cache if kind is None or k[0] == kind]:
+                del self._cache[key]
 
     def _cached(self, key: tuple, fn):
         now = time.monotonic()
+        # the Lakehouse SQL endpoint shows new Delta rows about a minute late, so re-read it often after a routing job
+        long_sql = key[0] == "sql" and now >= self._sql_settling_until
+        ttl = self.settings.sql_cache_seconds if long_sql else self.settings.cache_seconds
         with self._lock:
             hit = self._cache.get(key)
-            if hit and now - hit[0] < self.settings.cache_seconds:
+            if hit and now - hit[0] < ttl:
                 return hit[1]
         value = fn()
         with self._lock:
             self._cache[key] = (now, value)
         return value
+
+    def warm_up(self) -> None:
+        """Sign in, open the SQL connection and the Eventstream sender, and fill the cache for the personas."""
+        from .board import Board
+        self.fabric.warm_up()
+        b = Board(self.settings, self)
+        b.worklist()
+        for p in self.settings.personas:
+            b.portal_home(p.mortgage_id)
 
     def sql(self, query: str, params: tuple = ()) -> list[dict]:
         return self._cached(("sql", query, params), lambda: self.fabric.sql(query, params))
@@ -108,7 +174,9 @@ class LiveSource:
         accepted = self.fabric.kql(f"RawEvents | where event_id == '{eid}' | project event_id, ingested_at | order by ingested_at asc")
         quarantined = self.fabric.kql(f"QuarantinedEvents | where event_id == '{eid}' | project event_id, reason, detected_at")
         service = self.fabric.kql(f"ServiceEvents() | where event_id == '{eid}' | project event_id, event_type, cycle_id")
-        return {"accepted": accepted, "quarantined": quarantined, "service": service}
+        if accepted or quarantined:
+            self.clear_cache("kql")  # the event is in: the next page shows it at once
+        return _with_delay({"accepted": accepted, "quarantined": quarantined, "service": service}, self.sent_log, eid)
 
     def event_counts(self) -> dict:
         rows = self.kql(
@@ -121,18 +189,19 @@ class LiveSource:
 
     def send_event(self, envelope: dict) -> None:
         self.fabric.send_event(envelope)
-        self.clear_cache()
+        self.sent_log.record(envelope["event_id"])
+        self.clear_cache("kql")  # the Lakehouse does not change until the routing notebook runs
 
     def start_routing(self) -> str:
         f = self.fabric.connect()
-        ref = f.start_notebook({"KUSTO_URI": f.kusto_uri, "KUSTO_DB": f.kusto_db})
-        self.clear_cache()
-        return ref
+        return f.start_notebook({"KUSTO_URI": f.kusto_uri, "KUSTO_DB": f.kusto_db})
 
     def routing_status(self, ref: str) -> dict:
         body = self.fabric.job_status(ref) if ref else {}
-        if body.get("status") in {"Completed", "Failed", "Cancelled"}:
-            self.clear_cache()
+        if body.get("status") in {"Completed", "Failed", "Cancelled"} and ref not in self._cleared_jobs:
+            self._cleared_jobs.add(ref)
+            self._sql_settling_until = time.monotonic() + SQL_SETTLING_SECONDS
+            self.clear_cache()  # notebook 07 wrote new review cases
         return body
 
     def recent_routing(self) -> list[dict]:
@@ -181,6 +250,7 @@ class OfflineSource:
             self.db.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{path}')")
         self.context = pd.read_parquet(self.tmp / "eventhouse" / "account_context.parquet")
         self.routing_runs: list[dict] = []
+        self.sent_log = SentLog(None)  # offline: kept in memory only
         self._register("review_routing_runs", pd.DataFrame(columns=["routed_at", "score_run_id", "service_events", "cases",
                                                                     "rejected_events", "exceptions", "summary"]))
         self._register("review_cases", pd.DataFrame(columns=["case_key", "account_key", "mortgage_id", "cycle_id", "action_family",
@@ -193,7 +263,10 @@ class OfflineSource:
         with self._lock:
             self.db.register(name, df)
 
-    def clear_cache(self) -> None:
+    def clear_cache(self, kind: str | None = None) -> None:
+        pass
+
+    def warm_up(self) -> None:
         pass
 
     def sql(self, query: str, params: tuple = ()) -> list[dict]:
@@ -220,9 +293,10 @@ class OfflineSource:
         eid = check_event_id(event_id)
         raw, q = self._raw()
         service = replay.service_events(raw[raw["event_id"] == eid], self.context)
-        return {"accepted": _rows(raw.loc[raw["event_id"] == eid, ["event_id", "ingested_at"]]),
-                "quarantined": _rows(q.loc[q["event_id"] == eid, ["event_id", "reason", "detected_at"]]),
-                "service": _rows(service[["event_id", "event_type", "cycle_id"]]) if len(service) else []}
+        return _with_delay({"accepted": _rows(raw.loc[raw["event_id"] == eid, ["event_id", "ingested_at"]].sort_values("ingested_at")),
+                            "quarantined": _rows(q.loc[q["event_id"] == eid, ["event_id", "reason", "detected_at"]]),
+                            "service": _rows(service[["event_id", "event_type", "cycle_id"]]) if len(service) else []},
+                           self.sent_log, eid)
 
     def event_counts(self) -> dict:
         from hbdata import replay
@@ -235,6 +309,7 @@ class OfflineSource:
 
     def send_event(self, envelope: dict) -> None:
         from hbdata import replay
+        self.sent_log.record(envelope["event_id"])
         replay.ingest_local([envelope], self.tmp / "eventhouse", self.context, datetime.now(timezone.utc))
 
     def start_routing(self) -> str:

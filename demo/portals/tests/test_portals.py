@@ -98,6 +98,9 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     assert re.fullmatch(r"PSE-97\d{7}", eid)
     arrival = client.get(f"/api/arrival/{eid}").json()
     assert arrival["accepted"] and arrival["service"]
+    assert arrival["delay_seconds"] is not None and arrival["arrived_demo"].startswith("16 Oct 2026")
+    timeline = client.get("/staff/customer/HB-M-900001").text
+    assert "s after sending" in timeline and "When (demo clock)" in timeline
     client.post("/staff/process", follow_redirects=False)
     page = client.get("/staff").text
     assert "from the demo" in page and "Payment support" in page
@@ -125,3 +128,80 @@ def test_load_reads_allow_lab_account(tmp_path):
         config.load(path)
     path.write_text("login_hint: odl_user_1@sandboxailabs1.onmicrosoft.com\nallow_lab_account: true\n", encoding="utf-8")
     assert config.load(path).allow_lab_account is True
+
+
+class _FakeFabric:
+    """Counts the reads, so the tests can see what the cache keeps."""
+
+    def __init__(self):
+        self.calls = {"sql": 0, "kql": 0}
+        self.status = "Running"
+
+    def sql(self, query, params=()):
+        self.calls["sql"] += 1
+        return [{"n": 1}]
+
+    def kql(self, query):
+        self.calls["kql"] += 1
+        return [{"event_id": "PSE-971234567", "ingested_at": "2026-11-10T09:51:28Z"}] if "event_id ==" in query else [{"n": 1}]
+
+    def send_event(self, envelope):
+        pass
+
+    def job_status(self, ref):
+        return {"status": self.status}
+
+
+def _live(tmp_path):
+    from portals.sources import LiveSource, SentLog
+    fake = _FakeFabric()
+    return LiveSource(config.Settings(), fabric=fake, sent_log=SentLog(tmp_path / "sent.json")), fake
+
+
+def test_send_forgets_only_the_eventhouse_answers(tmp_path):
+    src, fake = _live(tmp_path)
+    src.sql("SELECT 1"), src.kql("RawEvents | count")
+    src.sql("SELECT 1"), src.kql("RawEvents | count")
+    assert fake.calls == {"sql": 1, "kql": 1}
+    src.send_event({"event_id": "PSE-971234567"})
+    src.sql("SELECT 1"), src.kql("RawEvents | count")
+    assert fake.calls == {"sql": 1, "kql": 2}
+
+
+def test_finished_routing_job_forgets_everything_once(tmp_path):
+    src, fake = _live(tmp_path)
+    src.sql("SELECT 1")
+    src.routing_status("job-1")
+    src.sql("SELECT 1")
+    assert fake.calls["sql"] == 1  # still running: the Lakehouse has not changed
+    fake.status = "Completed"
+    src.routing_status("job-1")
+    src.sql("SELECT 1")
+    src.routing_status("job-1")  # polled again: the cache is not cleared a second time
+    src.sql("SELECT 1")
+    assert fake.calls["sql"] == 2
+
+
+def test_arrival_delay_uses_the_real_send_time(tmp_path):
+    from portals.sources import SentLog, arrival_delay
+    src, _ = _live(tmp_path)
+    src.sent_log.times["PSE-971234567"] = "2026-11-10T09:50:28+00:00"
+    found = src.event_arrival("PSE-971234567")
+    assert found["delay_seconds"] == 60
+    assert arrival_delay(None, "2026-11-10T09:51:28Z") is None
+    src.sent_log.record("PSE-979999999")
+    assert "PSE-979999999" in SentLog(tmp_path / "sent.json").times  # kept after a restart
+
+
+def test_real_times_are_not_shown_as_story_times(settings, source):
+    b = Board(settings, source)
+    today = b.as_of()
+    run = {"cutoff_at": "2026-10-15T00:00:00Z"}
+    row = b._case_row({"mortgage_id": "HB-M-003121", "action_family": "renewal", "status": "open",
+                       "case_created_at": "2026-11-09T15:27:00Z"}, today, run)
+    assert row["opened"] == "Scoring run (data to 15 Oct 2026)"
+    row = b._case_row({"mortgage_id": "HB-M-900001", "action_family": "support", "status": "open",
+                       "case_created_at": "2026-10-16T09:00:00Z"}, today, run)
+    assert row["opened"] == "16 Oct 2026 09:00"
+    history = {"event_id": "PTE-000000001", "occurred_at": "2026-09-25T10:00:00Z", "ingested_at": "2026-11-09T18:00:00Z"}
+    assert b._arrival(history, today) == ""

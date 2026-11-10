@@ -13,7 +13,8 @@ allow_lab_account: false # true only if the hackathon lab account (odl_user_...)
 demo_start: "2026-10-16T09:00:00Z"
 demo_step_minutes: 60
 
-cache_seconds: 15
+cache_seconds: 15          # Eventhouse (KQL) answers
+sql_cache_seconds: 300     # Lakehouse (SQL) answers. They change only when notebook 07 runs
 policy_file: action/policy/routing-policy.candidate.json
 notebook_name: 07_route_review_cases
 # The Eventstream that receives the portal's events. HomeBridgeRiskEventsV2 is the item with the direct-ingestion

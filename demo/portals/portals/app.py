@@ -12,6 +12,7 @@ import argparse
 import threading
 from pathlib import Path
 
+import pandas as pd
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -103,9 +104,18 @@ def create_app(settings: config.Settings, source) -> FastAPI:
     @app.get("/api/arrival/{event_id}")
     def arrival(event_id: str):
         try:
-            return JSONResponse(source.event_arrival(check_event_id(event_id)))
+            eid = check_event_id(event_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        try:
+            found = source.event_arrival(eid)
         except Exception as exc:  # noqa: BLE001
             return JSONResponse({"error": str(exc)[:300]}, status_code=502)
+        env = state["sent"].get(eid)
+        delay = found.get("delay_seconds")
+        found["arrived_demo"] = (when(pd.Timestamp(env["occurred_at"]) + pd.Timedelta(seconds=delay))
+                                 if env and delay is not None else None)
+        return JSONResponse(found)
 
     # ----- staff portal
     @app.get("/staff", response_class=HTMLResponse)
@@ -162,6 +172,10 @@ def main(argv: list[str] | None = None) -> None:
     else:
         from .sources import LiveSource
         source = LiveSource(settings)
-        source.fabric.connect()  # sign in and find the items before the first page
+        print("Signing in and warming up the Fabric connections (about 30 seconds) ...")
+        try:
+            source.warm_up()  # the slow first steps happen now, not on the first click in the demo
+        except Exception as exc:  # noqa: BLE001 - the pages show the problem in plain words
+            print(f"Warm-up did not finish: {exc}")
     print(f"HomeBridge demo portals ({source.kind}): http://127.0.0.1:{args.port}/")
     uvicorn.run(create_app(settings, source), host="127.0.0.1", port=args.port, log_level="warning")

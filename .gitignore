@@ -11,6 +11,7 @@ build/
 
 # Demo portals: local settings
 demo/portals/config.local.yml
+demo/portals/sent-times.local.json
 
 # Python
 .venv/

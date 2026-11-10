@@ -40,7 +40,7 @@
 <section class="panel">
   <h2>Last runs</h2>
   <dl class="facts">
-    <dt>Scoring</dt><dd>{% if s.run %}Run {{ s.run.run_id }} ({{ s.run.run_kind }}), finished {{ s.run.completed_at|when }}, data up to {{ s.run.cutoff_at|day }}{% else %}none{% endif %}</dd>
+    <dt>Scoring</dt><dd>{% if s.run %}Run {{ s.run.run_id }} ({{ s.run.run_kind }}), data up to {{ s.run.cutoff_at|day }}, finished {{ s.run.completed_at|when }} (real time){% else %}none{% endif %}</dd>
     <dt>Routing</dt><dd>{% if s.last_routing %}{{ s.last_routing.routed_at|when }} (real time): {{ s.last_routing.cases }} cases, {{ s.last_routing.service_events }} service events, {{ s.last_routing.rejected_events }} rejected{% else %}not run yet{% endif %}</dd>
     <dt>Last event received</dt><dd>{{ s.counts.last_ingested|when if s.counts.last_ingested else '-' }} (real time)</dd>
   </dl>

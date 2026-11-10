@@ -5,7 +5,7 @@
 {% block body %}
 <h1>Worklist</h1>
 {{ explain("the customers an adviser should contact first. The top list is customers who asked for help or hit a fault in our renewal website. The second list is customers the model says are likely to leave when their deal ends, in priority order. Each row says why, who owns it, and whether a review case is open.") }}
-<p class="small">Demo date: {{ w.today|when }} (the demo clock, not today's real date). Scores from run {{ w.run.run_id if w.run else 'none' }}{% if w.run %}, finished {{ w.run.completed_at|when }}{% endif %}.</p>
+<p class="small">Demo date: {{ w.today|when }} (the demo clock, not today's real date). Scores from run {{ w.run.run_id if w.run else 'none' }}{% if w.run %}, data up to {{ w.run.cutoff_at|day }}{% endif %}.</p>
 
 <section class="panel" id="process">
   <h2>Process new events</h2>

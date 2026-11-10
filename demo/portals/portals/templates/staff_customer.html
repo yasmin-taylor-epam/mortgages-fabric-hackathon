@@ -32,7 +32,7 @@
   <p class="bigscore {{ 'high' if c.score.score >= c.threshold }}">{{ c.score.score|pct }}</p>
   <p>{% if c.score.score >= c.threshold %}At or above the {{ c.threshold|pct }} threshold. Priority {{ c.score.priority_rank if c.score.priority_rank is not none else '-' }}.
      {% else %}Below the {{ c.threshold|pct }} threshold, so no renewal call is planned from the score alone.{% endif %}</p>
-  <p class="small">Number {{ c.rank_by_score }} of {{ c.scored }} customers by score. Customer group {{ c.score.segment_id }}. Scored {{ c.score.scored_at|when }} from data up to {{ c.score.cutoff_at|day }} (run {{ c.score.run_id }}).</p>
+  <p class="small">Number {{ c.rank_by_score }} of {{ c.scored }} customers by score. Customer group {{ c.score.segment_id }}. Scored from data up to {{ c.score.cutoff_at|day }} (run {{ c.score.run_id }}).</p>
   {% else %}<p class="empty">Not scored in the latest run. Only customers near the end of their deal are scored.</p>{% endif %}
   {{ source("Lakehouse table account_scores", "lakehouse", "lakehouse/gold/account_scores.parquet") }}
 </section>
@@ -65,20 +65,20 @@
   {% else %}<p class="empty">No review cases for this customer.</p>{% endif %}
   {% if c.decisions %}
   <details><summary>Routing decisions for this customer ({{ c.decisions|length }} newest)</summary>
-  <table><thead><tr><th>Event</th><th>Arrived</th><th>Outcome</th><th>Reason</th></tr></thead>
-  <tbody>{% for d in c.decisions %}<tr><td><code>{{ d.event_id }}</code></td><td>{{ d.arrived_at|when }}</td><td>{{ d.outcome|replace('_', ' ') }}</td><td>{{ d.reason|replace('_', ' ') }}</td></tr>{% endfor %}</tbody></table>
+  <table><thead><tr><th>Event</th><th>When (demo clock)</th><th>Outcome</th><th>Reason</th></tr></thead>
+  <tbody>{% for d in c.decisions %}<tr><td><code>{{ d.event_id }}</code></td><td>{{ d.when }}</td><td>{{ d.outcome|replace('_', ' ') }}</td><td>{{ d.reason|replace('_', ' ') }}</td></tr>{% endfor %}</tbody></table>
   </details>{% endif %}
   {{ source("Lakehouse tables review_cases and review_decisions (written by notebook 07)", "lakehouse", "review_cases, routed on this laptop") }}
 </section>
 
 <section class="panel">
   <h2>What happened recently</h2>
-  <p class="small">Events from the renewal website and the servicing team, newest first. <span class="tag">from the demo</span> marks events sent by the customer website in this demo.</p>
+  <p class="small">Events from the renewal website and the servicing team, newest first. Times are on the demo clock. <span class="tag">from the demo</span> marks events sent by the customer website in this demo. For those, the arrival line adds the real delay from the click to the Eventhouse.</p>
   {% if c.timeline %}
   <table class="timeline">
-    <thead><tr><th>When</th><th>What happened</th><th>Event</th></tr></thead>
+    <thead><tr><th>When (demo clock)</th><th>What happened</th><th>Event</th></tr></thead>
     <tbody>{% for e in c.timeline %}
-    <tr class="{{ 'live' if e.live }} {{ 'fault' if e.fault }}"><td>{{ e.when }}<div class="small">arrived {{ e.arrived }}</div></td>
+    <tr class="{{ 'live' if e.live }} {{ 'fault' if e.fault }}"><td>{{ e.when }}{% if e.arrived %}<div class="small">{{ e.arrived }}</div>{% endif %}</td>
       <td>{{ e.text }}{% if e.live %} <span class="tag">from the demo</span>{% endif %}{% if e.copies and e.copies > 1 %} <span class="tag warn">received {{ e.copies }} times</span>{% endif %}</td>
       <td><code>{{ e.event_id }}</code></td></tr>{% endfor %}</tbody>
   </table>

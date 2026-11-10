@@ -46,7 +46,10 @@ async function check() {
     if (j.error) { raw.textContent = 'Could not ask the Eventhouse: ' + j.error; raw.className = 'bad'; }
     else if (j.quarantined.length) { raw.textContent = `Fabric put the event in quarantine: ${j.quarantined[0].reason}.`; raw.className = 'bad'; done = true; }
     else if (j.accepted.length) {
-      raw.textContent = `Stored in RawEvents (${j.accepted.length} ${j.accepted.length === 1 ? 'copy' : 'copies'}), first at ${j.accepted[0].ingested_at}.`;
+      const copies = `${j.accepted.length} ${j.accepted.length === 1 ? 'copy' : 'copies'}`;
+      const delay = j.delay_seconds === null || j.delay_seconds === undefined ? '' : `, ${j.delay_seconds} seconds after sending`;
+      const demo = j.arrived_demo ? ` On the demo clock it arrived ${j.arrived_demo}.` : '';
+      raw.textContent = `Stored in RawEvents (${copies})${delay}.${demo}`;
       raw.className = 'ok';
       if (j.service.length) { svc.textContent = `ServiceEvents() lists it once as "${j.service[0].event_type}". The routing notebook will open a review case.`; svc.className = 'ok'; }
       else { svc.textContent = 'Not a service event. It is in the timeline but does not open a case by itself.'; svc.className = 'info'; }
