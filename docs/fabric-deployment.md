@@ -187,6 +187,8 @@ This is the short list of what stays manual. Each has a reason.
 
 ### Eventstream destination: portal steps (worked once on a new Eventstream)
 
+**Keep the `core` step away from a portal-made Eventstream.** Set `skip_item_types: [Eventstream]` in the settings file of that workspace. The `core` step then leaves the Eventstream out of the fabric-cicd scope and does not read it. It never deletes items either, because `prune` is false by default and the portal-made Eventstream is not in the repository. Without the setting, `core` would try to update the repository's own Eventstream item. Not run in Fabric.
+
 Do this after the `core` step. It needs Contributor or higher on the workspace. These steps were done by hand on a new Eventstream (`HomeBridgeRiskEventsV2`) on 9 November 2026. The destination ran and events landed: test events in 31 to 46 seconds, and a full resend of 21,538 events in 15 to 30 seconds (`RawEventsLanding` 21,543 rows, `RawEvents` 21,533, `QuarantinedEvents` 10, the expected `conflicting_borrower_mapping`). **This is one run, by hand. It has not been repeated.** Events that were sent before the data connection existed never landed. So send sample events, finish the wizard, then send the events again.
 
 1. Open the Eventstream and switch to **Edit** mode.

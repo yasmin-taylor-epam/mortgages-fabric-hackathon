@@ -214,6 +214,7 @@ def test_models_scoring_run_flows_into_renewal_cases(tmp_path):
         pytest.skip("run: python -m models_eval policy")
     policy_doc = json.loads(policy_path.read_text(encoding="utf-8"))
     threshold = policy_doc["risk_threshold"]
+    assert policy_doc["threshold_rule"] == "min_precision" and policy_doc["threshold_rule_params"] == {"min_precision": 0.6}  # the default rule
 
     outbox = pd.read_parquet(gold / "risk_outbox.parquet")
     runs = pd.read_parquet(gold / "score_runs.parquet")

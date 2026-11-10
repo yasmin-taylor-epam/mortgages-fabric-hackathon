@@ -17,7 +17,8 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     t = sub.add_parser("train", help="Train and register one model release.")
     t.add_argument("--no-mlflow", action="store_true")
-    t.add_argument("--threshold-rule", choices=config.THRESHOLD_RULES, help="How the alert threshold is chosen. Default: max_f1 (or HB_THRESHOLD_RULE).")
+    t.add_argument("--threshold-rule", choices=config.THRESHOLD_RULES, help="How the alert threshold is chosen. Default: min_precision (or HB_THRESHOLD_RULE).")
+    t.add_argument("--min-precision", type=float, help="min_precision rule: the share of validation alerts that must be real leavers. Default 0.6 (or HB_MIN_PRECISION).")
     t.add_argument("--cost-missed-leaver", type=float, help="min_cost rule: cost of one missed leaver.")
     t.add_argument("--cost-review", type=float, help="min_cost rule: cost of one review.")
     sub.add_parser("evaluate", help="Write the later-cohort evaluation report.").add_argument("--model-version")
@@ -36,7 +37,7 @@ def main(argv=None) -> int:
     paths = config.paths(a.out)
 
     if a.cmd == "train":
-        r = train.train_release(paths, use_mlflow=not a.no_mlflow, rule=config.threshold_rule(a.threshold_rule, a.cost_missed_leaver, a.cost_review))
+        r = train.train_release(paths, use_mlflow=not a.no_mlflow, rule=config.threshold_rule(a.threshold_rule, a.cost_missed_leaver, a.cost_review, a.min_precision))
         out = {k: r[k] for k in ("release_id", "champion", "model_version", "cluster_model_version", "alert_threshold", "alert_threshold_rule")}
         out["validation_ap"] = {k: round(v["validation_ap"], 4) for k, v in r["validation"].items()}
         out["segments_k"] = r["segments"]["k"]

@@ -26,6 +26,9 @@ SKU = re.compile(r"^F(2|4|8|16|32|64|128|256|512|1024|2048)$")
 GIT_STRATEGIES = ("None", "PreferRemote", "PreferWorkspace")
 
 
+SKIPPABLE_TYPES = ("Eventstream", "KQLDatabase", "Eventhouse")
+
+
 class ConfigError(ValueError):
     pass
 
@@ -226,6 +229,9 @@ class EnvSettings:
     create_workspace: bool = True
     sensitivity_label_id: str = ""
     prune: bool = False
+    # Item types that the `core` step leaves alone. Use ["Eventstream"] when the Eventstream destination was made in the portal
+    # (a deploy would try to update the item and fail, or replace it). Allowed: Eventstream, KQLDatabase, Eventhouse.
+    skip_item_types: list = field(default_factory=list)
     run: RunSettings = field(default_factory=RunSettings)
     data: DataSettings = field(default_factory=DataSettings)
     capacity_create: CapacitySettings = field(default_factory=CapacitySettings)
@@ -257,6 +263,11 @@ class EnvSettings:
             out.append("set capacity_name or capacity_id, not both")
         if not self.workspace_id and self.create_workspace and not (self.capacity_name or self.capacity_id):
             out.append("a new workspace needs capacity_name or capacity_id (or set create_workspace: false)")
+        bad = [x for x in self.skip_item_types if x not in SKIPPABLE_TYPES]
+        if bad:
+            out.append(f"skip_item_types may hold only {list(SKIPPABLE_TYPES)}, not {bad}")
+        if "Eventhouse" in self.skip_item_types and "KQLDatabase" not in self.skip_item_types:
+            out.append("skip_item_types: skip KQLDatabase together with Eventhouse")
         if self.capacity_create.enabled and not self.capacity_name:
             out.append("capacity_create needs capacity_name, the name of the capacity to create")
         if self.capacity_create.enabled and self.capacity_name and not re.match(r"^[a-z][a-z0-9]{2,62}$", self.capacity_name):

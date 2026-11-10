@@ -28,7 +28,9 @@ def ensure_hbdata() -> None:
 TARGET = "confirmed_external_refinancing"
 LIFT_K = 10  # lift is reported for the 10 highest scores per cohort. A metric only. It is not a review capacity.
 MAX_SCORE_AGE_MINUTES = 1440  # placeholder: the team has not confirmed it. The report and the action policy use the same value.
-THRESHOLD_RULES = ("max_f1", "min_cost")
+THRESHOLD_RULES = ("min_precision", "max_f1", "min_cost")
+DEFAULT_THRESHOLD_RULE = "min_precision"
+DEFAULT_MIN_PRECISION = 0.6  # at least 60% of alerts should be real leavers on validation data. The team has not confirmed it.
 CLASSIFIER_NAME = "hb-refi-clf"
 CLUSTER_NAME = "hb-segments"
 EXPERIMENT_NAME = "homebridge-refinancing-risk"
@@ -38,17 +40,22 @@ RUN_KINDS = ("scheduled", "checkpoint", "manual")
 @dataclass(frozen=True)
 class ThresholdRule:
     """How training picks the alert threshold. A setting, not a number. See thresholds.py."""
-    name: str = "max_f1"
+    name: str = DEFAULT_THRESHOLD_RULE
     cost_missed_leaver: float | None = None
     cost_review: float | None = None
+    min_precision: float | None = None
 
     def params(self) -> dict:
-        return {"cost_missed_leaver": self.cost_missed_leaver, "cost_review": self.cost_review} if self.name == "min_cost" else {}
+        if self.name == "min_cost":
+            return {"cost_missed_leaver": self.cost_missed_leaver, "cost_review": self.cost_review}
+        return {"min_precision": self.min_precision} if self.name == "min_precision" else {}
 
 
-def threshold_rule(name: str | None = None, cost_missed_leaver: float | None = None, cost_review: float | None = None) -> ThresholdRule:
-    """The rule from the arguments, then the HB_THRESHOLD_RULE, HB_COST_MISSED_LEAVER and HB_COST_REVIEW variables, then max_f1."""
-    name = name or os.environ.get("HB_THRESHOLD_RULE") or "max_f1"
+def threshold_rule(name: str | None = None, cost_missed_leaver: float | None = None, cost_review: float | None = None,
+                   min_precision: float | None = None) -> ThresholdRule:
+    """The rule from the arguments, then the HB_THRESHOLD_RULE, HB_COST_MISSED_LEAVER, HB_COST_REVIEW and HB_MIN_PRECISION
+    variables, then the default rule (min_precision, target 0.6)."""
+    name = name or os.environ.get("HB_THRESHOLD_RULE") or DEFAULT_THRESHOLD_RULE
     if name not in THRESHOLD_RULES:
         raise ValueError(f"Unknown threshold rule {name!r}. Known: {THRESHOLD_RULES}.")
 
@@ -56,7 +63,13 @@ def threshold_rule(name: str | None = None, cost_missed_leaver: float | None = N
         raw = value if value is not None else os.environ.get(env)
         return None if raw in (None, "") else float(raw)
 
-    return ThresholdRule(name, num(cost_missed_leaver, "HB_COST_MISSED_LEAVER"), num(cost_review, "HB_COST_REVIEW"))
+    target = num(min_precision, "HB_MIN_PRECISION")
+    if name == "min_precision":
+        target = DEFAULT_MIN_PRECISION if target is None else target
+        if not 0 < target < 1:
+            raise ValueError("min_precision must be above 0 and below 1.")
+    return ThresholdRule(name, num(cost_missed_leaver, "HB_COST_MISSED_LEAVER"), num(cost_review, "HB_COST_REVIEW"),
+                         target if name == "min_precision" else None)
 
 
 @dataclass(frozen=True)

@@ -4,9 +4,12 @@ The threshold is not typed in. Training calls `freeze` with a named rule (a sett
 rule name, its parameters and the value. The routing policy and notebook 04 read the value from the release.
 
 Rules:
-- max_f1   the threshold with the best F1 on validation data. The default.
-- min_cost the threshold with the lowest total cost on validation data: cost_missed_leaver x missed leavers +
-           cost_review x alerts. Both costs are required. No default cost is invented.
+- min_precision the lowest threshold at which at least `min_precision` of the validation alerts are real leavers.
+                The default, with a target of 0.6. It spends reviewer time only where a leaver is clearly more likely than not,
+                and it gives the most alerts that still meet that bar. It is not "the top N accounts".
+- max_f1        the threshold with the best F1 on validation data (the best balance of precision and recall).
+- min_cost      the threshold with the lowest total cost on validation data: cost_missed_leaver x missed leavers +
+                cost_review x alerts. Both costs are required. No default cost is invented.
 """
 from __future__ import annotations
 
@@ -15,7 +18,8 @@ import math
 import numpy as np
 from sklearn.metrics import f1_score, fbeta_score, precision_score, recall_score
 
-RULE_TEXT = {"max_f1": "max F1 on validation", "min_cost": "lowest cost on validation"}
+RULE_TEXT = {"min_precision": "lowest threshold that meets the precision target on validation", "max_f1": "max F1 on validation",
+             "min_cost": "lowest cost on validation"}
 
 
 def _arrays(y, p):
@@ -30,9 +34,23 @@ def _usable(pred: np.ndarray) -> bool:
     return bool(pred.sum()) and not bool(pred.all())  # alerting nobody or everybody is not a threshold
 
 
-def choose(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, cost_review: float | None = None) -> float | None:
-    """The threshold for a rule. Ties keep the higher threshold. None when no threshold is usable."""
+def _lowest_threshold_meeting(y: np.ndarray, p: np.ndarray, target: float) -> float | None:
+    for t in _cuts(p):  # ascending: the first hit is the lowest threshold
+        pred = p >= t
+        if _usable(pred) and float(y[pred].mean()) >= target:
+            return float(t)
+    return None
+
+
+def choose(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, cost_review: float | None = None,
+           min_precision: float | None = None) -> float | None:
+    """The threshold for a rule. Ties keep the higher threshold. None when no threshold is usable
+    (for min_precision: when no threshold reaches the target)."""
     y, p = _arrays(y, p)
+    if rule == "min_precision":
+        if min_precision is None or not 0 < min_precision < 1:
+            raise ValueError("The min_precision rule needs a min_precision target above 0 and below 1.")
+        return _lowest_threshold_meeting(y, p, min_precision)
     if rule == "min_cost":
         if cost_missed_leaver is None or cost_review is None:
             raise ValueError("The min_cost rule needs cost_missed_leaver and cost_review. No default cost is assumed.")
@@ -55,14 +73,20 @@ def choose(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, 
     return None if best is None else best[1]
 
 
-def freeze(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, cost_review: float | None = None) -> dict:
-    """The frozen threshold and its validation numbers, with the rule that chose it."""
+def freeze(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, cost_review: float | None = None,
+           min_precision: float | None = None) -> dict:
+    """The frozen threshold and its validation numbers, with the rule that chose it.
+
+    `target_met` is False when the rule found no threshold. The value then falls back to 0.5, and training refuses
+    to release a champion in that state."""
     y, p = _arrays(y, p)
-    t = choose(y, p, rule, cost_missed_leaver, cost_review)
+    t = choose(y, p, rule, cost_missed_leaver, cost_review, min_precision)
+    met = t is not None
     t = 0.5 if t is None else t
     pred = (p >= t).astype(int)
-    params = {"cost_missed_leaver": cost_missed_leaver, "cost_review": cost_review} if rule == "min_cost" else {}
-    return {"threshold": round(t, 4), "rule": RULE_TEXT[rule], "rule_name": rule, "rule_params": params,
+    params = {"cost_missed_leaver": cost_missed_leaver, "cost_review": cost_review} if rule == "min_cost" else \
+        {"min_precision": min_precision} if rule == "min_precision" else {}
+    return {"threshold": round(t, 4), "rule": RULE_TEXT[rule], "rule_name": rule, "rule_params": params, "target_met": met,
             "validation_f1": round(float(f1_score(y, pred, zero_division=0)), 4),
             "validation_precision": round(float(precision_score(y, pred, zero_division=0)), 4),
             "validation_recall": round(float(recall_score(y, pred, zero_division=0)), 4),
@@ -98,7 +122,11 @@ def options(y_val, p_val, y_test, p_test, chosen: float, chosen_rule: str, open_
     yv, pv = _arrays(y_val, p_val)
     yt, pt = _arrays(y_test, p_test)
     f2 = max(((float(fbeta_score(yv, (pv >= t).astype(int), beta=2, zero_division=0)), float(t)) for t in _cuts(pv) if _usable(pv >= t)), default=(0, 0.5))[1]
-    rows = [(f"chosen rule ({chosen_rule})", chosen), ("max F2 on validation (recall counts twice)", f2),
+    f1 = choose(yv, pv, "max_f1")
+    rows = [(f"chosen rule ({chosen_rule})", chosen)]
+    if chosen_rule != "max_f1" and f1 is not None:
+        rows.append(("max F1 on validation (best balance)", f1))
+    rows += [("max F2 on validation (recall counts twice)", f2),
             ("80% recall on validation", _recall_target(yv, pv, 0.80)), ("top 10% of validation scores", _top_share(pv, 0.10)),
             ("top 5% of validation scores", _top_share(pv, 0.05))]
     if retired is not None:

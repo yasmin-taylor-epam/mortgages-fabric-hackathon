@@ -259,14 +259,17 @@ class Deployer(ExtraSteps):
                 "portal (its data is only the live event feed) and run the 'core' step again, or deploy to a new workspace. See docs/fabric-deployment.md.")
 
     def core(self) -> None:
-        types = stage.CORE_TYPES
+        skip = set(self.cfg.skip_item_types)
+        types = [t for t in stage.CORE_TYPES if t not in skip]
+        left_alone = f" It leaves {sorted(skip)} alone (skip_item_types)." if skip else ""
         if self.dry_run:
-            self.say(f"Would check the Eventstream compatibility level, then deploy {types} with fabric-cicd to workspace {self.workspace_id}.")
+            self.say(f"Would {'' if 'Eventstream' in skip else 'check the Eventstream compatibility level, then '}deploy {types} with fabric-cicd to workspace {self.workspace_id}.{left_alone}")
             return
-        self.check_eventstream_level()
-        self.say(f"Deploying {types} with fabric-cicd.")
+        if "Eventstream" not in skip:
+            self.check_eventstream_level()
+        self.say(f"Deploying {types} with fabric-cicd.{left_alone}")
         config = self._write_config("core", types, core_parameters(self.cfg.environment, self.cfg.run.as_of))
-        if not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):
+        if "KQLDatabase" not in skip and not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):
             # Fabric runs the database script as one unit and removes the database when a command fails. The update
             # policies fail while streaming ingestion is on. So publish the database without them first.
             self.say("The KQL database does not exist yet. Publishing it without the update policies first, then turning streaming ingestion off.")

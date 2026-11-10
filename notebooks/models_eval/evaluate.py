@@ -126,6 +126,7 @@ def evaluate_release(paths: Paths, model_version: str | None = None) -> dict:
     out = {"release_id": rel["release_id"], "model_version": rel["model_version"],
            "cluster_model_version": rel["cluster_model_version"], "champion": rel["champion"], "synthetic_data": True,
            "alert_threshold": rel["alert_threshold"], "alert_threshold_rule": rel.get("alert_threshold_rule", "max_f1"),
+           "alert_threshold_params": rel.get("alert_threshold_params", {}),
            "test_cohorts": list(cfg.test_cohorts), "test_accounts": int(len(test)), "test_base_rate": round(float(y.mean()), 4),
            "lift_k": LIFT_K, "models": {}}
     for name, model in loaded["candidates"].items():
@@ -212,7 +213,7 @@ def to_markdown(r: dict) -> str:
                      f"{_fmt(m['calibration']['expected_calibration_error'])} | {_fmt(m['mean_lift_at_10'])} |")
     lines += ["", "Accuracy alone misleads when few accounts leave. Majority-class accuracy on the test cohorts is "
               f"{_fmt(next(iter(r['models'].values()))['majority_class_accuracy'])}.", "",
-              f"The routing threshold is {_fmt(r.get('alert_threshold'))}, chosen by the rule '{r.get('alert_threshold_rule')}' on validation data. "
+              f"The routing threshold is {_fmt(r.get('alert_threshold'))}, chosen by the rule '{r.get('alert_threshold_rule')}' {r.get('alert_threshold_params') or ''} on validation data. "
               "The routing policy copies it from the release. The team confirms the rule.", "",
               *_options_markdown(r),
               "## Lift at 10 (the ten highest scores per cohort)", "",

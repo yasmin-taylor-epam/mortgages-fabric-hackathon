@@ -62,5 +62,7 @@ def released(lakehouse):
     from models_eval import train
 
     paths = config.paths(lakehouse["root"])
-    release = train.train_release(paths, created_at="2026-10-15T00:00:00Z", use_mlflow=True, n_boot=5)
+    # max_f1 on purpose: this small lakehouse cannot reach the default precision target of 60%. The default rule is
+    # tested on the full local data (action integration test) and with a lower target in test_thresholds.py.
+    release = train.train_release(paths, created_at="2026-10-15T00:00:00Z", use_mlflow=True, n_boot=5, rule=config.ThresholdRule("max_f1"))
     return {"paths": paths, "release": release, **lakehouse}

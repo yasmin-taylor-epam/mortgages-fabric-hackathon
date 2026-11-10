@@ -23,6 +23,10 @@ environments:
     # true: delete items from the workspace that are not in the repository. Leave false while others share the workspace.
     prune: false
 
+    # Item types that the core step leaves alone. Use [Eventstream] on a workspace where the Eventstream destination was
+    # made in the portal: a deploy would fail on it (an old 1.0 item cannot move to 1.1) or replace it. Leave [] otherwise.
+    skip_item_types: []
+
     run:
       # Same cut-off and start time as scripts/run_local_flow.ps1 uses for its checkpoint run.
       checkpoint_cutoff: "2026-10-15T00:00:00Z"

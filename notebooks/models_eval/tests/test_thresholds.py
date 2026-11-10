@@ -45,17 +45,23 @@ def test_min_cost_moves_with_the_cost_ratio_and_needs_both_costs():
     assert thresholds.freeze(y, p, "min_cost", 5.0, 1.0)["rule_params"] == {"cost_missed_leaver": 5.0, "cost_review": 1.0}
 
 
-def test_unknown_rule_is_refused_and_the_default_is_max_f1(monkeypatch):
+def test_unknown_rule_is_refused_and_the_default_is_min_precision(monkeypatch):
     y, p = labelled()
     with pytest.raises(ValueError, match="Unknown threshold rule"):
         thresholds.choose(y, p, "by_hand")
-    for var in ("HB_THRESHOLD_RULE", "HB_COST_MISSED_LEAVER", "HB_COST_REVIEW"):
+    for var in ("HB_THRESHOLD_RULE", "HB_COST_MISSED_LEAVER", "HB_COST_REVIEW", "HB_MIN_PRECISION"):
         monkeypatch.delenv(var, raising=False)
-    assert config.threshold_rule() == config.ThresholdRule("max_f1", None, None)
+    assert config.threshold_rule() == config.ThresholdRule("min_precision", None, None, 0.6)  # the default rule and target
+    assert config.threshold_rule("max_f1") == config.ThresholdRule("max_f1", None, None, None)
+    monkeypatch.setenv("HB_MIN_PRECISION", "0.7")
+    assert config.threshold_rule().min_precision == 0.7 and config.threshold_rule(min_precision=0.55).min_precision == 0.55
+    monkeypatch.delenv("HB_MIN_PRECISION")
+    with pytest.raises(ValueError, match="above 0 and below 1"):
+        config.threshold_rule(min_precision=1.2)
     monkeypatch.setenv("HB_THRESHOLD_RULE", "min_cost")
     monkeypatch.setenv("HB_COST_MISSED_LEAVER", "8")
     monkeypatch.setenv("HB_COST_REVIEW", "2")
-    assert config.threshold_rule() == config.ThresholdRule("min_cost", 8.0, 2.0) and config.threshold_rule("max_f1").name == "max_f1"
+    assert config.threshold_rule() == config.ThresholdRule("min_cost", 8.0, 2.0, None) and config.threshold_rule("max_f1").name == "max_f1"
     with pytest.raises(ValueError):
         config.threshold_rule("guess")
 
@@ -74,6 +80,9 @@ def test_options_table_compares_without_choosing():
     names = [r["option"] for r in rows]
     assert names[0] == "chosen rule (max_f1)" and rows[0]["threshold"] == round(chosen, 4)
     assert any(n.startswith("retired:") and "comparison only" in n for n in names) and len(rows) == 6
+    strict = thresholds.choose(yv, pv, "min_precision", min_precision=0.6)
+    rows2 = thresholds.options(yv, pv, yt, pt, strict, "min_precision")
+    assert rows2[0]["option"] == "chosen rule (min_precision)" and rows2[1]["option"].startswith("max F1 on validation") and len(rows2) == 6
     r80 = next(r for r in rows if r["option"].startswith("80% recall"))
     assert r80["validation"]["recall"] >= 0.8
     top5 = next(r for r in rows if r["option"].startswith("top 5%"))
@@ -95,6 +104,7 @@ def test_the_policy_is_written_from_the_release_and_nobody_types_the_number(rele
     out = policy.write(paths)
     doc = json.loads(Path(out["file"]).read_text(encoding="utf-8"))
     assert doc["risk_threshold"] == rel["alert_threshold"] and doc["threshold_rule"] == "max_f1"
+    assert doc["threshold_rule_params"] == {}
     assert doc["version"] == f"routing-policy-{rel['release_id']}" and doc["max_score_age_minutes"] == config.MAX_SCORE_AGE_MINUTES
     assert "placeholder" in doc["_note"] and out["file"].replace("\\", "/").endswith("policy/routing-policy.json")
 
@@ -122,7 +132,7 @@ def test_scoring_uses_the_release_threshold_by_default(released, tmp_path):
 
 def test_the_evaluation_report_has_the_options_and_no_capacity_threshold(released):
     rep = evaluate.evaluate_release(released["paths"])
-    assert rep["alert_threshold_rule"] == "max_f1" and rep["lift_k"] == 10
+    assert rep["alert_threshold_rule"] == "max_f1" and rep["alert_threshold_params"] == {} and rep["lift_k"] == 10
     assert "review_capacity_threshold" not in rep and "reviews_per_run" not in rep
     assert len(rep["threshold_options"]) == 6 and rep["threshold_options"][0]["threshold"] == round(rep["alert_threshold"], 4)
     md = evaluate.to_markdown(rep)
@@ -136,3 +146,68 @@ def test_no_code_treats_ten_reviews_as_a_capacity():
             if "tests" in f.parts:
                 continue
             assert not any(b in f.read_text(encoding="utf-8") for b in banned), f
+
+
+def test_min_precision_picks_the_lowest_threshold_that_meets_the_target():
+    y = np.array([1, 1, 0, 1, 0, 0, 0, 1, 0, 0])
+    p = np.array([0.95, 0.9, 0.85, 0.8, 0.6, 0.5, 0.4, 0.35, 0.2, 0.1])
+    # precision at or above each cut: .95 1.0 | .9 1.0 | .85 .67 | .8 .75 | .6 .6 | .5 .5 | .4 .43 | .35 .5 | .2 .44 | .1 .4
+    assert thresholds.choose(y, p, "min_precision", min_precision=0.75) == 0.8
+    assert thresholds.choose(y, p, "min_precision", min_precision=0.6) == 0.6
+    assert thresholds.choose(y, p, "min_precision", min_precision=0.5) == 0.35  # the lowest cut that still meets the bar
+    assert thresholds.choose(y, p, "min_precision", min_precision=0.99) == 0.9  # 2 of 2 alerts are leavers
+    assert thresholds.choose(np.zeros(10, dtype=int), p, "min_precision", min_precision=0.6) is None  # no leavers: the target cannot be met
+    for bad in (None, 0, 1, 1.5):
+        with pytest.raises(ValueError, match="min_precision"):
+            thresholds.choose(y, p, "min_precision", min_precision=bad)
+
+
+def test_min_precision_is_not_a_top_n_rule_and_the_count_follows_the_scores():
+    y1, p1 = labelled(600, base=0.2, seed=11)
+    y2, p2 = labelled(600, base=0.35, seed=12)
+    t1 = thresholds.choose(y1, p1, "min_precision", min_precision=0.6)
+    t2 = thresholds.choose(y2, p2, "min_precision", min_precision=0.6)
+    assert int((p1 >= t1).sum()) != int((p2 >= t2).sum())  # more leavers, more alerts: nothing fixes the count
+    for y, p, t in ((y1, p1, t1), (y2, p2, t2)):
+        assert float(y[p >= t].mean()) >= 0.6
+
+
+def test_freeze_records_the_target_and_whether_it_was_met():
+    y, p = labelled()
+    out = thresholds.freeze(y, p, "min_precision", min_precision=0.6)
+    assert out["rule_name"] == "min_precision" and out["rule_params"] == {"min_precision": 0.6} and out["target_met"] is True
+    assert out["validation_precision"] >= 0.6
+    missed = thresholds.freeze(np.zeros(50, dtype=int), np.linspace(0.01, 0.99, 50), "min_precision", min_precision=0.6)
+    assert missed["target_met"] is False and missed["threshold"] == 0.5
+    assert thresholds.freeze(y, p, "max_f1")["target_met"] is True
+
+
+def test_training_refuses_a_release_when_the_champion_cannot_meet_the_target(tmp_path, released):
+    import pytest as _pt
+    from models_eval import train
+
+    paths = config.paths(tmp_path / "unreachable")
+    shutil.copytree(released["root"] / "lakehouse", paths.lakehouse)
+    with _pt.raises(ValueError, match="No release was made"):
+        train.train_release(paths, created_at="2026-10-15T00:00:00Z", use_mlflow=False, n_boot=2, rule=config.ThresholdRule("min_precision", None, None, 0.9999))
+
+
+def test_a_min_precision_release_stores_the_target_and_the_policy_copies_it(released, tmp_path):
+    from models_eval import train
+
+    paths = config.paths(tmp_path / "strict")
+    shutil.copytree(released["root"] / "lakehouse", paths.lakehouse)
+    rel = train.train_release(paths, created_at="2026-10-15T00:00:00Z", use_mlflow=False, n_boot=2, rule=config.ThresholdRule("min_precision", None, None, 0.3))
+    assert rel["alert_threshold_rule"] == "min_precision" and rel["alert_threshold_params"] == {"min_precision": 0.3}
+    champ = rel["validation"][rel["champion"]]
+    assert champ["target_met"] is True and champ["validation_precision"] >= 0.3 and champ["threshold"] == rel["alert_threshold"]
+    doc = policy.build(paths)
+    assert doc["threshold_rule"] == "min_precision" and doc["threshold_rule_params"] == {"min_precision": 0.3}
+    assert doc["risk_threshold"] == rel["alert_threshold"]
+
+
+def test_cli_accepts_a_min_precision_target():
+    from models_eval import __main__ as cli
+
+    src = Path(cli.__file__).read_text(encoding="utf-8")
+    assert "--min-precision" in src and "HB_MIN_PRECISION" in src

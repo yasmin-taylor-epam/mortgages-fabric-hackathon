@@ -34,9 +34,13 @@ def train_release(paths: Paths, cfg: SplitConfig | None = None, created_at=None,
     X, y, parts = data["X"], data["y"], data["parts"]
 
     tuned = models.tune(X["train"], y["train"], X["validation"], y["validation"], seed=cfg.seed % 1000)
-    thresholds = {name: models.freeze_threshold(y["validation"], models.proba(t["model"], X["validation"]), rule.name, rule.cost_missed_leaver, rule.cost_review)
+    thresholds = {name: models.freeze_threshold(y["validation"], models.proba(t["model"], X["validation"]), rule.name, rule.cost_missed_leaver, rule.cost_review,
+                                                   rule.min_precision)
                   for name, t in tuned.items()}
     champion = models.choose_champion(tuned)
+    if not thresholds[champion]["target_met"]:
+        raise ValueError(f"No threshold reaches the target of the rule '{rule.name}' ({rule.params()}) on validation data for the champion "
+                         f"'{champion}'. Lower the target or choose another rule. No release was made.")
 
     seg = clusters.fit_segments(parts["train"], seed=cfg.seed % 1000, n_boot=n_boot)
     seg_ids = clusters.assign(seg["model"], seg["segment_map"], parts["train"])

@@ -174,6 +174,51 @@ def test_as_of_reaches_notebook_06_and_the_pipeline_run_and_replaces_the_pipelin
     assert "'cutoff_at': ''" in out and "'as_of': '2026-10-16T09:00:00Z'" in out
 
 
+# ---------------------------------------------------------------- skip item types
+
+def test_skip_item_types_is_checked_and_empty_by_default():
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"})
+    assert cfg.skip_item_types == [] and cfg.problems() == []
+    cfg.skip_item_types = ["Eventstream"]
+    assert cfg.problems() == []
+    cfg.skip_item_types = ["Lakehouse"]
+    assert any("skip_item_types may hold only" in x for x in cfg.problems())
+    cfg.skip_item_types = ["Eventhouse"]
+    assert any("skip KQLDatabase together with Eventhouse" in x for x in cfg.problems())
+
+
+def test_core_leaves_a_skipped_eventstream_alone_and_does_not_read_it(tmp_path):
+    from fabric_cicd._common._config_validator import ConfigValidator
+
+    published = []
+    ws = "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"
+    session = FakeSession([(("GET", f"/v1/workspaces/{ws}/items"), Resp(body={"value": [
+        {"id": "es-1", "type": "Eventstream", "displayName": "HomeBridgeRiskEventsV2"},
+        {"id": "db-1", "type": "KQLDatabase", "displayName": ids.KQL_DATABASE}]}))])
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": ws})
+    cfg.skip_item_types = ["Eventstream"]
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session), build_dir=tmp_path / "b",
+                        cicd=lambda config: published.append(config))
+    d.workspace_id = ws
+    d.prepare()
+    d.core()
+    out = ConfigValidator().validate_config_file(str(published[0]), "dev")
+    assert "Eventstream" not in out["core"]["item_types_in_scope"] and "KQLDatabase" in out["core"]["item_types_in_scope"]
+    assert not any("topology" in u or "eventstreams" in u for _, u, _ in session.calls)  # the live Eventstream is not read
+    assert all(m == "GET" for m, _, _ in session.calls)
+    assert not cfg.prune and "Eventstream" in stage.CORE_TYPES  # the default run still includes it
+
+
+def test_dry_run_says_what_it_leaves_alone(tmp_path, capsys):
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"})
+    cfg.skip_item_types = ["Eventstream"]
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=FakeSession([])), build_dir=tmp_path / "b", dry_run=True)
+    d.workspace_id = cfg.workspace_id
+    d.core()
+    out = capsys.readouterr().out
+    assert "leaves ['Eventstream'] alone" in out and "compatibility level" not in out and "'Eventstream'" not in out.split("deploy")[1].split("leaves")[0]
+
+
 # ---------------------------------------------------------------- Eventstream compatibility level
 
 def _core_with_live_eventstream(tmp_path, topology, published):

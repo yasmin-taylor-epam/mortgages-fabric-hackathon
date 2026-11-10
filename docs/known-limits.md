@@ -6,7 +6,7 @@
 
 | Limit | What changed |
 | --- | --- |
-| The alert threshold came from an assumed review capacity of 10 per run (0.5593). It caught about 7% of leavers on the test cohort. | The threshold now comes from a named rule saved with the model release. See `docs/alert-threshold.md`. The test bound "at most 10 cases" is gone. |
+| The alert threshold came from an assumed review capacity of 10 per run (0.5593). It caught about 7% of leavers on the test cohort. | The threshold now comes from a named rule saved with the model release. The default rule is a precision target of 60% on validation data (0.5062). See `docs/alert-threshold.md`. The test bound "at most 10 cases" is gone. |
 | The 24-hour score age used the real clock. A replay a day after scoring gave 0 cases. | One as-of date (`HB_AS_OF`, `run.as_of`, pipeline parameter `as_of`). The case writer, the replay tools, the scoring run start, the pipeline cutoff, the report and `Customer360(as_of)` use it. With no as-of date they use the real clock, as before. |
 | One failed run for one mortgage made all 303 scores stale. | Each run records the accounts it covers (`score_runs.scope_keys`). A failed run makes stale only the scores of those accounts. Old runs with no scope still cover every account. |
 | A late servicing feed made every account "support unknown" and lost the known active-support case. | A known `active` status is kept. Accounts with no known case become `unknown`, and the router still holds their events. |
@@ -42,7 +42,7 @@ These are rules INV-1 to INV-6 and cases T01 to T07 in `site/index.html`. Do not
 - Feed stale limits: 24 hours (transfer), 72 hours (servicing, payment, contact), 730 days (account). No source is given for these numbers.
 - Pipeline retry count: 1 for the two compute notebooks, 3 for publish. Timeouts: 20 minutes for compute, 10 for publish.
 - Case writer: 3 attempts per write, then the error is recorded.
-- Retrain cadence and the threshold rule (`docs/alert-threshold.md`).
+- Retrain cadence, the threshold rule and its precision target of 0.6 (`docs/alert-threshold.md`). The strict rule finds about 10% of leavers. A lower target (for example 0.5 gives 0.4036 and 45 live alerts) finds more.
 
 ## Documented limits (no change)
 
