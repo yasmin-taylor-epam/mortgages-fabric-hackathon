@@ -157,7 +157,9 @@ def test_as_of_sets_the_pipeline_parameter_default_through_a_regex_that_fabric_c
     pipeline = deployer.stage_dir / f"{ids.PIPELINE_SCORING}.DataPipeline" / "pipeline-content.json"
     text = pipeline.read_text(encoding="utf-8")
     # The same replacement rule as fabric-cicd: only capture group 1 is replaced.
-    out = re.sub(entry["find_value"], lambda m: m.group(0)[: m.start(1) - m.start(0)] + "2026-10-16T09:00:00Z" + m.group(0)[m.end(1) - m.start(0):], text)
+    assert re.search(entry["find_value"], text).group(1)  # fabric-cicd refuses an empty capture group (seen live)
+    repl = entry["replace_value"]["dev"]
+    out = re.sub(entry["find_value"], lambda m: m.group(0)[: m.start(1) - m.start(0)] + repl + m.group(0)[m.end(1) - m.start(0):], text)
     assert json.loads(out)["properties"]["parameters"]["as_of"]["defaultValue"] == "2026-10-16T09:00:00Z"
     assert json.loads(out)["properties"]["parameters"]["cutoff_at"]["defaultValue"] == ""  # nothing else changed
 
