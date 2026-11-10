@@ -90,14 +90,14 @@ Alex (`HB-M-900001`) gets one payment-support case and one technical case. Alex'
 The Models and evaluation pipeline writes Gold tables to `data/output/lakehouse/gold/`. When `risk_outbox.parquet` and `score_runs.parquet` exist, `--hbdata-dir` also replays the published `risk_updated` events in arrival order:
 
 ```powershell
-..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --policy policy\routing-policy.candidate.json --now 2026-10-15T00:05:00Z
+..\.venv\Scripts\python -m homebridge_action.cli --hbdata-dir ..\data --policy ..\data\output\policy\routing-policy.json --now 2026-10-15T00:05:00Z
 ```
 
-On 22 October 2026, a local checkpoint run had these results (synthetic data):
-- 303 `risk_updated` events gave 6 renewal cases and 1 payment-support case.
+On 10 November 2026, a local checkpoint run with the current rule (`min_precision` 0.6, threshold 0.5062) had these results (synthetic data):
+- 303 `risk_updated` events gave 7 renewal cases and 1 payment-support case. (The working policy file comes from `python -m models_eval policy`.)
 - The payment-support case belongs to an account at or above the threshold that has active payment support.
-- 296 events were below the threshold.
-- The same replay also produced 428 technical cases, one for each mortgage and cycle with a verified portal fault in the synthetic history.
+- 295 events were below the threshold.
+- The same replay also produced 428 technical cases, one for each mortgage and cycle with a verified portal fault in the synthetic history. (Notebook 07 keeps only the unresolved ones, see below.)
 
 `test_models_scoring_run_flows_into_renewal_cases` checks the renewal cases against an independent calculation. Every eligible account gets a case. The test sets no upper bound.
 

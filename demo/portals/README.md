@@ -81,9 +81,11 @@ The pages show story times on the demo clock only:
 
 | Customer | Story |
 |---|---|
-| Alex, HB-M-900001 | Renewal stuck at "documents received". Alex asks for help with payments. A payment-support case opens and goes to the top of the worklist. |
-| HB-M-003121 | High score, priority 3. A renewal case is open for adviser ADV-027. |
+| Alex, HB-M-900001 | Renewal stuck at "sent documents, waiting for the next step", with a verified portal fault (one technical case). The model gives Alex 38%, number 56 of 303, below the 51% bar, so Alex has no renewal case. Alex asks for help with payments. A payment-support case opens and, because it comes from the demo website, goes to the top of the first section of the worklist. |
+| HB-M-003121 | The highest score: 96%, priority 1 of 27. A renewal case is open for adviser ADV-027. |
 | Sam, HB-M-900002 | Renewed. No cases. |
+
+Numbers on the live data after the deploy of 10 November 2026 (synthetic): 303 customers scored, 27 at or above the 51% bar (threshold 0.5062, rule `min_precision` 0.6), 29 review cases (27 renewal, 1 payment support, 1 technical). After Alex's payment-help event and a routing run there are 30 cases.
 
 ## Judging risk
 
