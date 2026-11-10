@@ -49,7 +49,8 @@ table mortgage_account
 
 	measure 'Score Age Minutes' =
 			VAR _t = [Latest Score Time]
-			RETURN IF ( NOT ISBLANK ( _t ), DATEDIFF ( _t, [Report As Of], MINUTE ) )
+			-- Never negative. A run that starts a minute after the as-of time would otherwise show -1.
+			RETURN IF ( NOT ISBLANK ( _t ), MAX ( 0, DATEDIFF ( _t, [Report As Of], MINUTE ) ) )
 		formatString: 0
 		displayFolder: Score
 

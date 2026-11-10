@@ -209,3 +209,9 @@ def test_adviser_outcomes_are_read_only_and_empty_by_design():
     text = (TMDL / "tables" / "review_outcomes.tmdl").read_text(encoding="utf-8")
     assert "measure 'Alert Precision (Adviser Outcomes)'" in text and "not a confirmed refinancing" in text
     assert "review_decisions" not in text  # the routing table of notebook 07 is not read here
+
+
+def test_score_age_is_clamped_at_zero():
+    text = (TMDL / "tables" / "mortgage_account.tmdl").read_text(encoding="utf-8")
+    body = text.split("measure 'Score Age Minutes' =")[1].split("measure ")[0]
+    assert "MAX ( 0, DATEDIFF ( _t, [Report As Of], MINUTE ) )" in body  # a score stamped after the as-of time never shows a negative age
