@@ -67,12 +67,13 @@ def model_parameters(environment: str) -> dict:
 def core_parameters(environment: str, as_of: str) -> dict | None:
     """fabric-cicd parameter file for the core items. With an as-of date it sets the default of the pipeline parameter
     "as_of", so that a scheduled run (which passes no parameters) also uses it. fabric-cicd replaces
-    only the first capture group of a regex (the empty text between the quotes). Not yet run in Fabric."""
+    only the first capture group of a regex, and refuses an empty group (a first live run failed on that), so the group is the
+    whole `"defaultValue": ""` text. Not yet run in Fabric."""
     if not as_of:
         return None
     return {"find_replace": [{
-        "find_value": r'"as_of":\s*\{\s*"type":\s*"string",\s*"defaultValue":\s*"()"',
-        "replace_value": {environment: as_of}, "is_regex": "true",
+        "find_value": r'"as_of":\s*\{\s*"type":\s*"string",\s*("defaultValue":\s*"")',
+        "replace_value": {environment: f'"defaultValue": "{as_of}"'}, "is_regex": "true",
         "item_type": "DataPipeline", "item_name": ids.PIPELINE_SCORING,
     }]}
 
