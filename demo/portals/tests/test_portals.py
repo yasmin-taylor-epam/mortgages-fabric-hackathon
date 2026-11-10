@@ -112,6 +112,14 @@ def test_page_wording_reads_well(client):
     assert "1 newest" not in client.get("/staff/customer/HB-M-900001").text
 
 
+def test_live_cases_sort_first():
+    from portals.board import live_first
+    baseline = {"case_id": "a", "case_created_at": "2026-10-16T09:01:00", "source_event_id": "PSE-000000123"}
+    older = {"case_id": "b", "case_created_at": "2026-10-15T09:00:00", "source_event_id": None}
+    live = {"case_id": "c", "case_created_at": "2026-10-16T09:00:00", "source_event_id": "PSE-971883756"}
+    assert [c["case_id"] for c in live_first([baseline, older, live])] == ["c", "a", "b"]
+
+
 def test_alex_payment_help_opens_a_support_case(client, source):
     r = client.post("/customer/send", data={"who": "HB-M-900001", "action": "payment_help"}, follow_redirects=False)
     assert r.status_code == 303
@@ -125,6 +133,8 @@ def test_alex_payment_help_opens_a_support_case(client, source):
     client.post("/staff/process", follow_redirects=False)
     page = client.get("/staff").text
     assert "from the demo" in page and "Payment support" in page
+    support_rows = page.split("Asked for help with payments", 1)[1].split("</tbody>", 1)[0].split("<tr")[2:]
+    assert "HB-M-900001" in support_rows[0]
     # the same event again: stored twice, still one case (T01)
     client.post(f"/customer/resend/{eid}", follow_redirects=False)
     client.post("/staff/process", follow_redirects=False)
