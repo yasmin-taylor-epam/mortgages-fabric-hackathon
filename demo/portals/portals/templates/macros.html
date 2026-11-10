@@ -13,11 +13,11 @@
 {%- endmacro %}
 
 {% macro days(n) -%}
-{%- if n is none -%}{%- elif n < 0 -%}ended {{ -n }} days ago{%- elif n == 1 -%}1 day left{%- else -%}{{ n }} days left{%- endif -%}
+{%- if n is none -%}{%- elif n < 0 -%}ended {{ -n }} day{{ 's' if n != -1 }} ago{%- elif n == 1 -%}1 day left{%- else -%}{{ n }} days left{%- endif -%}
 {%- endmacro %}
 
 {% macro who(name, mid) -%}
-<a href="/staff/customer/{{ mid }}">{{ name }}</a>{% if name != mid %}<div class="small">{{ mid }}</div>{% endif %}
+<a href="/staff/customer/{{ mid }}">{{ name }}</a>{% if mid not in name %}<div class="small">{{ mid }}</div>{% endif %}
 {%- endmacro %}
 
 {% macro staff_nav(active) -%}

@@ -58,7 +58,7 @@
 
 <section class="panel">
   <h2>3. Renewal website faults <span class="count">{{ w.technical_total }}</span></h2>
-  <p class="small">Our renewal website failed for these customers, and the fault was checked. The technical team owns them. The newest {{ w.technical|length }} are shown.</p>
+  <p class="small">Our renewal website failed for these customers, and the fault was checked. The technical team owns them.{% if w.technical_total > w.technical|length %} The newest {{ w.technical|length }} of {{ w.technical_total }} are shown.{% endif %}</p>
   {% if w.technical %}
   <table>
     <thead><tr><th>Customer</th><th>Opened</th><th>Owner</th><th>Case status</th></tr></thead>

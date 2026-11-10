@@ -91,6 +91,27 @@ def test_pages_render_and_explain_themselves(client, path):
     assert "Some data could not be read" not in r.text
 
 
+def test_day_counts_use_the_singular_for_one():
+    import jinja2
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(config.REPO / "demo" / "portals" / "portals" / "templates")))
+    days = env.get_template("macros.html").module.days
+    assert str(days(-1)) == "ended 1 day ago"
+    assert str(days(-3)) == "ended 3 days ago"
+    assert str(days(1)) == "1 day left"
+
+
+def test_page_wording_reads_well(client):
+    sam = client.get("/customer?who=HB-M-900002").text
+    assert "not started" not in sam and "renewed, the new deal is in place" in sam
+    staff_3121 = re.sub(r"<[^>]+>", " ", client.get("/staff/customer/HB-M-003121").text)
+    assert not re.search(r"HB-M-003121\s+HB-M-003121", staff_3121)
+    assert "Customer HB-M-003121 (HB-M-003121)" not in client.get("/customer?who=HB-M-003121").text
+    assert "(real time)" not in client.get("/staff/summary").text.split("Scoring</dt>")[1].split("</dd>")[0]
+    worklist = client.get("/staff").text
+    assert "The newest 1 are shown" not in worklist
+    assert "1 newest" not in client.get("/staff/customer/HB-M-900001").text
+
+
 def test_alex_payment_help_opens_a_support_case(client, source):
     r = client.post("/customer/send", data={"who": "HB-M-900001", "action": "payment_help"}, follow_redirects=False)
     assert r.status_code == 303

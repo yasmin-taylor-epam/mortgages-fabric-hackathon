@@ -203,6 +203,7 @@ class Board:
             at = happened.get(d.get("event_id")) or (d.get("arrived_at") if on_demo_clock(d.get("arrived_at"), today) else None)
             d["when"] = when(at) if at else (f"Scoring run (data to {day(run['cutoff_at'])})" if run else "-")
             d["sort"] = str(at or "")
+        decisions_total = len(decisions)
         decisions = sorted(decisions, key=lambda d: d["sort"], reverse=True)[:10]
         servicing = self._try("service history (Lakehouse table servicing_case)", lambda: self.source.sql(
             "SELECT case_id, category, support_route, opened_at, latest_status, is_resolved, contact_count FROM servicing_case WHERE mortgage_id = ?",
@@ -210,7 +211,7 @@ class Board:
         end = ts(acct["deal_end_at"]) if acct else None
         return {"mortgage_id": mid, "name": self.name(mid), "acct": acct, "run": run, "score": score, "scored": scored,
                 "rank_by_score": rank_by_score, "threshold": self.threshold(), "factors": factors, "timeline": timeline,
-                "cases": cases, "decisions": decisions, "servicing": sorted(servicing, key=lambda s: str(s["opened_at"]), reverse=True),
+                "cases": cases, "decisions": decisions, "decisions_total": decisions_total, "servicing": sorted(servicing, key=lambda s: str(s["opened_at"]), reverse=True),
                 "today": today, "deal_end": day(end), "days_left": (end - today).days if end is not None else None}
 
     # ----- customer portal

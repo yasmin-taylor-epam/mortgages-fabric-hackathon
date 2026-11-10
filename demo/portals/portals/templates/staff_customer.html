@@ -4,7 +4,7 @@
 {% block header %}{{ staff_nav('') }}{% endblock %}
 {% block body %}
 <p><a href="/staff">← Worklist</a></p>
-<h1>{{ c.name }}{% if c.name != c.mortgage_id %} <span class="small">{{ c.mortgage_id }}</span>{% endif %}</h1>
+<h1>{{ c.name }}{% if c.mortgage_id not in c.name %} <span class="small">{{ c.mortgage_id }}</span>{% endif %}</h1>
 {{ explain("one customer: their deal, the model's view of how likely they are to leave, the facts behind that view, what happened recently, and any review cases. Demo date: " ~ (c.today|when) ~ ".") }}
 
 <div class="grid2">
@@ -64,7 +64,7 @@
   </table>
   {% else %}<p class="empty">No review cases for this customer.</p>{% endif %}
   {% if c.decisions %}
-  <details><summary>Routing decisions for this customer ({{ c.decisions|length }} newest)</summary>
+  <details><summary>Routing decisions for this customer ({% if c.decisions_total > c.decisions|length %}newest {{ c.decisions|length }} of {{ c.decisions_total }}{% else %}{{ c.decisions|length }}{% endif %})</summary>
   <table><thead><tr><th>Event</th><th>When (demo clock)</th><th>Outcome</th><th>Reason</th></tr></thead>
   <tbody>{% for d in c.decisions %}<tr><td><code>{{ d.event_id }}</code></td><td>{{ d.when }}</td><td>{{ d.outcome|replace('_', ' ') }}</td><td>{{ d.reason|replace('_', ' ') }}</td></tr>{% endfor %}</tbody></table>
   </details>{% endif %}
