@@ -1,6 +1,6 @@
 # Model card: HomeBridge refinancing risk (`hb-refi-clf`) and segments (`hb-segments`)
 
-**Status:** Prototype. Trained and tested locally on synthetic data only. Not run in Fabric. HomeBridge is a fictional mortgage lender.
+**Status:** Prototype. Trained and tested on synthetic data only, locally and in a Fabric workspace. The deploy ran the notebooks in a real workspace on 5 November 2026. On 10 November 2026 notebook 05 wrote the evaluation report in Fabric (release `REL-20261110T121639Z`). A local rebuild gives the same figures (see `docs/evaluation-results.md`). HomeBridge is a fictional mortgage lender.
 
 ## Purpose
 

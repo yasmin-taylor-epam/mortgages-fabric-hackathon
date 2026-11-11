@@ -9,7 +9,7 @@ Mortgage Renewal Early Warning is a proposed customer intelligence system on Mic
 ## Review the proposal
 
 - [Open the scenario page](site/index.html) for the challenge, chosen scenario, and design.
-- [Open the hosted review copy](https://yasmin-taylor-epam.github.io/customer-pulse-360/) on GitHub Pages. The page is public.
+- [Open the hosted review copy](https://yasmin-taylor-epam.github.io/mortgages-fabric-hackathon/) on GitHub Pages. The page is public.
 
 The scenario page is the current source for the project. This repository does not contain a deployed Customer 360 service or production churn model.
 
