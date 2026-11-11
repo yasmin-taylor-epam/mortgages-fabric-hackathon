@@ -28,7 +28,7 @@
 
 # # 01_validate_histories
 #
-# **Owner:** Data and replay. **Blueprint step:** 2. **Status:** Runs locally. Not yet run in Fabric.
+# **Owner:** Data and replay. **Blueprint step:** 2. **Status:** Runs locally. First ran in Fabric on 5 November 2026.
 #
 # Validates keys and ledger history in the raw HomeBridge (fictional) tables. It builds clean account histories, report dimensions and feed watermarks. Bad records go to quarantine and stay visible (T02). Reversals keep their audit trail (T04). Stale feeds are flagged (T03).
 #
@@ -52,7 +52,7 @@ import sys
 from pathlib import Path
 
 # Fabric: the default Lakehouse is mounted at /lakehouse/default. The deploy script uploads the code to
-# Files/hb/code (same layout as this repository) and the data to Files/hb/output. Not yet run in Fabric.
+# Files/hb/code (same layout as this repository) and the data to Files/hb/output.
 # Local: this notebook sits in notebooks/ and the package in data/.
 FABRIC_HB = Path("/lakehouse/default/Files/hb")
 if FABRIC_HB.parent.exists():

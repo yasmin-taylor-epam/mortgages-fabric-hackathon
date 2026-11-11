@@ -4,7 +4,7 @@ The Power BI mortgage report and its semantic model.
 
 **Owner:** Dashboard and action work package.
 
-**Status:** The report rules run and pass tests locally. The semantic model passes the Microsoft TOM deserialiser. The report files pass the published Microsoft JSON schemas. Nobody has opened the project in Power BI Desktop or deployed it to Fabric. Nobody has run the DAX measures yet. The Fabric workspace is not ready.
+**Status:** The report rules run and pass tests locally. The semantic model passes the Microsoft TOM deserialiser. The report files pass the published Microsoft JSON schemas. The deploy published the model and the report to a real Fabric workspace on 5 November 2026. On 9 November 2026 all four report pages exported without an error (see [docs/fabric-deployment.md](../docs/fabric-deployment.md)). The report was checked as an exported PDF, not in a browser. Nobody has opened the project in Power BI Desktop.
 
 ## Contents
 
@@ -75,7 +75,7 @@ dotnet run --project reports\tools\tmdl-check -- reports\HomeBridgeMortgage.Sema
 
 ## Deploy when the Fabric workspace is ready
 
-`scripts/deploy_fabric.ps1` deploys this model and report after the Gold tables exist. It fills the two placeholders for you. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). Untested in Fabric. The manual steps below describe the same work.
+`scripts/deploy_fabric.ps1` deploys this model and report after the Gold tables exist. It fills the two placeholders for you. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). Its `model` step ran in a real workspace on 5 and 9 November 2026. The manual steps below describe the same work.
 
 1. Make sure the Gold tables in `logic/gold_schema.sql` exist in the Lakehouse. Notebook `06_publish_delta_tables` creates them from the Parquet files.
 2. Replace the two placeholders in `HomeBridgeMortgage.SemanticModel/definition/expressions.tmdl` with the Lakehouse SQL analytics endpoint and its ID.

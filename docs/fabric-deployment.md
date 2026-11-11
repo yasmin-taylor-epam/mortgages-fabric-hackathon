@@ -125,7 +125,7 @@ Notes:
 
 ## Item by item
 
-Checked against Microsoft pages on 4 November 2026. **Every step that is marked automated is untested until someone has run it in Fabric.** Nobody has.
+Checked against Microsoft pages on 4 November 2026. **Every step that is marked automated is untested until someone has run it in Fabric.** The status line at the top names the steps that ran in a real workspace on 5 and 9 November 2026. The others have not run.
 
 Legend:
 
@@ -331,9 +331,8 @@ Verified offline (see `scripts/fabric/tests/`):
 
 **Not verified. Treat all of this as untested in Fabric:**
 
-- Any call to a real Fabric, OneLake, Azure Resource Manager, Kusto, Graph, SharePoint or Entra endpoint. This includes every opt-in step.
-- That Fabric accepts the notebook, pipeline, Eventstream, Eventhouse and Environment files as written.
-- The Spark behaviour of notebook 06. The Python 3.11 compatibility of the packages (they were tested on 3.13).
+- Any call from an opt-in step to a real Fabric, OneLake, Azure Resource Manager, Kusto, Graph, SharePoint or Entra endpoint. (The `workspace`, `core`, `upload`, `notebooks`, `pipeline` and `model` steps called real endpoints on 5 November 2026. See the status line at the top.)
+- The Python 3.11 compatibility of every code path (the packages were tested on 3.13). Notebooks 00 to 06 ran in Fabric on 5 November 2026.
 - The shape of the job parameters for notebooks and pipelines. It follows the Fabric CLI source and the pipeline REST docs.
 - That any Eventstream destination delivers events to `RawEventsLanding`. Both API shapes failed live. The portal flow above delivered events once (a full resend landed). The wizard's mapping put `schema_version` in a new column, so check it. A redeploy and a second run are untested.
 - The report in a browser. It was checked as an exported PDF, with no account selected. Page 1 is mostly empty until a person selects an account.

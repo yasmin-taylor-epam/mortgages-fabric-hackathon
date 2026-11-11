@@ -3,7 +3,7 @@
 
 // HomeBridge (fictional) Eventhouse tables. Synthetic data only.
 // Run once per KQL database, in file order: 01, 02, 03, 04.
-// Not yet run in Fabric. The Fabric workspace is not ready.
+// A version of this file was deployed to a real KQL database on 5 November 2026. See kql/README.md.
 .create-merge table RawEventsLanding (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, simulated_ingested_at: datetime, payload: dynamic)
 // Accepted events. Duplicates stay here; queries deduplicate by event_id (T01).
 .create-merge table RawEvents (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, payload: dynamic, ingested_at: datetime)
@@ -15,7 +15,7 @@
 .create-merge table SourceWatermarks (dataset: string, checked_at: datetime, max_ingested_at: datetime, max_event_at: datetime, row_count: long, stale_threshold_hours: real, is_stale: bool)
 .create-or-alter table RawEventsLanding ingestion json mapping "RawEventsLanding_json" '[{"column":"event_id","Properties":{"Path":"$.event_id"}},{"column":"event_type","Properties":{"Path":"$.event_type"}},{"column":"schema_version","Properties":{"Path":"$.schema_version"}},{"column":"source_system","Properties":{"Path":"$.source_system"}},{"column":"mortgage_id","Properties":{"Path":"$.mortgage_id"}},{"column":"application_id","Properties":{"Path":"$.application_id"}},{"column":"occurred_at","Properties":{"Path":"$.occurred_at"}},{"column":"sent_at","Properties":{"Path":"$.sent_at"}},{"column":"simulated_ingested_at","Properties":{"Path":"$.simulated_ingested_at"}},{"column":"payload","Properties":{"Path":"$.payload"}}]'
 // Ingestion routing: accept known accounts, quarantine the rest (T02).
-// Twin: data/hbdata/replay.py ingest_local(). Not yet run in Fabric.
+// Twin: data/hbdata/replay.py ingest_local(). Deployed on 5 November 2026. Routed live events on 9 November 2026.
 .create-or-alter function with (folder = "context", docstring = "Latest copy of each account context row.")
 AccountContextLatest() {
     AccountContext
@@ -39,7 +39,7 @@ LandingChecked() {
 // Journey queries (blueprint section 03, step 6). Each takes a cutoff.
 // INV-2: only events with occurred_at and ingested_at at or before the cutoff.
 // T01: one row per event_id (earliest ingestion).
-// Twin: data/hbdata/journeys.py. Keep both in step. Not yet run in Fabric.
+// Twin: data/hbdata/journeys.py. Keep both in step. Deployed on 5 November 2026. No query result from Fabric is recorded.
 // Null versus empty: tostring() of a missing payload value gives "". The twin uses null.
 .create-or-alter function with (folder = "journeys", docstring = "Accepted product-transfer request events known at the cutoff, one row per event_id.")
 TransferEventsAt(cutoff: datetime) {
@@ -97,7 +97,7 @@ RetriesAfterError(cutoff: datetime) {
 }
 // Service events and the live Customer 360 view.
 // ServiceEvents() output follows data/contracts/service_event.schema.json.
-// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Not yet run in Fabric.
+// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Deployed on 5 November 2026. See kql/README.md for what is not in Fabric yet.
 .create-or-alter function with (folder = "service", docstring = "Service events for Activator and the review-case writer. They do not depend on scoring (T05).")
 ServiceEvents() {
     let ctx = AccountContextLatest() | project mortgage_id, cycle_id, deal_start_at, deal_end_at;

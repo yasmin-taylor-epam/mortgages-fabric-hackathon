@@ -11,7 +11,7 @@ replay      send the replay events to the Eventstream, with the connection read 
 git         connect the workspace to a GitHub branch (GitHub PAT from HB_GITHUB_PAT)
 
 Every step is idempotent: it reads the current state first and changes only what differs.
-Nothing here has run in Fabric. Where a detail is unverified, the code says so.
+None of these steps is confirmed in Fabric yet. Where a detail is unverified, the code says so.
 """
 from __future__ import annotations
 

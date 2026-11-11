@@ -28,7 +28,7 @@
 
 # # 05_evaluate
 #
-# **Owner:** Models and evaluation. **Blueprint:** section 04, Evaluation. **Status:** Runs locally. Not yet run in Fabric.
+# **Owner:** Models and evaluation. **Blueprint:** section 04, Evaluation. **Status:** Runs locally. First ran in Fabric on 5 November 2026. On 10 November 2026 it wrote the evaluation report for release `hb-refi-clf:2` in Fabric.
 #
 # Tests each model on the later deal cohorts. Their borrowers are not in training. Thresholds come from the release.
 #
@@ -57,7 +57,7 @@ import sys
 from pathlib import Path
 
 # Fabric: the default Lakehouse is mounted at /lakehouse/default. The deploy script uploads the code to
-# Files/hb/code (same layout as this repository) and the data to Files/hb/output. Not yet run in Fabric.
+# Files/hb/code (same layout as this repository) and the data to Files/hb/output.
 # Local: this notebook sits in notebooks/ and imports notebooks/models_eval.
 FABRIC_HB = Path('/lakehouse/default/Files/hb')
 if FABRIC_HB.parent.exists():

@@ -28,7 +28,7 @@
 
 # # 00_load_raw
 #
-# **Owner:** Data and replay (stand-in for the `pl_load_raw` pipeline). **Blueprint step:** 1. **Status:** Runs locally. Not yet run in Fabric.
+# **Owner:** Data and replay (stand-in for the `pl_load_raw` pipeline). **Blueprint step:** 1. **Status:** Runs locally. First ran in Fabric on 5 November 2026.
 #
 # Loads the dated synthetic exports into append-only raw tables. A load never overwrites an earlier load. A file that was already loaded (same hash) is skipped.
 #
@@ -54,7 +54,7 @@ import sys
 from pathlib import Path
 
 # Fabric: the default Lakehouse is mounted at /lakehouse/default. The deploy script uploads the code to
-# Files/hb/code (same layout as this repository) and the data to Files/hb/output. Not yet run in Fabric.
+# Files/hb/code (same layout as this repository) and the data to Files/hb/output.
 # Local: this notebook sits in notebooks/ and the package in data/.
 FABRIC_HB = Path("/lakehouse/default/Files/hb")
 if FABRIC_HB.parent.exists():

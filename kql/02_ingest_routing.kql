@@ -1,5 +1,5 @@
 // Ingestion routing: accept known accounts, quarantine the rest (T02).
-// Twin: data/hbdata/replay.py ingest_local(). Not yet run in Fabric.
+// Twin: data/hbdata/replay.py ingest_local(). Deployed on 5 November 2026. Routed live events on 9 November 2026.
 .execute database script <|
 .create-or-alter function with (folder = "context", docstring = "Latest copy of each account context row.")
 AccountContextLatest() {

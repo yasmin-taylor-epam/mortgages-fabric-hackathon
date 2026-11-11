@@ -4,7 +4,7 @@ Synthetic data, data contracts and replay fixtures for the fictional mortgage pr
 
 **Owner:** Data and replay work package.
 
-**Status:** Runs locally. Nothing here has run in Fabric yet. The Fabric workspace is not ready.
+**Status:** Runs locally. On 5 November 2026 the deploy uploaded the exports and this code to a real Fabric workspace, and notebooks 00 to 06 ran there (see [docs/fabric-deployment.md](../docs/fabric-deployment.md)). The opt-in `replay` deploy step is not confirmed in Fabric.
 
 ## Folders
 

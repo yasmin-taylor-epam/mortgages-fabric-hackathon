@@ -21,7 +21,8 @@ Steps, in order (select with --only or --skip):
 
 An OPTIONAL step runs when its settings section has `enabled: true`, or when you name it with --only.
 Modes: --validate checks everything offline. --dry-run signs in, reads, and prints what it would do. The default applies.
-Not yet run against a real Fabric tenant. Nothing here claims otherwise.
+The workspace, core, upload, notebooks, pipeline and model steps ran in a real workspace on 5 November 2026.
+The optional steps are not confirmed in Fabric yet. See docs/fabric-deployment.md.
 """
 from __future__ import annotations
 
