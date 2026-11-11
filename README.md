@@ -4,7 +4,7 @@
 
 Mortgage Renewal Early Warning is a proposed customer intelligence system on Microsoft Fabric. It joins customer history with live activity, groups accounts, scores churn risk, and sends retention alerts for human review.
 
-**Status:** Proposal sent on 18 October. The team chose Mortgage Renewal Early Warning as the scenario. The three work packages (data and replay, models and evaluation, dashboard and action) are built and integrated. They run and pass tests locally on synthetic data. Nothing has run in Fabric yet. See [Run the whole flow locally](#run-the-whole-flow-locally).
+**Status:** Proposal sent on 18 October. The team chose Mortgage Renewal Early Warning as the scenario. The three work packages (data and replay, models and evaluation, dashboard and action) are built and integrated. They run and pass tests locally on synthetic data. The solution also runs in a real Fabric workspace. On 5 November 2026 the main deploy steps ran there and finished. On 10 November 2026 the evaluation notebook ran there. Some steps are still manual or not yet confirmed in Fabric. See [Fabric deployment](docs/fabric-deployment.md) and [Known limits](docs/known-limits.md). The solution submission is due on 15 November 2026. Confirm the deadline timezone with the organiser. See [Run the whole flow locally](#run-the-whole-flow-locally).
 
 ## Review the proposal
 
@@ -53,7 +53,7 @@ The build follows the three work packages in the blueprint (section 06). Each wo
 | `fabric/` | Fabric Git-format items, and the settings file for the deploy script. Notebooks and the KQL schema in it are generated. | Integration |
 | `scripts/fabric/` | Deploy script for Microsoft Fabric (fabric-cicd and the Fabric REST API) and its tests. | Integration |
 
-Each folder README lists its contents, status and rules. The Fabric workspace is not ready yet. Every item runs locally first. Do not claim that an item runs in Fabric until someone has run it there.
+Each folder README lists its contents, status and rules. [docs/fabric-deployment.md](docs/fabric-deployment.md) says which steps ran in a real Fabric workspace. Every item runs locally first. Do not claim that an item runs in Fabric until someone has run it there.
 
 ## Run the whole flow locally
 
