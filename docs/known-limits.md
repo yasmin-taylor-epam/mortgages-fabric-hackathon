@@ -1,6 +1,6 @@
 # Known limits and illustrative values
 
-**Status:** all numbers here are illustrative synthetic-data values. The team has not confirmed them. Nothing here has run in Fabric. This page comes from a review of hidden limits. It says what each limit is, where it lives, and what was done.
+**Status:** all numbers here are illustrative synthetic-data values. The team has not confirmed them. Most limits come from a code review. Some were tested in a real Fabric workspace on 9 and 10 November 2026. The text says so where that happened. This page comes from a review of hidden limits. It says what each limit is, where it lives, and what was done.
 
 ## Fixed in code
 

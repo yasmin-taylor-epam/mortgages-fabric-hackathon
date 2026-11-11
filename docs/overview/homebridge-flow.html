@@ -156,7 +156,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   </p>
   <p style="margin-top: .75rem;">
     <span class="stamp prop">Proposed design</span>
-    <span class="stamp gap">Not yet run in Fabric</span>
+    <span class="stamp gap">Partly run in Fabric · see the status below</span>
   </p>
 </section>
 
@@ -421,7 +421,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
 <!-- STATUS -->
 <aside class="pause">
   <div class="wrap" style="padding-block: 2.25rem;">
-    <p class="kicker">Where the build stands · 5 November</p>
+    <p class="kicker">Where the build stood · 5 November, before the first Fabric run</p>
     <h2 style="margin-top: .3rem;">The code exists and runs locally. Fabric has not run it yet.</h2>
     <div class="figure-scroll" style="margin-top: 1.25rem;" role="img" aria-label="Status chain. Three work packages were built, merged in pull request 9 and passed local tests. Pull request 10 adds the deploy script, which passed offline checks. Running in Fabric is an evidence gap.">
     <svg viewBox="0 0 1200 250" xmlns="http://www.w3.org/2000/svg" id="fig-status">
@@ -443,6 +443,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     </svg>
     </div>
     <p class="why"><strong>Why this form:</strong> a chain shows what depends on what, and which link is still dashed. <strong>Trade-off:</strong> passing tests show the code is consistent, not that Fabric accepts it. The test counts come from the pull request descriptions and the session reports.</p>
+    <p class="why"><strong>Update (the figure above is a snapshot):</strong> the deploy script has since run in a real Fabric workspace. On 5 November 2026 the workspace, core items, data upload, notebooks, pipeline and model steps ran and finished. On 9 November the model step ran again, and all four report pages exported without an error. On 10 November notebook 05 wrote the evaluation report in Fabric. The Eventstream destination is still a manual portal step, and some opt-in steps are not confirmed. See <code>docs/fabric-deployment.md</code> and <code>docs/known-limits.md</code>.</p>
   </div>
 </aside>
 
@@ -663,7 +664,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
     <li>Real predictive power. Outcomes in the data come from hidden rules in the generator, not real borrowers.</li>
     <li>That the alerts save customers. That needs real actions and a comparison group.</li>
-    <li>Anything about Fabric. Nothing here ran in Fabric, so the timing targets are unmeasured.</li>
+    <li>Anything about Fabric. These results come from a local run, not from Fabric. The timing targets are not measured here.</li>
     <li>The numbers from the case-writer replay (6 renewal cases, 1 payment-support case, 435 cases in the local store). They come from the integration pull request. The case store itself was not inspected for this page.</li>
   </ul>
   <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>data/output/lakehouse/gold</code> and <code>data/output/reports/evaluation_report.json</code> in the integration worktree, release <code>REL-20261103T182309Z</code>; segment, quarantine and split figures from the same run. Train 1,383, validation 460, test 923 mortgages.</p>
@@ -678,7 +679,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     A script does most of the work. You sign in once in a browser, and it creates the workspace, publishes the items, uploads the data and runs the notebooks. <strong>A few steps stay by hand</strong>, mostly because they need an administrator or a person to approve a connection.
   </p>
   <p style="margin-top: .75rem;">
-    <span class="stamp gap">Untested in Fabric · only offline checks have passed</span>
+    <span class="stamp gap">Partly tested in Fabric · main steps ran on 5 November</span>
     <span class="stamp prop">From docs/fabric-deployment.md in PR #10</span>
   </p>
 </section>
@@ -716,7 +717,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   <div class="wrap" style="padding-block: 2.25rem;">
     <p class="kicker">Pause here · before you run it</p>
     <h2 style="margin-top: .3rem;">Test on one workspace first</h2>
-    <p class="muted measure" style="margin: .5rem 0 1rem;">Nothing here has run in Fabric. Expect errors on the first real run. Fix them on one workspace, then run the same script on the main one.</p>
+    <p class="muted measure" style="margin: .5rem 0 1rem;">The main deploy steps ran in a real workspace on 5 November 2026. The Eventstream destination still needs manual portal steps, and some opt-in steps are not confirmed. Test on one workspace first, then run the same script on the main one.</p>
     <ol class="stops" style="max-width: 78ch;">
       <li><span class="n">1</span><h3>Get the code</h3><p class="muted">Check out the branch for PR #10. It already contains PR #9. You need Python 3.10 or later.</p></li>
       <li><span class="n">2</span><h3>Set the names</h3><p class="muted">Copy <code>fabric.config.example.yml</code> to <code>fabric.config.yml</code>. Set <code>workspace_name</code> and <code>capacity_name</code>. Find the capacity name under Workspace settings, then License info.</p></li>
