@@ -6,7 +6,7 @@ import yaml
 
 from conftest import REPO
 from hbfabric import config as cfgmod
-from hbfabric import deploy, ids, onelake, stage
+from hbfabric import deploy, ids, onelake, payloads, stage
 from hbfabric.api import FabricClient, FabricError
 
 EXAMPLE = REPO / "fabric" / "config" / "fabric.config.example.yml"
@@ -121,6 +121,151 @@ def test_model_placeholders_exist_in_the_expressions_file():
     for entry in deploy.model_parameters("dev")["find_replace"]:
         assert entry["find_value"] in text
         assert entry["replace_value"]["dev"].startswith(f"$items.Lakehouse.{ids.LAKEHOUSE}.$sqlendpoint")
+
+
+# ---------------------------------------------------------------- one as-of date
+
+def test_as_of_is_off_by_default_and_must_be_a_utc_timestamp():
+    assert cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"}).run.as_of == ""
+    assert deploy.core_parameters("dev", "") is None
+    bad = cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"})
+    bad.run.as_of = "16 October"
+    assert any("run.as_of" in x for x in bad.problems())
+    bad.run.as_of = "2026-10-16T09:00:00Z"
+    assert bad.problems() == []
+
+
+def test_demo_profile_in_the_example_sets_the_as_of_date_and_turns_on_the_schedule():
+    cfg = cfgmod.load(EXAMPLE, "demo", overrides={"capacity_name": "cap"})
+    assert cfg.run.as_of == "2026-10-16T09:00:00Z" and cfg.schedule.enabled and cfg.schedule.interval_minutes == 15
+    assert cfg.problems() == [] and cfgmod.load(EXAMPLE, "dev").run.as_of == ""
+
+
+def test_as_of_sets_the_pipeline_parameter_default_through_a_regex_that_fabric_cicd_accepts(deployer, caplog):
+    import logging
+    import re
+
+    from fabric_cicd._parameter._parameter import Parameter
+
+    params = deploy.core_parameters("dev", "2026-10-16T09:00:00Z")
+    deployer._write_config("core", stage.CORE_TYPES, params)
+    p = Parameter(repository_directory=deployer.stage_dir, item_type_in_scope=stage.CORE_TYPES, environment="dev",
+                  parameter_file_path=str(deployer.build_dir / "core.parameter.yml"))
+    with caplog.at_level(logging.DEBUG):
+        assert p._validate_parameter_file()
+    entry = params["find_replace"][0]
+    pipeline = deployer.stage_dir / f"{ids.PIPELINE_SCORING}.DataPipeline" / "pipeline-content.json"
+    text = pipeline.read_text(encoding="utf-8")
+    # The same replacement rule as fabric-cicd: only capture group 1 is replaced.
+    assert re.search(entry["find_value"], text).group(1)  # fabric-cicd refuses an empty capture group (seen live)
+    repl = entry["replace_value"]["dev"]
+    out = re.sub(entry["find_value"], lambda m: m.group(0)[: m.start(1) - m.start(0)] + repl + m.group(0)[m.end(1) - m.start(0):], text)
+    assert json.loads(out)["properties"]["parameters"]["as_of"]["defaultValue"] == "2026-10-16T09:00:00Z"
+    assert json.loads(out)["properties"]["parameters"]["cutoff_at"]["defaultValue"] == ""  # nothing else changed
+
+
+def test_as_of_reaches_notebook_06_and_the_pipeline_run_and_replaces_the_pipeline_cutoff(tmp_path, capsys):
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"})
+    assert dict(deploy.notebook_runs(cfg))["06_publish_delta_tables"] == {"AS_OF": ""}
+    cfg.run.as_of = "2026-10-16T09:00:00Z"
+    assert dict(deploy.notebook_runs(cfg))["06_publish_delta_tables"] == {"AS_OF": "2026-10-16T09:00:00Z"}
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=FakeSession([])), build_dir=tmp_path / "b", dry_run=True)
+    d.workspace_id = cfg.workspace_id
+    d.pipeline()
+    out = capsys.readouterr().out
+    assert "'cutoff_at': ''" in out and "'as_of': '2026-10-16T09:00:00Z'" in out
+
+
+# ---------------------------------------------------------------- skip item types
+
+def test_skip_item_types_is_checked_and_empty_by_default():
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "c"})
+    assert cfg.skip_item_types == [] and cfg.problems() == []
+    cfg.skip_item_types = ["Eventstream"]
+    assert cfg.problems() == []
+    cfg.skip_item_types = ["Lakehouse"]
+    assert any("skip_item_types may hold only" in x for x in cfg.problems())
+    cfg.skip_item_types = ["Eventhouse"]
+    assert any("skip KQLDatabase together with Eventhouse" in x for x in cfg.problems())
+
+
+def test_core_leaves_a_skipped_eventstream_alone_and_does_not_read_it(tmp_path):
+    from fabric_cicd._common._config_validator import ConfigValidator
+
+    published = []
+    ws = "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"
+    session = FakeSession([(("GET", f"/v1/workspaces/{ws}/items"), Resp(body={"value": [
+        {"id": "es-1", "type": "Eventstream", "displayName": "HomeBridgeRiskEventsV2"},
+        {"id": "db-1", "type": "KQLDatabase", "displayName": ids.KQL_DATABASE}]}))])
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": ws})
+    cfg.skip_item_types = ["Eventstream"]
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session), build_dir=tmp_path / "b",
+                        cicd=lambda config: published.append(config))
+    d.workspace_id = ws
+    d.prepare()
+    d.core()
+    out = ConfigValidator().validate_config_file(str(published[0]), "dev")
+    assert "Eventstream" not in out["core"]["item_types_in_scope"] and "KQLDatabase" in out["core"]["item_types_in_scope"]
+    assert not any("topology" in u or "eventstreams" in u for _, u, _ in session.calls)  # the live Eventstream is not read
+    assert all(m == "GET" for m, _, _ in session.calls)
+    assert not cfg.prune and "Eventstream" in stage.CORE_TYPES  # the default run still includes it
+
+
+def test_dry_run_says_what_it_leaves_alone(tmp_path, capsys):
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"})
+    cfg.skip_item_types = ["Eventstream"]
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=FakeSession([])), build_dir=tmp_path / "b", dry_run=True)
+    d.workspace_id = cfg.workspace_id
+    d.core()
+    out = capsys.readouterr().out
+    assert "leaves ['Eventstream'] alone" in out and "compatibility level" not in out and "'Eventstream'" not in out.split("deploy")[1].split("leaves")[0]
+
+
+# ---------------------------------------------------------------- Eventstream compatibility level
+
+def _core_with_live_eventstream(tmp_path, topology, published):
+    ws = "aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb"
+    session = FakeSession([
+        (("GET", f"/v1/workspaces/{ws}/items"), Resp(body={"value": [{"id": "es-1", "type": "Eventstream", "displayName": ids.EVENTSTREAM}]})),
+        (("GET", "/eventstreams/es-1/topology"), Resp(body=topology)),
+    ])
+    cfg = cfgmod.load(EXAMPLE, overrides={"capacity_name": "cap", "workspace_id": ws})
+    d = deploy.Deployer(cfg, credential=FakeCredential(), client=FabricClient(FakeCredential(), session=session), build_dir=tmp_path / "b",
+                        cicd=lambda config: published.append(config))
+    d.workspace_id = ws
+    d.prepare()
+    return d, session
+
+
+def test_level_helpers_read_both_spellings_and_the_repository_file(tmp_path):
+    assert payloads.level_key("1.1") == payloads.level_key("Compat_1_1") == (1, 1) and payloads.level_key("1.0") < payloads.level_key("1.1")
+    assert payloads.level_key("") == (0,)
+    es = tmp_path / "x.Eventstream"
+    es.mkdir()
+    (es / "eventstream.json").write_text('{"compatibilityLevel": "1.1"}', encoding="utf-8")
+    assert payloads.eventstream_level(tmp_path) == "1.1" and payloads.eventstream_level(tmp_path / "none") == ""
+
+
+def test_core_stops_before_publishing_when_the_live_eventstream_is_at_1_0(tmp_path):
+    published = []
+    d, session = _core_with_live_eventstream(tmp_path, {"sources": [], "compatibilityLevel": "1.0"}, published)
+    with pytest.raises(FabricError, match=r"compatibility level 1\.0.*cannot upgrade an Eventstream in place.*Nothing was published"):
+        d.core()
+    assert published == [] and all(m == "GET" for m, _, _ in session.calls)  # nothing changed in the workspace
+
+
+def test_core_goes_on_when_the_live_eventstream_is_at_1_1_or_does_not_exist_or_reports_no_level(tmp_path):
+    for topology in ({"compatibilityLevel": "1.1"}, {"compatibilityLevel": "Compat_1_1"}, {"sources": []}):
+        published = []
+        d, _ = _core_with_live_eventstream(tmp_path, topology, published)
+        d.client.find_item = lambda ws, t, n: {"id": "es-1"} if t == "Eventstream" else {"id": "x"}  # other items already exist
+        d.core()
+        assert published, topology
+    published = []
+    d, _ = _core_with_live_eventstream(tmp_path, {"compatibilityLevel": "1.0"}, published)
+    d.client.find_item = lambda ws, t, n: None if t == "Eventstream" else {"id": "x"}  # a fresh workspace has no Eventstream
+    d.core()
+    assert published
 
 
 # ---------------------------------------------------------------- dry-run and apply order

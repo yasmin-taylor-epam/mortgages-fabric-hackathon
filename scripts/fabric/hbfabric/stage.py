@@ -152,8 +152,8 @@ def _check_references(rel: str, f: Path, text: str, item_type: str, logical: dic
                 out.append(f"{own}: {hit[0]} is published after {item_type}, so fabric-cicd cannot resolve {key}")
     for m in re.finditer(r'"itemId"\s*:\s*"(' + GUID.pattern + ')"', text):
         hit = logical.get(m.group(1))
-        if not hit or hit[0] not in {"KQLDatabase", "Lakehouse"}:
-            out.append(f"{own}: itemId {m.group(1)} is not the logicalId of a KQL database or Lakehouse")
+        if not hit or hit[0] not in {"KQLDatabase", "Lakehouse", "Eventhouse"}:
+            out.append(f"{own}: itemId {m.group(1)} is not the logicalId of a KQL database, Eventhouse or Lakehouse")
         elif PUBLISH_ORDER[hit[0]] >= PUBLISH_ORDER.get(item_type, 99):
             out.append(f"{own}: {hit[0]} is published after {item_type}")
     return out

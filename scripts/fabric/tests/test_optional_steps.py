@@ -549,9 +549,9 @@ def test_streaming_step_turns_it_off_only_when_on(tmp_path):
 
 
 def kql_routes_after_first_pass(*mgmt):
-    """/items answers 'no database' once, then 'database exists'."""
+    """/items answers 'no database' twice (the Eventstream level check reads it first), then 'database exists'."""
     return [
-        (("GET", "/items"), [items(), items((ids.KQL_DATABASE, "KQLDatabase")), items((ids.KQL_DATABASE, "KQLDatabase"))]),
+        (("GET", "/items"), [items(), items(), items((ids.KQL_DATABASE, "KQLDatabase")), items((ids.KQL_DATABASE, "KQLDatabase"))]),
         (("GET", "/kqlDatabases/"), Resp(body={"displayName": ids.KQL_DATABASE, "properties": {"queryServiceUri": "https://q.kusto.fabric.microsoft.com"}})),
         (("POST", "/v1/rest/mgmt"), list(mgmt)),
     ]

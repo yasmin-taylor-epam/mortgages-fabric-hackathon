@@ -89,7 +89,8 @@ CREATE TABLE IF NOT EXISTS score_runs (
     run_kind      VARCHAR NOT NULL,
     status        VARCHAR NOT NULL,      -- running, completed, failed
     started_at    TIMESTAMP NOT NULL,
-    completed_at  TIMESTAMP
+    completed_at  TIMESTAMP,
+    scope_keys    VARCHAR                -- ",key,key," of the accounts the run covers. NULL: all accounts
 );
 
 CREATE TABLE IF NOT EXISTS account_scores (
@@ -138,6 +139,21 @@ CREATE TABLE IF NOT EXISTS review_cases (
     status          VARCHAR NOT NULL,
     assigned_to     VARCHAR NOT NULL,
     case_created_at TIMESTAMP NOT NULL
+);
+
+-- Adviser verdicts on review cases. Empty until an adviser tool writes to it.
+-- decision: pending, action_agreed, no_action, referred. decided_by is an adviser ID, not a login name.
+CREATE TABLE IF NOT EXISTS review_outcomes (
+    case_key    VARCHAR PRIMARY KEY,
+    decision    VARCHAR NOT NULL,
+    decided_at  TIMESTAMP,
+    decided_by  VARCHAR
+);
+
+-- One row. The report as-of time. NULL means the real time. Notebook 06 writes it.
+CREATE TABLE IF NOT EXISTS report_settings (
+    as_of       TIMESTAMP,
+    written_at  TIMESTAMP
 );
 
 -- Owned by Dashboard and action. One row per date for the segment-history date picker.

@@ -39,20 +39,32 @@ table mortgage_account
 			    )
 		displayFolder: Score
 
+	measure 'Report As Of' =
+			-- One as-of time for every measure that used the clock. report_settings holds it (notebook 06 writes it).
+			-- With no value there, the real UTC time is used. The synthetic data stops on 15 Oct 2026.
+			VAR _asOf = MAX ( report_settings[as_of] )
+			RETURN IF ( ISBLANK ( _asOf ), UTCNOW (), _asOf )
+		formatString: yyyy-mm-dd hh:nn
+		displayFolder: Settings
+
 	measure 'Score Age Minutes' =
 			VAR _t = [Latest Score Time]
-			RETURN IF ( NOT ISBLANK ( _t ), DATEDIFF ( _t, UTCNOW (), MINUTE ) )
+			-- Never negative. A run that starts a minute after the as-of time would otherwise show -1.
+			RETURN IF ( NOT ISBLANK ( _t ), MAX ( 0, DATEDIFF ( _t, [Report As Of], MINUTE ) ) )
 		formatString: 0
 		displayFolder: Score
 
 	measure 'Last Run Status' =
-			VAR _last = CALCULATE ( MAX ( score_runs[started_at] ), REMOVEFILTERS ( score_runs ) )
-			RETURN
-			    CALCULATE (
-			        MAX ( score_runs[status] ),
-			        REMOVEFILTERS ( score_runs ),
-			        score_runs[started_at] = _last
+			-- A run covers an account when its scope_keys list holds the account key. No scope means all accounts.
+			VAR _key = SELECTEDVALUE ( mortgage_account[account_key] )
+			VAR _runs =
+			    FILTER (
+			        ALL ( score_runs ),
+			        ISBLANK ( score_runs[scope_keys] ) || ISBLANK ( _key )
+			            || CONTAINSSTRING ( score_runs[scope_keys], "," & _key & "," )
 			    )
+			VAR _last = MAXX ( _runs, score_runs[started_at] )
+			RETURN MAXX ( FILTER ( _runs, score_runs[started_at] = _last ), score_runs[status] )
 		displayFolder: Score
 
 	measure 'Score Status' =
@@ -82,14 +94,14 @@ table mortgage_account
 			        TRUE (),
 			        ISBLANK ( _ingested ), "Missing",
 			        _flagged > 0, "Stale",
-			        DATEDIFF ( _checked, UTCNOW (), HOUR ) > _hours, "Stale",
-			        DATEDIFF ( _ingested, UTCNOW (), HOUR ) > _hours, "Stale",
+			        DATEDIFF ( _checked, [Report As Of], HOUR ) > _hours, "Stale",
+			        DATEDIFF ( _ingested, [Report As Of], HOUR ) > _hours, "Stale",
 			        "Current"
 			    )
 		displayFolder: Payment
 
 	measure Arrears =
-			VAR _now = UTCNOW ()
+			VAR _now = [Report As Of]
 			VAR _rows = CALCULATE ( COUNTROWS ( payment ), payment[due_at] <= _now, payment[ingested_at] <= _now )
 			VAR _due = CALCULATE ( SUM ( payment[amount_due] ), payment[due_at] <= _now, payment[ingested_at] <= _now )
 			VAR _received = CALCULATE ( SUM ( payment[amount_received] ), payment[due_at] <= _now, payment[ingested_at] <= _now )
@@ -113,7 +125,7 @@ table mortgage_account
 
 	measure Contacts =
 			-- T07: count each contact once. Case state changes are not contacts.
-			VAR _now = UTCNOW ()
+			VAR _now = [Report As Of]
 			RETURN
 			    CALCULATE (
 			        DISTINCTCOUNT ( servicing_contact[contact_id] ),
@@ -124,7 +136,7 @@ table mortgage_account
 		displayFolder: Support history
 
 	measure 'Case Status Now' =
-			VAR _now = UTCNOW ()
+			VAR _now = [Report As Of]
 			VAR _last =
 			    CALCULATE (
 			        MAX ( servicing_case_event[changed_at] ),
@@ -179,7 +191,7 @@ table mortgage_account
 			        ),
 			        transfer_request_event[occurred_at]
 			    )
-			RETURN IF ( NOT ISBLANK ( _entered ), DATEDIFF ( _entered, UTCNOW (), DAY ) )
+			RETURN IF ( NOT ISBLANK ( _entered ), DATEDIFF ( _entered, [Report As Of], DAY ) )
 		formatString: 0
 		displayFolder: Request
 
@@ -195,7 +207,7 @@ table mortgage_account
 
 	measure 'Segment As Of' =
 			-- Segment on the selected report_calendar date, or now. Rows are append-only.
-			VAR _d = IF ( HASONEVALUE ( report_calendar[date] ), VALUES ( report_calendar[date] ) + TIME ( 23, 59, 59 ), UTCNOW () )
+			VAR _d = IF ( HASONEVALUE ( report_calendar[date] ), VALUES ( report_calendar[date] ) + TIME ( 23, 59, 59 ), [Report As Of] )
 			VAR _rows =
 			    FILTER (
 			        segment_membership,
@@ -235,7 +247,7 @@ table mortgage_account
 
 	measure 'Days To Deal End' =
 			VAR _end = MAX ( mortgage_account[deal_end_at] )
-			RETURN IF ( NOT ISBLANK ( _end ), DATEDIFF ( UTCNOW (), _end, DAY ) )
+			RETURN IF ( NOT ISBLANK ( _end ), DATEDIFF ( [Report As Of], _end, DAY ) )
 		formatString: 0
 		displayFolder: Deal
 

@@ -203,14 +203,18 @@ def test_cli_reads_the_local_eventhouse(tmp_path):
 
 
 def test_models_scoring_run_flows_into_renewal_cases(tmp_path):
-    """End to end: Models and evaluation risk_outbox -> case writer with the candidate policy."""
+    """End to end: Models and evaluation risk_outbox -> case writer with the policy written from the release."""
     pd = pytest.importorskip("pandas")
     gold = DATA_DIR / "output" / "lakehouse" / "gold"
     context_path = DATA_DIR / "output" / "eventhouse" / "account_context.parquet"
     if not (gold / "risk_outbox.parquet").exists() or not context_path.exists():
         pytest.skip("run the Data and replay chain and the Models and evaluation pipeline first")
-    policy_path = ACTION_DIR / "policy" / "routing-policy.candidate.json"
-    threshold = json.loads(policy_path.read_text(encoding="utf-8"))["risk_threshold"]
+    policy_path = DATA_DIR / "output" / "policy" / "routing-policy.json"
+    if not policy_path.exists():
+        pytest.skip("run: python -m models_eval policy")
+    policy_doc = json.loads(policy_path.read_text(encoding="utf-8"))
+    threshold = policy_doc["risk_threshold"]
+    assert policy_doc["threshold_rule"] == "min_precision" and policy_doc["threshold_rule_params"] == {"min_precision": 0.6}  # the default rule
 
     outbox = pd.read_parquet(gold / "risk_outbox.parquet")
     runs = pd.read_parquet(gold / "score_runs.parquet")
@@ -235,12 +239,12 @@ def test_models_scoring_run_flows_into_renewal_cases(tmp_path):
 
     renewal = {c["case_key"] for c in first["cases"] if c["case_key"].endswith("|renewal")}
     assert renewal == expected
-    assert 0 < len(renewal) <= 10
+    assert len(renewal) > 0  # every eligible account gets a case. There is no upper bound.
     assert first["rejected_events"] == []
     assert not any(d["created"] for d in second["decisions"])
     store = SQLiteCaseStore(str(db))
     for key in renewal:
         case = store.get_case(key)
         assert case.run_id in completed and case.snapshot_id and case.model_version
-        assert case.routing_policy == "routing-policy-v0.2-candidate"
+        assert case.routing_policy == policy_doc["version"]
     store.close()

@@ -26,7 +26,8 @@ def test_notebooks_run_end_to_end(lakehouse, tmp_path):
     out = json.dumps(str(root))
     as_of = lakehouse["as_of"]
 
-    _run("03_train_models.ipynb", f"OUTPUT_ROOT = {out}\nUSE_MLFLOW = True\nN_BOOT = 5")
+    # max_f1: this small lakehouse cannot reach the default precision target of 60%
+    _run("03_train_models.ipynb", f"OUTPUT_ROOT = {out}\nUSE_MLFLOW = True\nN_BOOT = 5\nTHRESHOLD_RULE = 'max_f1'\nMIN_PRECISION = None")
     assert list((root / "models" / "releases").glob("*/release.json"))
 
     _run("04_score_and_segment.ipynb", f"OUTPUT_ROOT = {out}\nRUN_KIND = 'checkpoint'\nCUTOFF = None\n"

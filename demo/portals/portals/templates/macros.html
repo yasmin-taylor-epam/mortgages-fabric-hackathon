@@ -1,0 +1,30 @@
+{% macro source(what, item, offline_file='') -%}
+<span class="source {{ 'offline' if offline else 'fabric' }}">
+{%- if offline -%}
+  Offline preview · local file {{ offline_file or what }}
+{%- else -%}
+  Data from Fabric · {{ what }}{% if links.get(item) %} · <a href="{{ links[item] }}" target="_blank" rel="noopener">open in Fabric</a>{% endif %}
+{%- endif -%}
+</span>
+{%- endmacro %}
+
+{% macro explain(text) -%}
+<p class="explain"><strong>What this shows:</strong> {{ text }}</p>
+{%- endmacro %}
+
+{% macro days(n) -%}
+{%- if n is none -%}{%- elif n < 0 -%}ended {{ -n }} day{{ 's' if n != -1 }} ago{%- elif n == 1 -%}1 day left{%- else -%}{{ n }} days left{%- endif -%}
+{%- endmacro %}
+
+{% macro who(name, mid) -%}
+<a href="/staff/customer/{{ mid }}">{{ name }}</a>{% if mid not in name %}<div class="small">{{ mid }}</div>{% endif %}
+{%- endmacro %}
+
+{% macro staff_nav(active) -%}
+<div class="brand"><span class="logo">HB</span> HomeBridge <span class="sub">Adviser portal (staff only)</span></div>
+<nav>
+  <a href="/staff" class="{{ 'on' if active == 'work' }}">Worklist</a>
+  <a href="/staff/summary" class="{{ 'on' if active == 'summary' }}">Summary</a>
+  <a href="/customer" target="_blank">Customer website ↗</a>
+</nav>
+{%- endmacro %}

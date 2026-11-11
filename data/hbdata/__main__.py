@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import fixtures, generator, io, pipelines_local, replay, snapshots, validation
+from . import asof, fixtures, generator, io, pipelines_local, replay, snapshots, validation
 
 OUT = io.OUTPUT_DIR
 
@@ -34,6 +34,11 @@ def _as_of(args):
     return pd.Timestamp(json.loads((exports / "manifest.json").read_text(encoding="utf-8"))["config"]["as_of"])
 
 
+def _clock(args):
+    """Default time for the steps that follow the load: HB_AS_OF when set, else the generator as_of."""
+    return asof.as_of() or _as_of(args)
+
+
 def cmd_load_raw(args):
     exports, lake, _ = _p(args)
     print(json.dumps(pipelines_local.load_raw(exports, lake, args.at or _as_of(args)), indent=2))
@@ -49,7 +54,7 @@ def cmd_validate(args):
 def cmd_snapshots(args):
     _, lake, _ = _p(args)
     clean = pipelines_local.read_clean(lake)
-    as_of = pd.Timestamp(args.at) if args.at else _as_of(args)
+    as_of = pd.Timestamp(args.at) if args.at else _clock(args)
     if args.live:
         req = snapshots.live_requests(clean["mortgage_account"], as_of, args.mortgage)
         extra = pipelines_local.read_staged_events(lake)
@@ -63,7 +68,7 @@ def cmd_snapshots(args):
 
 def cmd_copy_context(args):
     _, lake, eh = _p(args)
-    print(json.dumps(pipelines_local.copy_context(lake, eh, args.at or _as_of(args)), indent=2, default=str))
+    print(json.dumps(pipelines_local.copy_context(lake, eh, args.at or _clock(args)), indent=2, default=str))
 
 
 def cmd_replay(args):
@@ -77,13 +82,13 @@ def cmd_replay(args):
     if args.target == "eventstream":
         print(json.dumps({"sent": replay.send_eventstream(envs)}))
         return
-    print(json.dumps(replay.ingest_local(envs, eh, ctx, args.at or pd.Timestamp.now(tz="UTC")), indent=2))
+    print(json.dumps(replay.ingest_local(envs, eh, ctx, args.at or asof.now()), indent=2))
 
 
 def cmd_export_journeys(args):
     _, lake, eh = _p(args)
-    cutoff = pd.Timestamp(args.at) if args.at else pd.Timestamp.now(tz="UTC")
-    print(json.dumps(pipelines_local.export_journeys(eh, lake, cutoff, pd.Timestamp.now(tz="UTC")), indent=2))
+    cutoff = pd.Timestamp(args.at) if args.at else asof.now()
+    print(json.dumps(pipelines_local.export_journeys(eh, lake, cutoff, asof.now()), indent=2))
 
 
 def cmd_fixtures(args):
@@ -124,7 +129,7 @@ def main(argv=None):
     r.add_argument("--target", choices=["local", "eventstream"], default="local")
     r.add_argument("--at", help="Ingestion time for events without simulated_ingested_at.")
     e = sub.add_parser("export-journeys", help="Stage journey results at a cutoff.")
-    e.add_argument("--at", help="Cutoff (ISO 8601). Default: now.")
+    e.add_argument("--at", help="Cutoff (ISO 8601). Default: HB_AS_OF when set, else now.")
     sub.add_parser("fixtures", help="Rebuild data/fixtures from the generator.")
     args = ap.parse_args(argv)
     {"generate": cmd_generate, "load-raw": cmd_load_raw, "validate": cmd_validate, "snapshots": cmd_snapshots,

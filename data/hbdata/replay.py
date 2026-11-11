@@ -167,8 +167,33 @@ def send_eventstream(envelopes: list[dict]) -> int:
 
     sendable = [{k: v for k, v in e.items() if k != "simulated_ingested_at"} for e in envelopes]
     with EventHubProducerClient.from_connection_string(conn, eventhub_name=name) as producer:
-        batch = producer.create_batch()
-        for env in sendable:
-            batch.add(EventData(json.dumps(env)))
+        return send_in_batches(producer, sendable, EventData)
+
+
+def send_in_batches(producer, sendable: list[dict], event_data_cls) -> int:
+    """Send events in order, in as many batches as the Event Hub size limit needs.
+
+    A batch refuses an event when it is full (`add` raises ValueError). Then this sends the batch and
+    starts a new one with the same event. An event that does not fit in an empty batch is too big
+    for the hub, so it stops with a clear error. Returns the number of events sent.
+    """
+    batch, in_batch, sent = producer.create_batch(), 0, 0
+    for position, env in enumerate(sendable):
+        data = event_data_cls(json.dumps(env))
+        try:
+            batch.add(data)
+        except ValueError as full:
+            if in_batch == 0:
+                raise ValueError(f"Event {position} ({env.get('event_id', '?')}) is larger than the Event Hub batch limit.") from full
+            producer.send_batch(batch)
+            sent += in_batch
+            batch, in_batch = producer.create_batch(), 0
+            try:
+                batch.add(data)
+            except ValueError as too_big:
+                raise ValueError(f"Event {position} ({env.get('event_id', '?')}) is larger than the Event Hub batch limit.") from too_big
+        in_batch += 1
+    if in_batch:
         producer.send_batch(batch)
-    return len(sendable)
+        sent += in_batch
+    return sent

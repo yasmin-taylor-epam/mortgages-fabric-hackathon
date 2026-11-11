@@ -18,8 +18,8 @@ import pandas as pd
 from sklearn.metrics import (accuracy_score, average_precision_score, brier_score_loss, f1_score, log_loss,
                              precision_score, recall_score, roc_auc_score)
 
-from . import clusters, features, models, registry, train
-from .config import REVIEWS_PER_RUN, Paths, SplitConfig
+from . import clusters, features, models, registry, thresholds, train
+from .config import LIFT_K, Paths, SplitConfig
 
 PROXY_COLUMNS = ["ctx_payment_support_open", "ctx_missed_payments_180d", "balance"]
 PROXY_FLAG = 0.3
@@ -38,7 +38,7 @@ def expected_positives_at_k(y, p, k: int) -> float:
     return float(y[above].sum() + room * y[tied].mean())
 
 
-def lift_at_k(y, p, k: int = REVIEWS_PER_RUN) -> dict:
+def lift_at_k(y, p, k: int = LIFT_K) -> dict:
     y = np.asarray(y, dtype=float)
     base = float(y.mean()) if len(y) else float("nan")
     k_eff = min(k, len(y))
@@ -47,7 +47,7 @@ def lift_at_k(y, p, k: int = REVIEWS_PER_RUN) -> dict:
             "lift": round(prec / base, 3) if base > 0 else None}
 
 
-def lift_interval(y, p, k: int = REVIEWS_PER_RUN, n_boot: int = 500, seed: int = 0) -> tuple[float, float]:
+def lift_interval(y, p, k: int = LIFT_K, n_boot: int = 500, seed: int = 0) -> tuple[float, float]:
     rng = np.random.default_rng(seed)
     y, p = np.asarray(y, dtype=float), np.asarray(p, dtype=float)
     vals = []
@@ -103,6 +103,18 @@ def proxy_check(frame: pd.DataFrame, X: pd.DataFrame) -> list[dict]:
     return sorted(out, key=lambda d: -abs(d["correlation"]))
 
 
+def _open_scores(paths: Paths, loaded: dict):
+    """Scores of the open accounts at the checkpoint, to count alerts for each option. None when the local data is not there."""
+    try:
+        from . import pipeline
+
+        manifest = json.loads((paths.root / "exports" / "manifest.json").read_text(encoding="utf-8"))
+        snap = pipeline.select_snapshots(paths, pd.Timestamp(manifest["config"]["as_of"]), "checkpoint", None).reset_index(drop=True)
+        return models.proba(loaded["classifier"], features.build_matrix(snap))
+    except Exception:  # noqa: BLE001 - the options table is useful without the open accounts
+        return None
+
+
 def evaluate_release(paths: Paths, model_version: str | None = None) -> dict:
     loaded = registry.load_release(paths, model_version)
     rel = loaded["release"]
@@ -113,9 +125,10 @@ def evaluate_release(paths: Paths, model_version: str | None = None) -> dict:
 
     out = {"release_id": rel["release_id"], "model_version": rel["model_version"],
            "cluster_model_version": rel["cluster_model_version"], "champion": rel["champion"], "synthetic_data": True,
-           "alert_threshold": rel["alert_threshold"], "review_capacity_threshold": rel.get("review_capacity_threshold"),
+           "alert_threshold": rel["alert_threshold"], "alert_threshold_rule": rel.get("alert_threshold_rule", "max_f1"),
+           "alert_threshold_params": rel.get("alert_threshold_params", {}),
            "test_cohorts": list(cfg.test_cohorts), "test_accounts": int(len(test)), "test_base_rate": round(float(y.mean()), 4),
-           "reviews_per_run": REVIEWS_PER_RUN, "models": {}}
+           "lift_k": LIFT_K, "models": {}}
     for name, model in loaded["candidates"].items():
         p = models.proba(model, X)
         thr = rel["validation"][name]["threshold"]
@@ -136,6 +149,12 @@ def evaluate_release(paths: Paths, model_version: str | None = None) -> dict:
                             "mean_lift_at_10_gain": (round(m["mean_lift_at_10"] - base["mean_lift_at_10"], 3)
                                                      if m["mean_lift_at_10"] is not None and base["mean_lift_at_10"] is not None else None)}
 
+    champ = loaded["candidates"][rel["champion"]]
+    p_val, p_test = models.proba(champ, data["X"]["validation"]), models.proba(champ, X)
+    retired = float(np.sort(p_val)[::-1][min(LIFT_K, len(p_val)) - 1])  # the old "10th-highest score" number. Shown only to compare.
+    out["threshold_options"] = thresholds.options(data["y"]["validation"], p_val, y, p_test, rel["alert_threshold"],
+                                                   out["alert_threshold_rule"], _open_scores(paths, loaded), retired)
+
     seg = clusters.assign(loaded["segment_model"], loaded["segment_map"], test)
     out["segments"] = {"k": rel["segments"]["k"], "selection": rel["segments"]["selection"],
                        "train_profiles": rel["segments"]["profiles"],
@@ -147,6 +166,25 @@ def evaluate_release(paths: Paths, model_version: str | None = None) -> dict:
 
 def _fmt(v) -> str:
     return "n/a" if v is None else (f"{v:.3f}" if isinstance(v, float) else str(v))
+
+
+def _options_markdown(r: dict) -> list[str]:
+    rows = r.get("threshold_options")
+    if not rows:
+        return []
+    has_open = any("open_accounts" in x for x in rows)
+    lines = ["## Alert threshold options (for comparison)", "",
+             "Alerts are accounts at or above the threshold. Recall = share of real leavers found. Precision = share of alerts that are real leavers. "
+             f"The share of leavers among all test accounts is {_fmt(r['test_base_rate'])}, so that is the precision of picking at random.", "",
+             "| Option | Threshold | Test alerts | Test recall | Test precision | Validation alerts | Validation recall | Validation precision |"
+             + (" Open accounts alerted |" if has_open else ""),
+             "| --- | --- | --- | --- | --- | --- | --- | --- |" + (" --- |" if has_open else "")]
+    for x in rows:
+        t, v = x["test"], x["validation"]
+        extra = f" {x['open_accounts']['alerts']} of {x['open_accounts']['accounts']} |" if has_open and "open_accounts" in x else (" |" if has_open else "")
+        lines.append(f"| {x['option']} | {_fmt(x['threshold'])} | {t['alerts']} | {_fmt(t['recall'])} | {_fmt(t['precision'])} | "
+                     f"{v['alerts']} | {_fmt(v['recall'])} | {_fmt(v['precision'])} |" + extra)
+    return lines + ["", "Only the chosen rule sets the routing threshold. The other rows are for reading.", ""]
 
 
 def to_markdown(r: dict) -> str:
@@ -165,20 +203,22 @@ def to_markdown(r: dict) -> str:
         "",
         "## Model comparison on the test cohorts",
         "",
-        "| Model | Role | Threshold | Accuracy | Precision | Recall | ROC AUC | Avg precision | Brier | ECE | Mean lift at 10 |",
+        "Average precision comes first. Threshold, precision and recall are at each model's own validation threshold. For the champion that is the routing threshold.", "",
+        "| Model | Role | Avg precision | Threshold | Accuracy | Precision | Recall | ROC AUC | Brier | ECE | Mean lift at 10 |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for name, m in r["models"].items():
-        lines.append(f"| {name} | {m['role']} | {_fmt(m['threshold'])} | {_fmt(m['accuracy'])} | {_fmt(m['precision'])} | "
-                     f"{_fmt(m['recall'])} | {_fmt(m['roc_auc'])} | {_fmt(m['average_precision'])} | {_fmt(m['calibration']['brier'])} | "
+        lines.append(f"| {name} | {m['role']} | {_fmt(m['average_precision'])} | {_fmt(m['threshold'])} | {_fmt(m['accuracy'])} | {_fmt(m['precision'])} | "
+                     f"{_fmt(m['recall'])} | {_fmt(m['roc_auc'])} | {_fmt(m['calibration']['brier'])} | "
                      f"{_fmt(m['calibration']['expected_calibration_error'])} | {_fmt(m['mean_lift_at_10'])} |")
     lines += ["", "Accuracy alone misleads when few accounts leave. Majority-class accuracy on the test cohorts is "
               f"{_fmt(next(iter(r['models'].values()))['majority_class_accuracy'])}.", "",
-              f"Alert threshold candidates for the champion, frozen on validation data: max-F1 threshold {_fmt(r.get('alert_threshold'))}; "
-              f"ten-review capacity threshold {_fmt(r.get('review_capacity_threshold'))}. The team confirms the routing threshold.", "",
-              "## Lift at ten reviews per run", "",
+              f"The routing threshold is {_fmt(r.get('alert_threshold'))}, chosen by the rule '{r.get('alert_threshold_rule')}' {r.get('alert_threshold_params') or ''} on validation data. "
+              "The routing policy copies it from the release. The team confirms the rule.", "",
+              *_options_markdown(r),
+              "## Lift at 10 (the ten highest scores per cohort)", "",
               "Lift = refinancing rate among the ten highest-scored accounts ÷ the cohort base rate. Ten accounts is a small "
-              "sample, so the 95% bootstrap interval is wide.", "",
+              "sample, so the 95% bootstrap interval is wide. This is a ranking metric. It is not a review capacity.", "",
               "| Model | Cohort | Accounts | Precision at 10 | Base rate | Lift | 95% interval |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for name, m in r["models"].items():
         for c in m["lift_at_10_by_cohort"]:
@@ -211,7 +251,7 @@ def to_markdown(r: dict) -> str:
     lines += ["", "## Limits", "",
               "- The data is synthetic. Outcome labels come from hidden generator factors, not real borrowers.",
               "- Attributions explain the score. They do not show the borrower's motive.",
-              "- The alert threshold is a candidate frozen on validation data. The team confirms the routing threshold.",
+              "- The alert threshold is chosen by a named rule on validation data. The team confirms the rule.",
               "- Nothing here has run in Fabric yet.", ""]
     return "\n".join(lines)
 

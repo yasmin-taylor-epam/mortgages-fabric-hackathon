@@ -64,6 +64,20 @@ def model_parameters(environment: str) -> dict:
     ]}
 
 
+def core_parameters(environment: str, as_of: str) -> dict | None:
+    """fabric-cicd parameter file for the core items. With an as-of date it sets the default of the pipeline parameter
+    "as_of", so that a scheduled run (which passes no parameters) also uses it. fabric-cicd replaces
+    only the first capture group of a regex, and refuses an empty group (a first live run failed on that), so the group is the
+    whole `"defaultValue": ""` text. Not yet run in Fabric."""
+    if not as_of:
+        return None
+    return {"find_replace": [{
+        "find_value": r'"as_of":\s*\{\s*"type":\s*"string",\s*("defaultValue":\s*"")',
+        "replace_value": {environment: f'"defaultValue": "{as_of}"'}, "is_regex": "true",
+        "item_type": "DataPipeline", "item_name": ids.PIPELINE_SCORING,
+    }]}
+
+
 def cicd_config(workspace_id: str, stage_dir: Path, types: list[str], parameter: Path | None, prune: bool) -> dict:
     core = {"workspace_id": workspace_id, "repository_directory": str(stage_dir), "item_types_in_scope": types}
     if parameter:
@@ -80,7 +94,7 @@ def notebook_runs(cfg: cfgmod.EnvSettings) -> list[tuple[str, dict]]:
         ("03_train_models", {}),
         ("04_score_and_segment", {"RUN_KIND": "checkpoint", "CUTOFF": r.checkpoint_cutoff, "STARTED_AT": r.checkpoint_started_at, "PUBLISH": True}),
         ("05_evaluate", {}),
-        ("06_publish_delta_tables", {}),
+        ("06_publish_delta_tables", {"AS_OF": r.as_of}),
     ]
 
 
@@ -228,14 +242,35 @@ class Deployer(ExtraSteps):
                     c.assign_capacity(self.workspace_id, cap)
                     self.say(f"Assigned workspace to capacity {cap}.")
 
-    def core(self) -> None:
-        types = stage.CORE_TYPES
-        if self.dry_run:
-            self.say(f"Would deploy {types} with fabric-cicd to workspace {self.workspace_id}.")
+    def check_eventstream_level(self) -> None:
+        """Stop early when the live Eventstream is at an older compatibility level than the repository file.
+
+        Fabric refuses to upgrade an Eventstream in place (400 "Upgrading the compatibility level from Compat_1_0 to
+        Compat_1_1 is not allowed."). fabric-cicd would fail late, after other items were published.
+        """
+        es = self.client.find_item(self.workspace_id, "Eventstream", ids.EVENTSTREAM)
+        if not es:
             return
-        self.say(f"Deploying {types} with fabric-cicd.")
-        config = self._write_config("core", types, None)
-        if not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):
+        want = payloads.eventstream_level(self.stage_dir)
+        have = str(self.client.eventstream_topology(self.workspace_id, es["id"]).get("compatibilityLevel") or "")
+        if have and want and payloads.level_key(have) < payloads.level_key(want):
+            raise FabricError(
+                f"The Eventstream '{ids.EVENTSTREAM}' in this workspace is at compatibility level {have}. The repository needs {want}, "
+                "and Fabric cannot upgrade an Eventstream in place. Nothing was published. Delete that one Eventstream in the Fabric "
+                "portal (its data is only the live event feed) and run the 'core' step again, or deploy to a new workspace. See docs/fabric-deployment.md.")
+
+    def core(self) -> None:
+        skip = set(self.cfg.skip_item_types)
+        types = [t for t in stage.CORE_TYPES if t not in skip]
+        left_alone = f" It leaves {sorted(skip)} alone (skip_item_types)." if skip else ""
+        if self.dry_run:
+            self.say(f"Would {'' if 'Eventstream' in skip else 'check the Eventstream compatibility level, then '}deploy {types} with fabric-cicd to workspace {self.workspace_id}.{left_alone}")
+            return
+        if "Eventstream" not in skip:
+            self.check_eventstream_level()
+        self.say(f"Deploying {types} with fabric-cicd.{left_alone}")
+        config = self._write_config("core", types, core_parameters(self.cfg.environment, self.cfg.run.as_of))
+        if "KQLDatabase" not in skip and not self.client.find_item(self.workspace_id, "KQLDatabase", ids.KQL_DATABASE):
             # Fabric runs the database script as one unit and removes the database when a command fails. The update
             # policies fail while streaming ingestion is on. So publish the database without them first.
             self.say("The KQL database does not exist yet. Publishing it without the update policies first, then turning streaming ingestion off.")
@@ -293,7 +328,10 @@ class Deployer(ExtraSteps):
         if not self.cfg.run.run_pipeline:
             self.say("Skipping the pipeline run (run.run_pipeline is false).")
             return
-        params = {"run_kind": "scheduled", "cutoff_at": self.cfg.run.pipeline_cutoff, "model_version": "", "cluster_model_version": ""}
+        r = self.cfg.run
+        # With an as-of date the pipeline derives its cutoff and run start from it. Without one, pipeline_cutoff is used.
+        params = {"run_kind": "scheduled", "cutoff_at": "" if r.as_of else r.pipeline_cutoff, "as_of": r.as_of,
+                  "model_version": "", "cluster_model_version": ""}
         if self.dry_run:
             self.say(f"Would run pipeline {ids.PIPELINE_SCORING} with {params}, then notebook 06 again.")
             return
@@ -302,7 +340,7 @@ class Deployer(ExtraSteps):
             raise FabricError(f"Pipeline '{ids.PIPELINE_SCORING}' not found. Run the 'core' step first.")
         self.say(f"Running pipeline {ids.PIPELINE_SCORING} ...")
         self.client.run_pipeline(self.workspace_id, p["id"], params, self.cfg.run.notebook_timeout_minutes)
-        self._run_notebooks([("06_publish_delta_tables", {})])
+        self._run_notebooks([("06_publish_delta_tables", {"AS_OF": r.as_of})])
 
     def refresh_endpoint(self) -> None:
         """Sync the Lakehouse SQL analytics endpoint with the Delta tables that the notebooks just wrote.

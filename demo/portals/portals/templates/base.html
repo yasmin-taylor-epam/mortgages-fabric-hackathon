@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}HomeBridge demo{% endblock %}</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="{% block theme %}staff{% endblock %}">
+{% if offline %}
+<div class="offline-banner"><strong>Offline preview.</strong> This page reads the local synthetic files in <code>data/output</code> on this laptop. It does not read Fabric. Use it to rehearse only.</div>
+{% endif %}
+<header class="top">
+  {% block header %}{% endblock %}
+</header>
+<main>
+{% if problems %}
+<section class="problems">
+  <h2>Some data could not be read</h2>
+  <ul>{% for p in problems %}<li><strong>{{ p.what }}:</strong> {{ p.error }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% block body %}{% endblock %}
+</main>
+<footer class="foot">
+  HomeBridge is a fictional lender. All customers and numbers are synthetic.
+  {% if not offline and links.workspace %} · <a href="{{ links.workspace }}" target="_blank" rel="noopener">Open the Fabric workspace</a>{% endif %}
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

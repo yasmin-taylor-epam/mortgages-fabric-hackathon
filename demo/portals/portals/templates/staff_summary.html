@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "macros.html" import source, explain, staff_nav with context %}
+{% block title %}Adviser portal · Summary{% endblock %}
+{% block header %}{{ staff_nav('summary') }}{% endblock %}
+{% block body %}
+<h1>Summary</h1>
+{{ explain("the size of the book, how many customers the model flags, how many review cases are open, and how fresh the data in Fabric is. Each tile names the Fabric table it comes from. Demo date: " ~ (s.today|when) ~ ".") }}
+
+<div class="tiles">
+  <div class="tile"><div class="num">{{ '{:,}'.format(s.accounts) if s.accounts is not none else '-' }}</div><div class="lbl">mortgage deals on record</div>
+    {{ source("mortgage_account", "lakehouse", "mortgage_account") }}</div>
+  <div class="tile"><div class="num">{{ (s.scores.scored or 0)|int }}</div><div class="lbl">customers scored (their deal ends soon)</div>
+    {{ source("account_scores", "lakehouse", "account_scores") }}</div>
+  <div class="tile hot"><div class="num">{{ (s.scores.above or 0)|int }}</div><div class="lbl">at or above the {{ s.threshold|pct }} threshold</div>
+    {{ source("account_scores", "lakehouse", "account_scores") }}</div>
+  <div class="tile"><div class="num">{{ s.segments|length }}</div><div class="lbl">customer groups (segments)</div>
+    {{ source("segment_membership", "lakehouse", "segment_membership") }}</div>
+</div>
+
+<h2>Open review cases</h2>
+<div class="tiles">
+  {% for fam in ['support', 'renewal', 'technical'] %}
+  <div class="tile {{ 'hot' if fam == 'support' }}"><div class="num">{{ s.open_by_family.get(fam, 0) }}</div><div class="lbl">{{ family_text[fam] }}</div>
+    {{ source("review_cases", "lakehouse", "review_cases") }}</div>
+  {% endfor %}
+</div>
+
+<h2>Live events and freshness</h2>
+<div class="tiles">
+  <div class="tile"><div class="num">{{ '{:,}'.format(s.counts.raw) if s.counts.raw is not none else '-' }}</div><div class="lbl">events stored in RawEvents</div>
+    {{ source("Eventhouse RawEvents", "kql", "raw_events") }}</div>
+  <div class="tile"><div class="num">{{ s.counts.live if s.counts.live is not none else '-' }}</div><div class="lbl">of them sent from the demo website</div>
+    {{ source("Eventhouse RawEvents", "kql", "raw_events") }}</div>
+  <div class="tile"><div class="num">{{ s.counts.quarantined if s.counts.quarantined is not none else '-' }}</div><div class="lbl">events held in quarantine (bad or unknown)</div>
+    {{ source("Eventhouse QuarantinedEvents", "kql", "quarantined_events") }}</div>
+  <div class="tile"><div class="num">{{ s.counts.service if s.counts.service is not none else '-' }}</div><div class="lbl">service events ready for routing</div>
+    {{ source("Eventhouse ServiceEvents()", "kql", "service events twin") }}</div>
+</div>
+
+<section class="panel">
+  <h2>Last runs</h2>
+  <dl class="facts">
+    <dt>Scoring</dt><dd>{% if s.run %}Run {{ s.run.run_id }} ({{ s.run.run_kind }}), data up to {{ s.run.cutoff_at|day }}, finished {{ s.run.completed_at|when }}{% else %}none{% endif %}</dd>
+    <dt>Routing</dt><dd>{% if s.last_routing %}{{ s.last_routing.routed_at|when }} (real time): {{ s.last_routing.cases }} cases, {{ s.last_routing.service_events }} service events, {{ s.last_routing.rejected_events }} rejected{% else %}not run yet{% endif %}</dd>
+    <dt>Last event received</dt><dd>{{ s.counts.last_ingested|when if s.counts.last_ingested else '-' }} (real time)</dd>
+  </dl>
+  {{ source("Lakehouse tables score_runs and review_routing_runs", "lakehouse", "score_runs") }}
+</section>
+
+{% if not offline and links %}
+<section class="panel">
+  <h2>Open the Fabric items</h2>
+  <ul class="links">
+    {% for key, label in [('lakehouse', 'Lakehouse HomeBridgeLakehouse'), ('eventhouse', 'Eventhouse HomeBridgeEventhouse'), ('kql', 'KQL database HomeBridgeEvents'),
+                          ('eventstream', 'Eventstream ' ~ settings.eventstream_name), ('notebook', 'Notebook 07_route_review_cases'), ('pipeline', 'Pipeline pl_scheduled_scoring'), ('report', 'Power BI report HomeBridgeMortgage')] %}
+      {% if links.get(key) %}<li><a href="{{ links[key] }}" target="_blank" rel="noopener">{{ label }} ↗</a></li>{% endif %}
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

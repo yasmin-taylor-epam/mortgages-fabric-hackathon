@@ -24,7 +24,7 @@ import json
 
 import pandas as pd
 
-from . import clusters, contract, explain, features, gold, models, registry
+from . import asof, clusters, contract, explain, features, gold, models, registry
 from .config import RUN_KINDS, TARGET, Paths
 
 ATTRIBUTION_TOP_N = 10
@@ -93,6 +93,12 @@ def apply_priority_rank(scores: pd.DataFrame, threshold: float) -> pd.DataFrame:
     return out
 
 
+def scope_keys(snapshots: pd.DataFrame) -> str:
+    """The accounts a run covers, as ",key,key,". A failed run makes stale only the scores of these accounts."""
+    keys = sorted(set(snapshots["mortgage_id"].astype(str) + "|" + snapshots["cycle_id"].astype(str)))
+    return "," + ",".join(keys) + "," if keys else None
+
+
 def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at, model_version: str | None = None,
                 cluster_model_version: str | None = None, started_at=None, inject_failure: str | None = None,
                 alert_threshold: float | None = None) -> dict:
@@ -100,6 +106,7 @@ def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at,
         raise ValueError(f"run_kind must be one of {RUN_KINDS}.")
     if inject_failure not in (None, *FAILURE_POINTS):
         raise ValueError(f"inject_failure must be one of {FAILURE_POINTS}.")
+    started_at = started_at if started_at is not None else asof.run_start()  # HB_AS_OF gives a simulated start
     simulated = started_at is not None
     started_at = pd.Timestamp(started_at) if simulated else pd.Timestamp.now(tz="UTC")
 
@@ -110,7 +117,7 @@ def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at,
     run_id = new_run_id(paths, started_at)
     run = {"run_id": run_id, "run_kind": run_kind, "status": "running", "started_at": started_at, "completed_at": None,
            "cutoff_at": cutoff_at, "model_version": model_version, "cluster_model_version": cluster_model_version,
-           "snapshot_count": len(snapshots), "error": None}
+           "snapshot_count": len(snapshots), "error": None, "scope_keys": scope_keys(snapshots)}
     gold.upsert(paths.gold, "score_runs", pd.DataFrame([run]))
     try:
         loaded = registry.load_release(paths, model_version, cluster_model_version)
@@ -129,8 +136,8 @@ def run_scoring(paths: Paths, snapshots: pd.DataFrame, run_kind: str, cutoff_at,
             "snapshot_id": snap["snapshot_id"], "model_version": rel["model_version"],
             "cluster_model_version": rel["cluster_model_version"], "segment_id": res["segment_id"],
             "score": res["score"].round(6), "scored_at": scored_at, "cutoff_at": snap["cutoff_at"], "target": TARGET})
-        # The threshold is the routing policy's. By default it is the release's ten-review capacity threshold, which the policy copies.
-        threshold = float(alert_threshold if alert_threshold is not None else rel["review_capacity_threshold"])
+        # The threshold is the release's. The routing policy copies it (python -m models_eval policy). Nobody types it in.
+        threshold = float(alert_threshold if alert_threshold is not None else rel["alert_threshold"])
         scores = apply_priority_rank(scores, threshold)
         attr = res["attributions"].assign(run_id=run_id, model_version=rel["model_version"])
         attr["account_key"] = attr["mortgage_id"] + "|" + attr["cycle_id"]

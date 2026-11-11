@@ -118,9 +118,9 @@ ServiceEvents() {
     | summarize arg_max(deal_start_at, *) by event_id
     | project event_id, event_type = service_type, mortgage_id, cycle_id, occurred_at, ingested_at, evidence_ids
 }
-.create-or-alter function with (folder = "service", docstring = "Live Customer 360 view: account context, live service signals, latest valid score, and feed and score age.")
-Customer360() {
-    let now_ = now();
+.create-or-alter function with (folder = "service", docstring = "Live Customer 360 view: account context, live service signals, latest valid score, and feed and score age. Pass as_of to use one as-of time instead of the real clock; the synthetic data stops on 15 Oct 2026.")
+Customer360(as_of:datetime = datetime(null)) {
+    let now_ = coalesce(as_of, now());
     let payment_feed_stale = toscalar(SourceWatermarks | summarize arg_max(checked_at, is_stale) by dataset | where dataset == "payment" | project is_stale);
     let support = ServiceEvents()
         | where event_type in ("payment_support_requested", "payment_support_closed")

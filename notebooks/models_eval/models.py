@@ -92,24 +92,12 @@ def tune(X_tr, y_tr, X_va, y_va, seed: int = 0) -> dict:
     return out
 
 
-def freeze_threshold(y, p) -> dict:
-    """Alert threshold that maximises F1 on validation data. Ties keep the higher threshold."""
-    y, p = np.asarray(y), np.asarray(p)
-    best = None
-    for t in np.unique(np.round(p, 6)):
-        pred = (p >= t).astype(int)
-        if pred.sum() == 0 or pred.all():
-            continue  # alerting nobody or everybody is not a threshold
-        f1 = f1_score(y, pred, zero_division=0)
-        cand = (round(float(f1), 6), float(t))
-        if best is None or cand > best:
-            best = cand
-    t = best[1] if best else 0.5
-    pred = (p >= t).astype(int)
-    return {"threshold": round(t, 4), "rule": "max F1 on validation", "validation_f1": round(float(f1_score(y, pred, zero_division=0)), 4),
-            "validation_precision": round(float(precision_score(y, pred, zero_division=0)), 4),
-            "validation_recall": round(float(recall_score(y, pred, zero_division=0)), 4),
-            "validation_alert_rate": round(float(pred.mean()), 4)}
+def freeze_threshold(y, p, rule: str = "max_f1", cost_missed_leaver: float | None = None, cost_review: float | None = None,
+                     min_precision: float | None = None) -> dict:
+    """The alert threshold for a named rule (see thresholds.py). The default rule maximises F1 on validation data."""
+    from . import thresholds
+
+    return thresholds.freeze(y, p, rule, cost_missed_leaver, cost_review, min_precision)
 
 
 def choose_champion(tuned: dict, margin: float = 0.005) -> str:

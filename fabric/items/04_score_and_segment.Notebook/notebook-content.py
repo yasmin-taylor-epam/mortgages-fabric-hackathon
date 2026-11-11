@@ -48,7 +48,7 @@
 OUTPUT_ROOT = None  # default: data/output
 RUN_KIND = 'checkpoint'  # 'checkpoint', 'scheduled' or 'manual'
 CUTOFF = None  # ISO 8601. Default: the generator as_of time
-STARTED_AT = None  # simulated run start (ISO 8601). Default: now
+STARTED_AT = None  # simulated run start (ISO 8601). Default: now, or one minute after HB_AS_OF when it is set
 MODEL_VERSION = None  # pinned classifier, for example 'hb-refi-clf:1'. Default: latest release
 CLUSTER_MODEL_VERSION = None  # pinned cluster model. Default: same release
 MORTGAGE_IDS = None  # optional list of mortgage_ids
@@ -56,7 +56,7 @@ BUILD_LIVE_SNAPSHOTS = False  # local convenience: build live snapshots here ins
 INJECT_FAILURE = None  # T05 demo: 'before_outputs' or 'after_outputs'
 PUBLISH = True  # publish risk_updated after a completed run
 PUBLISH_ONLY = False  # retry pending publication without scoring
-ALERT_THRESHOLD = None  # default: the release's ten-review capacity threshold, which the routing policy copies
+ALERT_THRESHOLD = None  # default: the release's alert threshold, chosen by its named rule. The routing policy copies the same value
 
 # METADATA ********************
 
@@ -100,7 +100,7 @@ print('Output root:', PATHS.root)
 
 # CELL ********************
 
-from models_eval import pipeline, publish, scoring
+from models_eval import asof, pipeline, publish, scoring
 result = None
 if not PUBLISH_ONLY:
     if CUTOFF is None:  # local default: the generator as_of time
@@ -162,7 +162,7 @@ gold.read(PATHS.gold, 'score_runs').sort_values('started_at').tail(5)
 
 # CELL ********************
 
-as_of = pd.Timestamp(STARTED_AT) if STARTED_AT else pd.Timestamp.now(tz='UTC')
+as_of = pd.Timestamp(STARTED_AT) if STARTED_AT else asof.now()
 latest = scoring.latest_scores(PATHS, as_of)
 latest['score_state'].value_counts()
 

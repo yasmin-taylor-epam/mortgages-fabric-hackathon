@@ -50,6 +50,8 @@
 OUTPUT_ROOT = None  # default: data/output
 USE_MLFLOW = True
 N_BOOT = 20  # bootstrap fits per k for cluster stability
+THRESHOLD_RULE = None  # empty: the default rule, min_precision. Others: max_f1, min_cost (needs HB_COST_MISSED_LEAVER and HB_COST_REVIEW)
+MIN_PRECISION = None  # min_precision rule: share of validation alerts that must be real leavers. Empty: 0.6
 
 # METADATA ********************
 
@@ -90,9 +92,10 @@ print('Output root:', PATHS.root)
 
 # CELL ********************
 
-from models_eval import train
-release = train.train_release(PATHS, use_mlflow=USE_MLFLOW, n_boot=N_BOOT)
-{k: release[k] for k in ('release_id', 'champion', 'model_version', 'cluster_model_version', 'alert_threshold', 'registry')}
+from models_eval import config, train
+rule = config.threshold_rule(THRESHOLD_RULE or None, None, None, MIN_PRECISION or None)  # a pipeline passes empty strings
+release = train.train_release(PATHS, use_mlflow=USE_MLFLOW, n_boot=N_BOOT, rule=rule)
+{k: release[k] for k in ('release_id', 'champion', 'model_version', 'cluster_model_version', 'alert_threshold', 'alert_threshold_rule', 'alert_threshold_params', 'registry')}
 
 # METADATA ********************
 
@@ -122,7 +125,7 @@ pd.DataFrame({k: release['split'][k] for k in ('rows', 'positive_rate', 'dropped
 
 # ## Validation results
 #
-# The champion is the learned model with the higher validation average precision. Logistic regression wins a near tie. Each threshold maximises F1 on validation data. The team confirms the routing threshold.
+# The champion is the learned model with the higher validation average precision. Logistic regression wins a near tie. The routing threshold comes from a named rule on validation data. The default rule is `min_precision` with a target of 0.6: the lowest threshold at which at least 60% of the validation alerts are real leavers. The release stores the rule and the value. The team confirms the rule.
 
 # CELL ********************
 

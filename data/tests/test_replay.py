@@ -107,3 +107,43 @@ def test_envelope_round_trip(clean):
     back = replay.transfer_events(raw)
     assert back["event_id"].tolist() == rows["event_id"].tolist()
     assert back["stage"].tolist() == rows["stage"].tolist()
+
+
+def test_a_failed_run_makes_stale_only_the_scores_it_covered(tmp_path):
+    import pandas as pd
+
+    gold = tmp_path / "gold"
+    gold.mkdir()
+    t0 = pd.Timestamp("2026-10-15T00:05:00Z")
+    pd.DataFrame({
+        "mortgage_id": ["M1", "M2"], "cycle_id": ["C1", "C1"], "run_id": ["RUN-1", "RUN-1"], "snapshot_id": ["S1", "S2"],
+        "model_version": "m", "score": [0.5, 0.6], "scored_at": [t0, t0], "cutoff_at": [t0, t0],
+    }).to_parquet(gold / "account_scores.parquet")
+    runs = pd.DataFrame({
+        "run_id": ["RUN-1", "RUN-2"], "status": ["completed", "failed"], "started_at": [t0, t0 + pd.Timedelta(minutes=15)],
+        "scope_keys": [",M1|C1,M2|C1,", ",M1|C1,"],
+    })
+    runs.to_parquet(gold / "score_runs.parquet")
+    sc = pipelines_local.score_context(gold, t0 + pd.Timedelta(minutes=20)).set_index("mortgage_id")
+    assert sc.loc["M1", "score_state"] == "stale" and sc.loc["M2", "score_state"] == "current"
+    runs["scope_keys"] = None  # an old run table with no scope: the failure covers every account, as before
+    runs.to_parquet(gold / "score_runs.parquet")
+    sc = pipelines_local.score_context(gold, t0 + pd.Timedelta(minutes=20))
+    assert set(sc["score_state"]) == {"stale"}
+
+
+def test_a_late_servicing_feed_makes_none_unknown_but_keeps_a_known_active_case(monkeypatch):
+    import pandas as pd
+
+    t = pd.Timestamp("2026-10-15T00:00:00Z")
+    acct = pd.DataFrame({
+        "mortgage_id": ["M1", "M2"], "cycle_id": ["C1", "C1"], "deal_start_at": [t - pd.Timedelta(days=900)] * 2,
+        "deal_end_at": [t + pd.Timedelta(days=60)] * 2, "owner_id": ["ADV-1", "ADV-1"],
+    })
+    status = pd.DataFrame({"mortgage_id": ["M1"], "category": ["payment_difficulty"], "latest_status": ["open"]})
+    monkeypatch.setattr(pipelines_local, "case_status_at", lambda events, at: status)
+    clean = {"mortgage_account": acct, "servicing_case_event": pd.DataFrame()}
+    for stale, expected in ((False, {"M1": "active", "M2": "none"}), (True, {"M1": "active", "M2": "unknown"})):
+        wm = pd.DataFrame({"dataset": ["servicing_case_event"], "is_stale": [stale]})
+        ctx = pipelines_local.account_context(clean, [], wm, t).set_index("mortgage_id")
+        assert ctx["payment_support_status"].to_dict() == expected

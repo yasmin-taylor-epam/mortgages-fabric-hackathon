@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import gold
+from . import asof, gold
 from .config import Paths
 
 
@@ -39,7 +39,7 @@ def default_sink(paths: Paths) -> JsonlSink:
 
 def publish_pending(paths: Paths, sink=None, now=None, batch_size: int = 500) -> dict:
     sink = sink or default_sink(paths)
-    now = pd.Timestamp(now) if now is not None else pd.Timestamp.now(tz="UTC")
+    now = pd.Timestamp(now) if now is not None else asof.now()
     outbox = gold.read(paths.gold, "risk_outbox")
     runs = gold.read(paths.gold, "score_runs")
     completed = set(runs.loc[runs["status"] == "completed", "run_id"])

@@ -21,7 +21,7 @@ Source: blueprint section 03, routing view. Microsoft documents [Activator custo
 | --- | --- |
 | Source | `risk_updated` events. Only completed runs publish them (INV-5). |
 | Object | Mortgage cycle. Key: `mortgage_id` + `cycle_id`. |
-| Condition | Every event with `score` at or above the frozen threshold. Candidate: 0.5593, the ten-review capacity threshold from release `hb-refi-clf:1` on synthetic validation data (`../policy/routing-policy.candidate.json`). It is illustrative. The team has not confirmed it. |
+| Condition | Every event with `score` at or above the frozen threshold. The threshold comes from the model release. A named rule chooses it on validation data, and `python -m models_eval policy` copies it into the routing policy. Nobody types it in. Activator sends every event to the flow with no score filter, so the router sees all of them and logs each outcome. The team has not confirmed the rule. See `../../docs/alert-threshold.md`. |
 | Action | Custom action: start the review-case writer flow. |
 
 The flow checks the score age and payment-support status again. A rule never authorises a case by itself.

@@ -12,7 +12,7 @@
         "typeProperties": {
           "variableName": "cutoff",
           "value": {
-            "value": "@if(empty(pipeline().parameters.cutoff_at), formatDateTime(pipeline().TriggerTime, 'yyyy-MM-ddTHH:mm:ssZ'), pipeline().parameters.cutoff_at)",
+            "value": "@if(empty(pipeline().parameters.cutoff_at), formatDateTime(if(empty(pipeline().parameters.as_of), pipeline().TriggerTime, pipeline().parameters.as_of), 'yyyy-MM-ddTHH:mm:ssZ'), pipeline().parameters.cutoff_at)",
             "type": "Expression"
           }
         }
@@ -30,7 +30,7 @@
         ],
         "policy": {
           "timeout": "0.00:20:00",
-          "retry": 0,
+          "retry": 1,
           "retryIntervalInSeconds": 30,
           "secureInput": false,
           "secureOutput": false
@@ -69,7 +69,7 @@
         ],
         "policy": {
           "timeout": "0.00:20:00",
-          "retry": 0,
+          "retry": 1,
           "retryIntervalInSeconds": 30,
           "secureInput": false,
           "secureOutput": false
@@ -109,6 +109,13 @@
             "PUBLISH": {
               "value": false,
               "type": "bool"
+            },
+            "STARTED_AT": {
+              "value": {
+                "value": "@if(empty(pipeline().parameters.as_of), '', formatDateTime(addMinutes(variables('cutoff'), 1), 'yyyy-MM-ddTHH:mm:ssZ'))",
+                "type": "Expression"
+              },
+              "type": "string"
             }
           }
         }
@@ -138,6 +145,13 @@
             "PUBLISH_ONLY": {
               "value": true,
               "type": "bool"
+            },
+            "STARTED_AT": {
+              "value": {
+                "value": "@if(empty(pipeline().parameters.as_of), '', formatDateTime(addMinutes(variables('cutoff'), 1), 'yyyy-MM-ddTHH:mm:ssZ'))",
+                "type": "Expression"
+              },
+              "type": "string"
             }
           }
         }
@@ -157,6 +171,10 @@
         "defaultValue": ""
       },
       "cluster_model_version": {
+        "type": "string",
+        "defaultValue": ""
+      },
+      "as_of": {
         "type": "string",
         "defaultValue": ""
       }

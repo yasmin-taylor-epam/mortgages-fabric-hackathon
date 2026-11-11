@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros.html" import explain with context %}
+{% block title %}HomeBridge · Request sent{% endblock %}
+{% block theme %}customer{% endblock %}
+{% block header %}<div class="brand"><span class="logo">HB</span> HomeBridge <span class="sub">My mortgage</span></div>{% endblock %}
+{% block body %}
+{{ explain("the event this website just sent, and a live check that Fabric received it. The check asks the Eventhouse every few seconds.") }}
+<h1>Thank you, {{ name }}</h1>
+<p class="lead">{{ text }}</p>
+{% if again %}<p class="warn">You sent the same event a second time. Fabric should store both copies but create only one review case (rule T01).</p>{% endif %}
+
+<section class="panel">
+  <h2>Did Fabric get it?</h2>
+  <ol class="checks" id="checks">
+    <li id="c-sent" class="ok">Sent to {{ 'the local Eventhouse copy' if offline else 'the Fabric Eventstream' }} as event <code>{{ env.event_id }}</code>.</li>
+    <li id="c-raw">Waiting for the Eventhouse table RawEvents …</li>
+    <li id="c-service">Waiting for the Eventhouse function ServiceEvents() …</li>
+  </ol>
+  <p class="small" id="c-time"></p>
+  <p class="small">An event usually reaches the Eventhouse within a minute. The adviser portal shows the review case after the routing notebook runs.</p>
+</section>
+
+<details class="panel">
+  <summary>The event as sent (the live_event contract)</summary>
+  <pre>{{ env|tojson(indent=2) }}</pre>
+</details>
+
+<div class="buttons">
+  <a class="button primary" href="/customer?who={{ env.mortgage_id }}">Back to my mortgage</a>
+  <form method="post" action="/customer/resend/{{ env.event_id }}"><button class="secondary">Presenter: send the same event again</button></form>
+  <a class="button" href="/staff/customer/{{ env.mortgage_id }}" target="_blank">Open this customer in the adviser portal ↗</a>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const id = {{ env.event_id|tojson }};
+const started = Date.now();
+async function check() {
+  const secs = Math.round((Date.now() - started) / 1000);
+  document.getElementById('c-time').textContent = `Checked ${secs} seconds after this page opened.`;
+  let done = false;
+  try {
+    const r = await fetch(`/api/arrival/${id}`);
+    const j = await r.json();
+    const raw = document.getElementById('c-raw'), svc = document.getElementById('c-service');
+    if (j.error) { raw.textContent = 'Could not ask the Eventhouse: ' + j.error; raw.className = 'bad'; }
+    else if (j.quarantined.length) { raw.textContent = `Fabric put the event in quarantine: ${j.quarantined[0].reason}.`; raw.className = 'bad'; done = true; }
+    else if (j.accepted.length) {
+      const copies = `${j.accepted.length} ${j.accepted.length === 1 ? 'copy' : 'copies'}`;
+      const delay = j.delay_seconds === null || j.delay_seconds === undefined ? '' : `, ${j.delay_seconds} seconds after sending`;
+      const demo = j.arrived_demo ? ` On the demo clock it arrived ${j.arrived_demo}.` : '';
+      raw.textContent = `Stored in RawEvents (${copies})${delay}.${demo}`;
+      raw.className = 'ok';
+      if (j.service.length) { svc.textContent = `ServiceEvents() lists it once as "${j.service[0].event_type}". The routing notebook will open a review case.`; svc.className = 'ok'; }
+      else { svc.textContent = 'Not a service event. It is in the timeline but does not open a case by itself.'; svc.className = 'info'; }
+      done = true;
+    }
+  } catch (e) { document.getElementById('c-raw').textContent = 'Check failed: ' + e; }
+  if (!done && secs < 600) setTimeout(check, 5000);
+}
+check();
+</script>
+{% endblock %}

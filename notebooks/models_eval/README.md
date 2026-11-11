@@ -21,6 +21,7 @@ The last command uses the Data and replay generator to write the synthetic input
 ```powershell
 cd notebooks
 ..\.venv\Scripts\python -m models_eval train      # one release: models, thresholds, clusters, MLflow registration
+..\.venv\Scripts\python -m models_eval policy     # routing policy from the release (threshold chosen by a named rule, see docs/alert-threshold.md)
 ..\.venv\Scripts\python -m models_eval evaluate   # data/output/reports/evaluation_report.md and .json
 ..\.venv\Scripts\python -m models_eval pipeline --cutoff 2026-10-15T00:00:00Z --kind checkpoint --started-at 2026-10-15T00:05:00Z
 ```
@@ -46,7 +47,7 @@ The unit tests use a few hand-written synthetic rows. The end-to-end tests build
 | INV-5 / T05: a failed run publishes nothing and leaves the last score stale | `test_end_to_end.py::test_scoring_runs_publish_append_and_fail_safely`, `test_t05_fixture.py` |
 | Publication retry keeps the same `event_id` | `test_end_to_end.py::test_scoring_runs_publish_append_and_fail_safely` |
 | Segment rows are append only | `test_units.py::test_segment_membership_is_append_only`, end-to-end test |
-| Lift at ten reviews per run | `test_units.py::test_lift_at_ten_*` |
+| Lift at 10 | `test_units.py::test_lift_at_ten_*` |
 
 ## Inputs (Data and replay)
 

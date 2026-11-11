@@ -32,6 +32,7 @@ from .models import (
     ServiceEvent,
     make_case_key,
 )
+from .clock import now as clock_now
 from .router import route
 from .store import CaseStore, DuplicateCaseKey, TransientWriteError
 
@@ -41,7 +42,8 @@ Clock = Callable[[], datetime]
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    """The default clock: the as-of time when HB_AS_OF is set, otherwise the real UTC time."""
+    return clock_now()
 
 
 @dataclass(frozen=True)

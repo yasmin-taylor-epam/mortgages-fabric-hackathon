@@ -1,0 +1,21 @@
+/// One row. The as-of time of the report (UTC). Notebook 06 writes it. An empty value means the real time.
+table report_settings
+
+	column as_of
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: as_of
+
+	column written_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn
+		summarizeBy: none
+		sourceColumn: written_at
+
+	partition report_settings = entity
+		mode: directLake
+		source
+			entityName: report_settings
+			schemaName: dbo
+			expressionSource: DatabaseQuery

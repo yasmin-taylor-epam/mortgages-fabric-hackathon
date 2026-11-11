@@ -39,6 +39,21 @@ class TestScoreAgeAndStaleness:
         assert alex["score_status"] == "stale_last_run_failed"
         assert alex["score_age_minutes"] == 30
 
+    def test_a_failed_run_makes_stale_only_the_accounts_it_covered(self, db):
+        db.execute("UPDATE score_runs SET scope_keys = ',MTG-JO|CYC-2027-02,' WHERE run_id = 'RUN-0003'")
+        scores = by("mortgage_id", rows(db, f"SELECT * FROM latest_score({AS_OF}, {DAY})"))
+        assert scores["MTG-ALEX"]["score_status"] == "current"  # the failed run did not cover it
+        assert scores["MTG-ALEX"]["last_run_status"] == "completed"
+        assert scores["MTG-JO"]["last_run_status"] == "failed"
+        db.execute("UPDATE score_runs SET scope_keys = ',MTG-ALEX|CYC-2027-01,MTG-JO|CYC-2027-02,' WHERE run_id = 'RUN-0003'")
+        scores = by("mortgage_id", rows(db, f"SELECT * FROM latest_score({AS_OF}, {DAY})"))
+        assert scores["MTG-ALEX"]["score_status"] == "stale_last_run_failed" and scores["MTG-SAM"]["last_run_status"] == "completed"
+
+    def test_a_scope_key_is_matched_whole_not_as_a_prefix(self, db):
+        db.execute("UPDATE score_runs SET scope_keys = ',MTG-ALEX|CYC-2027-010,' WHERE run_id = 'RUN-0003'")
+        scores = by("mortgage_id", rows(db, f"SELECT * FROM latest_score({AS_OF}, {DAY})"))
+        assert scores["MTG-ALEX"]["score_status"] == "current"
+
     def test_partial_rows_from_a_failed_run_are_never_shown(self, db):
         shown = {r["run_id"] for r in rows(db, f"SELECT run_id FROM latest_score({AS_OF}, {DAY})")}
         assert "RUN-0003" not in shown
@@ -183,3 +198,21 @@ class TestAccountView:
         assert jo["review_owner"] == "ADV-017"
         assert jo["payment_support_priority"] is False
         assert jo["arrears_amount"] is None
+
+
+class TestAdviserOutcomes:
+    def test_precision_is_blank_when_nothing_is_decided(self, db):
+        row = rows(db, "SELECT * FROM alert_precision()")[0]
+        assert row["precision"] is None and row["agreed"] == 0 and row["pending"] == 0
+
+    def test_precision_counts_agreed_over_decided_and_keeps_referred_and_pending_apart(self, db):
+        db.execute("""INSERT INTO review_outcomes VALUES
+            ('A|C1|renewal', 'action_agreed', TIMESTAMP '2026-10-16 10:00:00', 'ADV-1'),
+            ('B|C1|renewal', 'action_agreed', TIMESTAMP '2026-10-16 10:05:00', 'ADV-1'),
+            ('C|C1|renewal', 'no_action',     TIMESTAMP '2026-10-16 10:10:00', 'ADV-2'),
+            ('D|C1|renewal', 'referred',      TIMESTAMP '2026-10-16 10:15:00', 'ADV-2'),
+            ('E|C1|renewal', 'pending', NULL, NULL),
+            ('F|C1|support', 'action_agreed', TIMESTAMP '2026-10-16 10:20:00', 'ADV-3')""")
+        row = rows(db, "SELECT * FROM alert_precision()")[0]
+        assert (row["agreed"], row["no_action"], row["referred"], row["pending"]) == (2, 1, 1, 1)  # the support case is not an alert
+        assert row["precision"] == pytest.approx(2 / 3)

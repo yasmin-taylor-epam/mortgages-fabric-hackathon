@@ -649,9 +649,10 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <div class="grid gap-6" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1.25rem;">
       <div><div class="clock">10</div><p style="font-size:.9rem">Reviews the team can handle per run (the capacity).</p></div>
       <div><div class="clock">6</div><p style="font-size:.9rem">Mortgages over the strict line in the checkpoint run. This fits the capacity.</p></div>
-      <div><div class="clock" style="color: var(--color-error);">22</div><p style="font-size:.9rem">Mortgages flagged in each later live run, per the session report. This is over the capacity.</p></div>
+      <div><div class="clock" style="color: var(--color-error);">22</div><p style="font-size:.9rem">Mortgages flagged in each later live run with the earlier threshold (0.5593), per the session report. This was over the capacity.</p></div>
     </div>
     <p class="why">The strict line was set on checkpoint data, 90 days before the deal ends. Live runs score mortgages at a different point in the deal, so the line no longer fits. The team needs a cap on live alerts, or a separate live threshold. One test fails after extra live runs, so the script runs them only in demo mode.</p>
+    <p class="why"><strong>Update (historical figures above):</strong> the threshold now comes from a named rule saved with the model release. The rule is <code>min_precision</code> 0.6, which gives a threshold of 0.5062. The live scores flag 27 mortgages. Every flagged mortgage gets a review case, ranked by score. There is no cap.</p>
     <p style="margin-top: .75rem;"><span class="stamp gap">Reported by the session · live runs not re-run for this page</span></p>
   </div>
 </aside>

@@ -65,13 +65,36 @@ def test_pipeline_points_to_the_two_notebooks_by_logical_id():
     assert acts["Score and segment (04_score_and_segment)"]["typeProperties"]["notebookId"] == ids.logical_id("Notebook", "04_score_and_segment")
     publish = acts["Publish risk_updated (04_score_and_segment, publish only)"]
     assert publish["dependsOn"][0]["dependencyConditions"] == ["Succeeded"]  # INV-5: no publish after a failed run
-    assert acts["Score and segment (04_score_and_segment)"]["policy"]["retry"] == 0
+    assert acts["Score and segment (04_score_and_segment)"]["policy"]["retry"] == 1  # placeholder retry count
+    assert acts["Build snapshots (02_feature_snapshots)"]["policy"]["retry"] == 1
     assert all(a["typeProperties"].get("workspaceId", ids.DEFAULT_GUID) == ids.DEFAULT_GUID for a in acts.values())
+
+
+def test_pipeline_as_of_parameter_sets_the_cutoff_and_the_run_start():
+    doc = json.loads((bfi.ITEMS / "pl_scheduled_scoring.DataPipeline" / "pipeline-content.json").read_text(encoding="utf-8"))
+    props = doc["properties"]
+    assert props["parameters"]["as_of"] == {"type": "string", "defaultValue": ""}  # off by default: the real clock
+    acts = {a["name"]: a for a in props["activities"]}
+    cutoff = acts["Set cutoff"]["typeProperties"]["value"]["value"]
+    assert "pipeline().parameters.as_of" in cutoff and "pipeline().TriggerTime" in cutoff  # explicit cutoff_at still wins
+    for name in ("Score and segment (04_score_and_segment)", "Publish risk_updated (04_score_and_segment, publish only)"):
+        started = acts[name]["typeProperties"]["parameters"]["STARTED_AT"]["value"]["value"]
+        assert started.startswith("@if(empty(pipeline().parameters.as_of), ''")  # empty means the notebook uses the real clock
 
 
 def test_eventstream_routes_to_the_landing_table_of_the_kql_database():
     doc = json.loads((bfi.ITEMS / "HomeBridgeRiskEvents.Eventstream" / "eventstream.json").read_text(encoding="utf-8"))
-    dest = doc["destinations"][0]["properties"]
-    assert dest["itemId"] == ids.logical_id("KQLDatabase", ids.KQL_DATABASE)
-    assert dest["tableName"] == "RawEventsLanding" and dest["databaseName"] == ids.KQL_DATABASE
+    node = doc["destinations"][0]
+    dest = node["properties"]
+    # Direct (queued) ingestion: the processed mode needs streaming ingestion, which the deploy turns off on purpose.
+    # The pair is needed. At 1.0, an Eventhouse itemId fails ("is not a database artifact. It is of type 'KustoEventHouse'")
+    # and a KQL database itemId gives a silent "Warning" with no data. At 1.1, direct mode takes the Eventhouse item.
+    assert dest["dataIngestionMode"] == "DirectIngestion" and doc["compatibilityLevel"] == "1.1"
+    assert dest["itemId"] == ids.logical_id("Eventhouse", ids.EVENTHOUSE)
+    assert dest["tableName"] == "RawEventsLanding" and dest["mappingRuleName"] == "RawEventsLanding_json"
+    assert len(dest["connectionName"]) <= 40 and "databaseName" not in dest
+    # Fabric refuses to change the type of an existing node (KustoPushMode to KustoPullMode), so the node has a new name.
+    assert node["name"] == "RawEventsLandingDirect" and node["name"] != "RawEventsLanding"
     assert doc["sources"][0]["type"] == "CustomEndpoint"
+    schema = (bfi.ITEMS / bfi.KQL_SCHEMA).read_text(encoding="utf-8")
+    assert f'ingestion json mapping "{dest["mappingRuleName"]}"' in schema

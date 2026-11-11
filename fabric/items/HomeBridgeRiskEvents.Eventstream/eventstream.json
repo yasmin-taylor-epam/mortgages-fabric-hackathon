@@ -8,20 +8,15 @@
   ],
   "destinations": [
     {
-      "name": "RawEventsLanding",
+      "name": "RawEventsLandingDirect",
       "type": "Eventhouse",
       "properties": {
-        "dataIngestionMode": "ProcessedIngestion",
+        "dataIngestionMode": "DirectIngestion",
         "workspaceId": "00000000-0000-0000-0000-000000000000",
-        "itemId": "589f41df-ff41-5795-a365-aa1e7fc656d6",
-        "databaseName": "HomeBridgeEvents",
+        "itemId": "cbfcf213-cfb5-555d-a73b-048dff267bc7",
         "tableName": "RawEventsLanding",
-        "inputSerialization": {
-          "type": "Json",
-          "properties": {
-            "encoding": "UTF8"
-          }
-        }
+        "connectionName": "hb-raw-events-direct",
+        "mappingRuleName": "RawEventsLanding_json"
       },
       "inputNodes": [
         {
@@ -43,5 +38,5 @@
     }
   ],
   "operators": [],
-  "compatibilityLevel": "1.0"
+  "compatibilityLevel": "1.1"
 }

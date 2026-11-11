@@ -3,7 +3,8 @@
 -- The DAX measures in reports/HomeBridgeMortgage.SemanticModel mirror these rules.
 -- Tests: reports/tests/test_report_logic.py.
 
--- INV-5, T05: latest score from completed runs only. A failed latest run marks the score stale.
+-- INV-5, T05: latest score from completed runs only. A failed latest run that covered the account marks its score stale.
+-- A failed run for other accounts does not.
 -- Accounts with no score stay in the result with score_status = 'no_score'.
 CREATE OR REPLACE MACRO latest_score(as_of, max_score_age_minutes) AS TABLE
 WITH completed AS (
@@ -16,10 +17,14 @@ ranked AS (
     SELECT *, row_number() OVER (PARTITION BY account_key ORDER BY scored_at DESC, run_id DESC) AS rn
     FROM completed
 ),
+-- A run covers an account when its scope_keys list holds the account key (",key,key,"). No scope means all accounts.
 last_run AS (
-    SELECT max_by(status, started_at) AS last_run_status
-    FROM score_runs
-    WHERE started_at <= as_of
+    SELECT a.account_key, max_by(r.status, r.started_at) AS last_run_status
+    FROM mortgage_account AS a
+    JOIN score_runs AS r
+      ON r.started_at <= as_of
+     AND (r.scope_keys IS NULL OR instr(r.scope_keys, ',' || a.account_key || ',') > 0)
+    GROUP BY a.account_key
 )
 SELECT
     a.account_key,
@@ -40,7 +45,7 @@ SELECT
     END AS score_status
 FROM mortgage_account AS a
 LEFT JOIN ranked AS r ON r.account_key = a.account_key AND r.rn = 1
-CROSS JOIN last_run AS lr;
+LEFT JOIN last_run AS lr ON lr.account_key = a.account_key;
 
 -- T03: a stale or missing payment feed is not zero arrears. arrears_amount stays NULL unless the feed is current.
 -- The validation step sets feed_watermark.is_stale. The report also treats an old watermark check as stale,
@@ -207,8 +212,23 @@ SELECT
     coalesce(x.verified_portal_faults, 0) AS verified_portal_faults,
     c.last_event_at
 FROM cur AS c
-JOIN entered AS n USING (application_id)
+LEFT JOIN entered AS n USING (application_id)
 LEFT JOIN errors AS x USING (application_id);
+
+-- Read-only. Of the decided renewal alerts, the share where the adviser agreed that action was needed.
+-- "Agreed" is the adviser's view, not a confirmed refinancing. Referred and pending cases are counted apart.
+-- precision is NULL until at least one case is agreed or has no action.
+CREATE OR REPLACE MACRO alert_precision() AS TABLE
+SELECT
+    count(*) FILTER (WHERE decision = 'action_agreed') AS agreed,
+    count(*) FILTER (WHERE decision = 'no_action') AS no_action,
+    count(*) FILTER (WHERE decision = 'referred') AS referred,
+    count(*) FILTER (WHERE decision = 'pending') AS pending,
+    CASE WHEN count(*) FILTER (WHERE decision IN ('action_agreed', 'no_action')) > 0
+         THEN count(*) FILTER (WHERE decision = 'action_agreed')::DOUBLE
+              / count(*) FILTER (WHERE decision IN ('action_agreed', 'no_action')) END AS precision
+FROM review_outcomes
+WHERE case_key LIKE '%|renewal';
 
 -- The account view: one row per mortgage and deal cycle.
 CREATE OR REPLACE MACRO account_view(as_of, max_score_age_minutes) AS TABLE

@@ -40,6 +40,18 @@ LANDING_TABLE = "RawEventsLanding"
 STREAMING_ERROR_MARKER = "streaming ingestion"
 
 
+# ----- Eventstream compatibility level. Fabric cannot upgrade it in place.
+def level_key(level: str) -> tuple[int, ...]:
+    """'1.1' or 'Compat_1_1' -> (1, 1). Anything else -> (0,)."""
+    digits = re.findall(r"\d+", str(level))
+    return tuple(int(d) for d in digits) if digits else (0,)
+
+
+def eventstream_level(stage_dir: Path) -> str:
+    f = next(Path(stage_dir).glob("*.Eventstream/eventstream.json"), None)
+    return str(json.loads(f.read_text(encoding="utf-8")).get("compatibilityLevel") or "") if f else ""
+
+
 # ----- Streaming ingestion. The update policies on RawEvents and QuarantinedEvents read AccountContext, and Fabric refuses
 # that while streaming ingestion is on for the source table. The KQL database Git item cannot hold this command.
 def streaming_off_command(table: str) -> str:
