@@ -2,7 +2,7 @@
 
 Each function takes product-transfer request events and returns the same
 columns as its KQL counterpart. Keep the two in step. The tests check the
-twin; the KQL is not yet run in Fabric.
+twin; no KQL query result from Fabric is recorded.
 
 Rules shared with the KQL:
 - Keep only events known at the cutoff: occurred_at and ingested_at <= cutoff (INV-2).

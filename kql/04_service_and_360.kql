@@ -1,6 +1,6 @@
 // Service events and the live Customer 360 view.
 // ServiceEvents() output follows data/contracts/service_event.schema.json.
-// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Not yet run in Fabric.
+// Twin of ServiceEvents(): data/hbdata/replay.py service_events(). Deployed on 5 November 2026. See kql/README.md for what is not in Fabric yet.
 .execute database script <|
 .create-or-alter function with (folder = "service", docstring = "Service events for Activator and the review-case writer. They do not depend on scoring (T05).")
 ServiceEvents() {

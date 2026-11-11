@@ -1,6 +1,6 @@
 // HomeBridge (fictional) Eventhouse tables. Synthetic data only.
 // Run once per KQL database, in file order: 01, 02, 03, 04.
-// Not yet run in Fabric. The Fabric workspace is not ready.
+// A version of this file was deployed to a real KQL database on 5 November 2026. See kql/README.md.
 .execute database script <|
 // Landing table for the Eventstream replay. Each envelope keeps its original event_id and occurred_at.
 .create-merge table RawEventsLanding (event_id: string, event_type: string, schema_version: string, source_system: string, mortgage_id: string, application_id: string, occurred_at: datetime, sent_at: datetime, simulated_ingested_at: datetime, payload: dynamic)

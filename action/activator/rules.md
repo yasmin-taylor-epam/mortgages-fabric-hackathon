@@ -1,6 +1,6 @@
 # Activator rules
 
-**Status:** Proposed design. Nobody has built these rules in Fabric yet. The Fabric workspace is not ready.
+**Status:** Proposed design. Nobody has built these rules in Fabric yet.
 
 Two independent rules send candidates to one Power Automate flow (`../power_automate/review-case-writer.md`). The flow makes every routing decision. The rules only select candidates. This keeps one tested routing order (`../homebridge_action/router.py`).
 

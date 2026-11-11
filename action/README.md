@@ -4,7 +4,7 @@ Alert routing and review-case creation: Activator rules, Power Automate flows an
 
 **Owner:** Dashboard and action work package.
 
-**Status:** The routing and the case writer run and pass tests locally. They use a SQLite file in place of SharePoint. Nobody has built the Activator rules, the Power Automate flow or the SharePoint lists yet. Power Automate licences and connector permissions are not confirmed. The Fabric workspace is not ready.
+**Status:** The routing and the case writer run and pass tests locally. They use a SQLite file in place of SharePoint. Nobody has built the Activator rules, the Power Automate flow or the SharePoint lists yet. Power Automate licences and connector permissions are not confirmed. In Fabric, notebook 07 runs the same routing and writes the review cases to the Lakehouse. It ran there on 10 November 2026 (see [docs/demo-rehearsal-plan.md](../docs/demo-rehearsal-plan.md)).
 
 ## Contents
 

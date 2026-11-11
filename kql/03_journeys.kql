@@ -1,7 +1,7 @@
 // Journey queries (blueprint section 03, step 6). Each takes a cutoff.
 // INV-2: only events with occurred_at and ingested_at at or before the cutoff.
 // T01: one row per event_id (earliest ingestion).
-// Twin: data/hbdata/journeys.py. Keep both in step. Not yet run in Fabric.
+// Twin: data/hbdata/journeys.py. Keep both in step. Deployed on 5 November 2026. No query result from Fabric is recorded.
 // Null versus empty: tostring() of a missing payload value gives "". The twin uses null.
 .execute database script <|
 .create-or-alter function with (folder = "journeys", docstring = "Accepted product-transfer request events known at the cutoff, one row per event_id.")

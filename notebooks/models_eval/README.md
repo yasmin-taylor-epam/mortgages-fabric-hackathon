@@ -1,6 +1,6 @@
 # models_eval
 
-**Owner:** Models and evaluation work package. **Status:** Runs locally. Not yet run in Fabric.
+**Owner:** Models and evaluation work package. **Status:** Runs locally. Notebooks 03, 04 and 05 first ran in Fabric on 5 November 2026. On 10 November 2026 notebook 05 wrote the evaluation report for release `hb-refi-clf:2` in Fabric (see [docs/evaluation-results.md](../../docs/evaluation-results.md)).
 
 This Python package trains, scores and evaluates the refinancing-risk models for the fictional lender HomeBridge. Notebooks `03_train_models`, `04_score_and_segment` and `05_evaluate` call it. The pipeline `pl_scheduled_scoring` runs notebook 04. All data is synthetic.
 
@@ -26,7 +26,7 @@ cd notebooks
 ..\.venv\Scripts\python -m models_eval pipeline --cutoff 2026-10-15T00:00:00Z --kind checkpoint --started-at 2026-10-15T00:05:00Z
 ```
 
-Set `HB_OUTPUT_ROOT` to use another output folder. MLflow uses a SQLite store at `data/output/mlflow/mlflow.db`. To browse it, run `mlflow ui --backend-store-uri sqlite:///data/output/mlflow/mlflow.db` (this needs the full `mlflow` package). In Fabric, set `HB_MLFLOW_URI=fabric` so that the workspace tracking server is used. Nobody has tested this setting in Fabric yet.
+Set `HB_OUTPUT_ROOT` to use another output folder. MLflow uses a SQLite store at `data/output/mlflow/mlflow.db`. To browse it, run `mlflow ui --backend-store-uri sqlite:///data/output/mlflow/mlflow.db` (this needs the full `mlflow` package). In Fabric, set `HB_MLFLOW_URI=fabric` so that the workspace tracking server is used. Notebooks 03, 04 and 05 set it when they run in Fabric.
 
 ## Tests
 

@@ -28,7 +28,7 @@
 
 # # 06_publish_delta_tables
 #
-# **Owner:** Integration. **Blueprint step:** 5 (Gold tables for the report). **Status:** Fabric only. Written, not yet run in Fabric.
+# **Owner:** Integration. **Blueprint step:** 5 (Gold tables for the report). **Status:** Fabric only. First ran in Fabric on 5 November 2026.
 #
 # The Python packages write Parquet files under `Files/hb/output/lakehouse/`. The Power BI semantic model (Direct Lake) reads Delta tables in the Lakehouse `Tables` area. This notebook copies each Parquet file the model needs into a Delta table with the same name.
 #

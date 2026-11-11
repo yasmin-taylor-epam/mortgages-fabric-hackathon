@@ -4,7 +4,7 @@ Eventhouse table definitions, ingestion routing, journey queries and the live se
 
 **Owner:** Data and replay work package.
 
-**Status:** Written, not yet run. The Fabric workspace is not ready, and no Kusto emulator ran on the build machine. The pandas twins in `data/hbdata/` are tested instead.
+**Status:** A version of these files was deployed to a real KQL database on 5 November 2026. On 9 November 2026 events sent through the Eventstream landed and were routed: `RawEvents` 21,533 rows and `QuarantinedEvents` 10 (see [docs/fabric-deployment.md](../docs/fabric-deployment.md)). No query result from the journey or Customer 360 functions in Fabric is recorded. Later changes, for example `Customer360(as_of)`, may not be in Fabric yet (see [docs/live-deploy-plan.md](../docs/live-deploy-plan.md)). No Kusto emulator ran on the build machine. The pandas twins in `data/hbdata/` are tested instead.
 
 ## Files
 
@@ -27,7 +27,7 @@ Run the files in order on a new KQL database. Each file is one `.execute databas
 
 ## Run the files in Fabric
 
-`fabric/items/HomeBridgeEventhouse.Eventhouse/.children/HomeBridgeEvents.KQLDatabase/DatabaseSchema.kql` is generated from these files by `scripts/fabric/build_fabric_items.py`. The deploy script publishes it, and Fabric runs it. A KQL database Git item cannot hold every command type. The generator leaves out the 7-day retention policy on `RawEventsLanding`. Run that one command by hand. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). Nobody has run this in Fabric.
+`fabric/items/HomeBridgeEventhouse.Eventhouse/.children/HomeBridgeEvents.KQLDatabase/DatabaseSchema.kql` is generated from these files by `scripts/fabric/build_fabric_items.py`. The deploy script publishes it, and Fabric runs it. A KQL database Git item cannot hold every command type. The generator leaves out the 7-day retention policy on `RawEventsLanding`. Run that one command by hand. See [docs/fabric-deployment.md](../docs/fabric-deployment.md). The deploy of `DatabaseSchema.kql` ran once in a real workspace on 5 November 2026. The retention command has not run in Fabric.
 
 ## Rules
 

@@ -5,7 +5,8 @@ Deploys the HomeBridge build to Microsoft Fabric. Wrapper for scripts/fabric/dep
 .DESCRIPTION
 Creates .venv if needed, installs the deploy tooling, and runs the deploy script. You sign in once, in the browser,
 when the script needs Fabric. Nothing is deployed with -Validate (offline) or -DryRun (read-only).
-Not yet run against a real Fabric tenant.
+The workspace, core, upload, notebooks, pipeline and model steps ran in a real workspace on 5 November 2026.
+The optional steps are not confirmed in Fabric yet. See docs/fabric-deployment.md.
 
 Every other argument passes through to deploy_fabric.py. Run with --help to see them all.
 

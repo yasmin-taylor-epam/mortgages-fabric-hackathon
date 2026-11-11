@@ -1,6 +1,6 @@
 # Alert threshold
 
-**Status:** the rule and its target are a proposal. The team has not confirmed them. Synthetic data only. Not yet run in Fabric.
+**Status:** the rule and its target are a proposal. The team has not confirmed them. Synthetic data only. On 10 November 2026 notebook 05 evaluated the release with threshold 0.5062 in Fabric (see [evaluation-results.md](evaluation-results.md)).
 
 ## What the threshold does
 

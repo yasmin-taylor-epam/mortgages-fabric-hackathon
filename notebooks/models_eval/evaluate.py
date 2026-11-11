@@ -252,7 +252,7 @@ def to_markdown(r: dict) -> str:
               "- The data is synthetic. Outcome labels come from hidden generator factors, not real borrowers.",
               "- Attributions explain the score. They do not show the borrower's motive.",
               "- The alert threshold is chosen by a named rule on validation data. The team confirms the rule.",
-              "- Nothing here has run in Fabric yet.", ""]
+              "- This report does not record whether it ran locally or in Fabric.", ""]
     return "\n".join(lines)
 
 
