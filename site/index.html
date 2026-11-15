@@ -516,11 +516,11 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
       <div class="section-head">
         <h2 id="clocks-title">Shared core: three clocks</h2>
         <span class="stamp stamp-proposed">Proposed target</span>
-        <p class="muted measure">The blueprint uses three timing targets. A live event and an ML score refresh are separate operations. The demo shows and measures both.</p>
+        <p class="muted measure">The blueprint uses three timing targets. A live event and an ML score refresh are separate operations. The demo shows both. These targets were not measured.</p>
       </div>
       <div class="kpis">
         <div class="kpi"><div class="v">60 s</div><p>From a live event to its appearance in the Customer 360 view.</p></div>
-        <div class="kpi"><div class="v">15 min</div><p>Between scoring runs that refresh features, assign segments and calculate refinancing risk scores. These runs do not retrain the models.</p></div>
+        <div class="kpi"><div class="v">15 min</div><p>Between scoring runs that refresh features, assign segments and calculate refinancing risk scores. These runs do not retrain the models. In the build, the 15-minute schedule exists but was not switched on. Scoring runs on demand.</p></div>
         <div class="kpi"><div class="v">5 min</div><p>From a successful scoring run to the retention alert.</p></div>
       </div>
       <ul class="list-disc small" style="margin-top: 1.25rem; padding-left: 1.25rem; max-width: 80ch;">
@@ -827,7 +827,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           <table class="blueprint-table"><thead><tr><th scope="col">Work package</th><th scope="col">Output</th></tr></thead><tbody>
             <tr><td>Data and replay.</td><td>Account histories, reversal fixtures, cutoff checks and the event contract.</td></tr>
             <tr><td>Models and evaluation.</td><td>Classifier, clusters, rules baseline, later-cohort report with lift, and registered model.</td></tr>
-            <tr><td>Dashboard and action.</td><td>Power BI mortgage report (Direct Lake), segment history, sensitivity labels, payment-support-first routing, review-case writer and audit.</td></tr>
+            <tr><td>Dashboard and action.</td><td>Power BI mortgage report (Direct Lake), segment history, sensitivity labels (designed, not applied), payment-support-first routing, review-case writer and audit.</td></tr>
           </tbody></table>
           <h4>Demo script</h4>
           <ol class="list-decimal">
@@ -843,7 +843,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           <ul class="list-disc">
             <li>Each checkpoint warning comes 90 days before deal end.</li>
             <li>Each scheduled run adds segment rows. Earlier segment rows never change.</li>
-            <li>Every Fabric item that holds personal data carries a Purview sensitivity label.</li>
+            <li>Every Fabric item that holds personal data carries a Purview sensitivity label. The build does not meet this yet. See Data protection below.</li>
           </ul>
         </section></details>
         <details class="disclosure"><summary>07 / Value and controls</summary><section class="spec-section" id="mortgage-readiness">
@@ -855,6 +855,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
             <li>Exclude bank details and borrower documents.</li>
             <li>Apply Purview sensitivity labels to the Lakehouse, Eventhouse, semantic model and report.</li>
           </ul>
+          <p>The build applied no labels. The deploy has a label step, but it is off unless a label ID is set. No label ID was set, so the deploy skipped it. All data is synthetic.</p>
           <h4>Before real use</h4>
           <p>Get lending, privacy and responsible-AI review. Confirm jurisdiction, contact policy and fairness checks.</p>
         </section></details>
@@ -1920,8 +1921,8 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
     const archConfig = {
       mortgage: {
         live: 'Portal error', owner: 'Servicing adviser', gate: ['Payment help', 'requested?'], support: 'Trained support staff',
-        desc: 'Dated mortgage account, payment, product-transfer request and servicing history enters a Lakehouse. Live portal faults and payment-support events enter Eventhouse through Eventstream. Context copies let KQL join history and live activity by mortgage and fixed-rate deal cycle. A scheduled notebook uses registered MLflow models to score external refinancing risk. Fabric notebook 07 routes eligible candidates to internal review cases in Lakehouse tables, and the staff website shows them. Payment support has an independent route that never reads the refinancing risk score.',
-        caption: 'The team built this design and deployed it to Fabric, except the alert route. Activator, Power Automate and SharePoint were not built. Fabric notebook 07 writes the review cases instead. The unmeasured targets are a 60-second live view and a separate 15-minute scoring schedule. Scoring does not retrain models. Payment support never waits for a refinancing risk score.'
+        desc: 'Dated mortgage account, payment, product-transfer request and servicing history enters a Lakehouse. Live portal faults and payment-support events enter Eventhouse through Eventstream. Context copies let KQL join history and live activity by mortgage and fixed-rate deal cycle. A scoring pipeline uses registered MLflow models to score external refinancing risk. It runs on demand; its 15-minute schedule was not switched on. Fabric notebook 07 routes eligible candidates to internal review cases in Lakehouse tables, and the staff website shows them. Payment support has an independent route that never reads the refinancing risk score.',
+        caption: 'The team built this design and deployed it to Fabric, except the alert route. Activator, Power Automate and SharePoint were not built. Fabric notebook 07 writes the review cases instead. The 60-second live view is a target and was not measured. A 15-minute scoring schedule exists but was not switched on, so scoring runs on demand. Scoring does not retrain models. Payment support never waits for a refinancing risk score.'
       },
       insurance: {
         live: 'Missed repair', owner: 'Service adviser', gate: ['Urgent', 'assistance?'], support: 'Claims coordinator',
@@ -1956,7 +1957,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
         ${node('z-live', 'stream', 36, 334, 180, 100, 'Eventstream', c.live, 'eventstream', { iy: 12, ty: 70, sy: 88 })}
         ${node('z-live', 'store', 258, 322, 170, 124, 'Eventhouse', 'Accepted events', 'eventhouse')}
         <g>${tip('Customer 360: real-time join on ' + unit)}<path class="n-half z-hist" d="M465 256L497 190H623L655 256Z"/><path class="n-half z-live" d="M465 256L497 322H623L655 256Z"/><path class="n-hex" d="M465 256L497 190H623L655 256L623 322H497Z"/>${t(560, 230, 'Customer 360', 'mid t-strong', 17)}${t(560, 248, 'Real-time join', 'mid t-small')}${t(560, 282, unit, 'mid t-mono')}</g>
-        <g class="z-score">${tip('Scheduled scoring: segment assignments and churn score, every 15 minutes (proposed). Models are not retrained here.')}${shapeFor('card', 704, 70, 200, 116, 'n-proposed')}${t(804, 112, 'Scheduled scoring', 'mid t-strong')}${t(804, 134, 'Scores + assignments', 'mid t-small')}${t(804, 154, 'every 15 min · proposed', 'mid t-small')}</g>
+        <g class="z-score">${tip(key === 'mortgage' ? 'Scoring: segment assignments and risk score. A 15-minute schedule exists but was not switched on. Scoring runs on demand. Models are not retrained here.' : 'Scheduled scoring: segment assignments and churn score, every 15 minutes (proposed). Models are not retrained here.')}${shapeFor('card', 704, 70, 200, 116, 'n-proposed')}${t(804, 112, 'Scheduled scoring', 'mid t-strong')}${t(804, 134, 'Scores + assignments', 'mid t-small')}${t(804, 154, key === 'mortgage' ? 'schedule off · on demand' : 'every 15 min · proposed', 'mid t-small')}</g>
         ${node('z-score', 'store', 934, 66, 156, 124, 'MLflow', 'Model versions', 'model')}
         <g class="z-act">${diamond(804, 316, 72, 48, 'Scored and', 'eligible?')}</g>
         <g class="z-act">${tip('Activator: route a candidate')}${shapeFor('card', 916, 284, 170, 64)}${t(1001, 313, 'Activator', 'mid t-strong')}${t(1001, 333, 'Route a candidate', 'mid t-small')}</g>
@@ -2072,7 +2073,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
         <g id="${p}-failure-contract">${tip('Scoring and publication failures have different recovery paths.')}<rect class="n d-error" x="20" y="630" width="1080" height="90" rx="6"/>
         ${t(38, 654, 'Scoring failure: mark the last score stale. Do not emit risk_updated.', 't-small')}
         ${t(38, 679, 'Publication failure: retry the persisted event. Do not rescore or change event_id.', 't-small')}
-        ${t(38, 704, 'Targets: a 15-minute schedule and a 5-minute score-to-alert delay. Neither target is measured.', 't-small')}</g>
+        ${t(38, 704, 'The 15-minute schedule exists but was not switched on. Scoring runs on demand. The 5-minute alert target is not measured.', 't-small')}</g>
         ${stepBadge(9, 486, 0)}${stepBadge(8, 768, 299)}`;
     };
 
@@ -2638,7 +2639,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
         text: [
           'The fictional mortgage provider HomeBridge learns about a departure only when the new lender repays the loan. The warning signs appear earlier, but they sit in separate systems. This design brings them together and acts on them 90 days before the fixed-rate deal ends.',
           '',
-          'Microsoft Fabric joins payment, product-transfer request and servicing records into one view per mortgage. Live renewal-portal events add behavioural signals, such as a request that stalls while documents are outstanding. A machine-learning model scores each mortgage on a fixed schedule. The score estimates the probability that the borrower refinances with another lender. It is not a default risk score. A second model groups borrowers with similar behaviour.',
+          'Microsoft Fabric joins payment, product-transfer request and servicing records into one view per mortgage. Live renewal-portal events add behavioural signals, such as a request that stalls while documents are outstanding. A machine-learning model scores each mortgage. It is designed to run on a fixed schedule. In the build, scoring runs on demand. The score estimates the probability that the borrower refinances with another lender. It is not a default risk score. A second model groups borrowers with similar behaviour.',
           '',
           'At the checkpoint, each high-risk mortgage becomes an internal review case for a servicing adviser. The case shows the score, the main factors behind it and the source records. The adviser can arrange a fix for a verified portal fault, or review renewal needs before the borrower leaves. A Power BI dashboard shows high-risk mortgages and behaviour groups. Borrowers with payment difficulty go to trained support staff first, whatever the score. The 90-day lead time is a proposed target, not a measured result.'
         ].join('\n') },
@@ -2660,7 +2661,8 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           '',
           '# 3. Scheduled scoring',
           '- Notebooks train two candidate models: logistic regression and a small decision tree. Simple rules give a comparison. MLflow registers the selected model.',
-          '- Every 15 minutes, notebooks combine the live signals with dated history, freeze the inputs and score each mortgage. Inputs include complaint age, enquiry type, contacts per case and case resolution status at the checkpoint.',
+          '- A scoring pipeline runs on demand. A 15-minute schedule exists but was not switched on.',
+          '- Each run, notebooks combine the live signals with dated history, freeze the inputs and score each mortgage. Inputs include complaint age, enquiry type, contacts per case and case resolution status at the checkpoint.',
           '- A separate clustering model assigns each mortgage to one of two to five behavioural segments. A history table keeps every assignment for audit.',
           '- Each score stores its main factors: SHAP values for the tree model, coefficient contributions for logistic regression.',
           '',
@@ -2677,13 +2679,13 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           '',
           '# Timing targets (proposed, not measured)',
           '- 60 seconds from a live event to its display in the mortgage view.',
-          '- 15 minutes between scoring runs.',
+          '- 15 minutes between scoring runs. The schedule was not switched on.',
           '- 5 minutes from a successful scoring run to the alert.',
           '- Live-view and report refresh settings still need confirmation.',
           '',
           '# Tenancy and boundaries',
           '- The build uses one Fabric workspace in the team\'s tenant and synthetic data only. No record holds details of a real customer.',
-          '- Each user gets only the access that their role needs. Purview sensitivity labels apply to each item that holds personal data.',
+          '- Each user gets only the access that their role needs. The design puts a Purview sensitivity label on each item that holds personal data. The build applied none: no label ID was set, so the deploy skipped labels.',
           '- The system makes no lending, rate or credit decisions. It does not recommend products.',
           '- The prototype creates internal review cases, not customer messages. A human approves every customer-facing action.',
           '',
