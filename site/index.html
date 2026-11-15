@@ -457,7 +457,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
         <article class="req"><span class="num">1</span><h3>Real-time Customer 360</h3><p>Join live customer activity with history in one view.</p><p class="tools">Eventstream · Eventhouse</p></article>
         <article class="req"><span class="num">2</span><h3>ML segments</h3><p>Group customers by behaviour with a machine-learning model.</p><p class="tools">Fabric Data Science · MLflow</p></article>
         <article class="req"><span class="num">3</span><h3>Churn model, about 90 days ahead</h3><p>Score the risk that a customer leaves, and show the drivers behind each score.</p><p class="tools">Fabric Data Science · MLflow</p></article>
-        <article class="req"><span class="num">4</span><h3>Retention alert on live events</h3><p>Fire an alert when a live event changes the picture, and send it to a person.</p><p class="tools">Activator · Power BI</p></article>
+        <article class="req"><span class="num">4</span><h3>Retention alert on live events</h3><p>Fire an alert when a live event changes the picture, and send it to a person.</p><p class="tools">Activator · Power BI</p><p class="small">How we meet it: Fabric notebook 07 applies the routing rules and writes review cases to Lakehouse tables. The staff website shows them. Activator was not built.</p></article>
       </div>
       <p class="deliverable"><strong>Deliverable:</strong> churn risk scores with drivers, and a retention alert that fires on live events.</p>
     </section>
@@ -754,12 +754,12 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
             <li><span class="step-tag">Step 7</span><span>A Fabric pipeline copies versioned account context and completed score summaries into Eventhouse. KQL joins these copies with accepted live events. <a class="step-where" href="#mortgage-detail-components-figure">See components</a></span></li>
             <li><span class="step-tag">Step 8</span><span>A separate pipeline copies cutoff-filtered KQL journey results into Lakehouse staging tables. Notebooks combine these results with dated history. <a class="step-where" href="#mortgage-detail-scoring-figure">See scoring sequence</a></span></li>
             <li><span class="step-tag">Step 9</span><span>A Fabric pipeline runs scoring and segment assignment on a schedule. For the replay, the team also starts one scoring run by hand. <a class="step-where" href="#mortgage-detail-scoring-figure">See scoring sequence</a></span></li>
-            <li><span class="step-tag">Step 10</span><span>Activator and Power Automate create an internal review case, assigned to a person, in a secured SharePoint list. <a class="step-where" href="#mortgage-detail-routing-figure">See case routing</a></span></li>
+            <li><span class="step-tag">Step 10</span><span>Fabric notebook 07 applies the routing rules and writes review cases to Lakehouse tables. The staff website shows them. Each case is assigned to a person. The Activator, Power Automate and SharePoint design is in <code>action/</code>. It was not built. <a class="step-where" href="#mortgage-detail-routing-figure">See case routing</a></span></li>
           </ol>
           <h4>Interfaces</h4>
           <ul class="list-disc">
             <li><code>risk_updated</code> carries event_id, mortgage_id, cycle_id, run_id, snapshot_id, model_version, cluster_model_version, segment_id, scored_at, cutoff_at, target, score and evidence IDs.</li>
-            <li>A persisted publication record keeps the same <code>event_id</code> on retry. Activator passes the required fields to a Power Automate custom action.</li>
+            <li>A persisted publication record keeps the same <code>event_id</code> on retry. In the design, Activator passes the required fields to a Power Automate custom action. That route was not built.</li>
             <li>The review-case key is <code>mortgage_id + cycle_id + action_family</code>. A duplicate write reads the existing review case. Other write failures stay visible.</li>
             <li>The case writer checks current payment-support needs before creating a review case. Payment-support priority does not depend on refinancing risk or loan balance.</li>
           </ul>
@@ -816,6 +816,9 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
             <li>An eligible external-refinancing risk candidate goes to a servicing adviser for a renewal review.</li>
           </ol>
           <p>Eligibility here permits an internal review case. It does not approve a mortgage, a rate, or customer contact. A human checks contact policy and suitability before any customer-facing action.</p>
+          <h4>What was built</h4>
+          <p>Fabric notebook 07 applies this routing order. It reads the live events in Eventhouse and the latest completed scores. It writes review cases and routing decisions to Lakehouse tables (<code>review_cases</code>, <code>review_decisions</code>). Staff start it with "Process new events now" on the staff website, a local demo app in <code>demo/portals/</code>. The website then shows the cases.</p>
+          <p>The Activator rules, the Power Automate flow and the SharePoint list are designed in <code>action/</code>. They were not built.</p>
           <h4>Audit record</h4>
           <p>Every review case records evidence IDs, routing policy, assigned owner and decision. Score-based cases also record model version, run and snapshot. Record ingestion, scoring, alert and case-creation times separately where those operations apply.</p>
           <p>Failure handling follows cases T01 to T06 above.</p>
@@ -1917,8 +1920,8 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
     const archConfig = {
       mortgage: {
         live: 'Portal error', owner: 'Servicing adviser', gate: ['Payment help', 'requested?'], support: 'Trained support staff',
-        desc: 'Dated mortgage account, payment, product-transfer request and servicing history enters a Lakehouse. Live portal faults and payment-support events enter Eventhouse through Eventstream. Context copies let KQL join history and live activity by mortgage and fixed-rate deal cycle. A scheduled notebook uses registered MLflow models to score external refinancing risk. Activator and Power Automate route eligible candidates to internal SharePoint review cases. Payment support has an independent route that never reads the refinancing risk score.',
-        caption: 'Proposed design, not built. The unmeasured targets are a 60-second live view and a separate 15-minute scoring schedule. Scoring does not retrain models. Power Automate writes internal review cases with unique SharePoint keys. Payment support never waits for a refinancing risk score.'
+        desc: 'Dated mortgage account, payment, product-transfer request and servicing history enters a Lakehouse. Live portal faults and payment-support events enter Eventhouse through Eventstream. Context copies let KQL join history and live activity by mortgage and fixed-rate deal cycle. A scheduled notebook uses registered MLflow models to score external refinancing risk. Fabric notebook 07 routes eligible candidates to internal review cases in Lakehouse tables, and the staff website shows them. Payment support has an independent route that never reads the refinancing risk score.',
+        caption: 'The team built this design and deployed it to Fabric, except the alert route. Activator, Power Automate and SharePoint were not built. Fabric notebook 07 writes the review cases instead. The unmeasured targets are a 60-second live view and a separate 15-minute scoring schedule. Scoring does not retrain models. Payment support never waits for a refinancing risk score.'
       },
       insurance: {
         live: 'Missed repair', owner: 'Service adviser', gate: ['Urgent', 'assistance?'], support: 'Claims coordinator',
@@ -2183,7 +2186,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           ['line-plain', 'Review route']
         ],
         desc: 'Independent Activator rules send service and refinancing risk candidates to Power Automate. It checks current identity, payment-support status, review owner and routing policy. Active payment support takes priority without a risk threshold. Verified renewal-portal software faults go to technical support. Commercial renewal review requires an eligible refinancing risk event. SharePoint enforces one internal review case per key. Decisions, quarantine and failed writes remain visible. A human owns each review case.',
-        caption: 'Proposed flow: payment support bypasses the refinancing risk threshold. Review eligibility does not approve lending or customer contact. Commercial review pauses when payment-support status is unknown. T06 tests a failed review-case write.',
+        caption: 'Design flow. Activator, Power Automate and SharePoint were not built. In the build, Fabric notebook 07 applies the same routing order and writes review cases to Lakehouse tables. Payment support bypasses the refinancing risk threshold. Review eligibility does not approve lending or customer contact. Commercial review pauses when payment-support status is unknown. T06 tests a failed review-case write.',
         why: 'The two entrances show that support never waits for scoring. Trade-off: contact scripts and numeric thresholds remain unspecified.',
         notes: [
           'Map the required candidate fields into an Activator custom action. The flow records ingestion, scoring, alert and case times separately.',
@@ -2506,7 +2509,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
       [3, 'replay', 'Event replay', "An event is one change, for example a missed repair visit. A replay sends a recorded event again to test the system.", /\breplay\w*/i, 'b'],
       [3, 'ingestion', 'Event time and ingestion time', "Event time is when something happened. Ingestion time is when the data reached the system. Ingestion time can be later.", /\bingest\w*/i, 'b'],
       [3, 'duplicate', 'Duplicate event or case write', "The same logical event or case key appears again. Event deduplication and unique review-case keys are separate controls. A unique case does not promise exactly-once delivery or notifications.", /\bduplicat\w*|\bdeduplicat\w*/i, 'b'],
-      [3, 'review-case', 'Internal review case', "An internal task in SharePoint for a person to inspect evidence and decide the next action. It is separate from source servicing cases in the servicing history. Creation does not authorise customer contact.", /(?:internal )?review cases?|retention cases?/i, 'b'],
+      [3, 'review-case', 'Internal review case', "An internal task for a person to inspect evidence and decide the next action. In the build, it is a row in a Lakehouse table. It is separate from source servicing cases in the servicing history. Creation does not authorise customer contact.", /(?:internal )?review cases?|retention cases?/i, 'b'],
       [3, 'model-release', 'Model release', "The registered model versions selected for scoring. Each run fixes those versions before it starts. Scoring assigns segments and calculates scores. It does not retrain the models.", /model releases?/i, 'b'],
       [3, 'quarantine', 'Quarantine', "Hold doubtful records aside for a check, instead of using them.", /\bquarantine\b/i, 'b'],
       [3, 'stale', 'Stale', "Out of date. A stale feed or score did not refresh on time.", /\bstale\b/i, 'b'],
@@ -2533,7 +2536,7 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
       [4, 'direct-lake', 'Direct Lake', "A Power BI mode that reads Lakehouse tables directly. The report does not import a copy of the data.", /direct lake/i, 'b'],
       [4, 'purview', 'Purview sensitivity label', "A Microsoft Purview information-classification tag, for example Confidential. It can restrict who opens or exports data. It is not a model's observed outcome label.", /\bPurview(?: sensitivity labels?)?\b|sensitivity labels?/i, 'b'],
       [4, 'power-automate', 'Power Automate', "A Microsoft tool that runs simple automatic workflows, for example to create a task.", /power automate/i, 'b'],
-      [4, 'sharepoint', 'SharePoint list', "A simple shared table in Microsoft 365. Here, it holds the review cases.", /sharepoint(?: list)?/i, 'b'],
+      [4, 'sharepoint', 'SharePoint list', "A simple shared table in Microsoft 365. The design stores review cases here. The build does not use it.", /sharepoint(?: list)?/i, 'b'],
       [4, 'tenant', 'Tenant', "An organisation's own Microsoft 365 and Fabric environment.", /\btenant\b/i, 'b'],
       [4, 'connector', 'Connector', "A ready-made link that lets one tool read or write data in another tool.", /\bconnectors?\b/i, 'b']
     ];
@@ -2662,8 +2665,9 @@ Archived scenarios (insurance, software, broadband, retail) stay in an inert <te
           '- Each score stores its main factors: SHAP values for the tree model, coefficient contributions for logistic regression.',
           '',
           '# 4. Review action',
-          '- Activator compares each completed score with the risk limit and calls Power Automate.',
-          '- Power Automate rechecks payment-support status, evidence and owner. It then creates an internal SharePoint review case for a servicing adviser.',
+          '- Fabric notebook 07 compares each completed score with the risk limit. It rechecks payment-support status, evidence and owner.',
+          '- It writes an internal review case for a servicing adviser to a Lakehouse table. The staff website shows the cases.',
+          '- The Activator, Power Automate and SharePoint design is in the repository. It was not built.',
           '- A unique key (mortgage, deal cycle and action type) stops duplicate cases. A failed write stays visible and retries with the same key.',
           '- Power BI reads the Gold tables in Direct Lake mode and shows high-risk mortgages and segments.',
           '',

@@ -2,9 +2,9 @@
 
 **Customer Pulse 360 | Hackathon Challenge 4**
 
-Mortgage Renewal Early Warning is a proposed customer intelligence system on Microsoft Fabric. It joins customer history with live activity, groups accounts, scores churn risk, and sends retention alerts for human review.
+Mortgage Renewal Early Warning is a proposed customer intelligence system on Microsoft Fabric. It joins customer history with live activity, groups accounts, scores churn risk, and opens review cases for human review.
 
-**Status:** Proposal sent on 18 October. The team chose Mortgage Renewal Early Warning as the scenario. The three work packages (data and replay, models and evaluation, dashboard and action) are built and integrated. They run and pass tests locally on synthetic data. The solution also runs in a real Fabric workspace. On 5 November 2026 the main deploy steps ran there and finished. On 10 November 2026 the evaluation notebook ran there. Some steps are still manual or not yet confirmed in Fabric. See [Fabric deployment](docs/fabric-deployment.md) and [Known limits](docs/known-limits.md). The solution submission is due on 15 November 2026. Confirm the deadline timezone with the organiser. See [Run the whole flow locally](#run-the-whole-flow-locally).
+**Status:** Proposal sent on 18 October. The team chose Mortgage Renewal Early Warning as the scenario. The three work packages (data and replay, models and evaluation, dashboard and action) are built and integrated. They run and pass tests locally on synthetic data. The solution also runs in a real Fabric workspace. On 5 November 2026 the main deploy steps ran there and finished. On 10 November 2026 the evaluation notebook ran there. Some steps are still manual or not yet confirmed in Fabric. The alert route uses Fabric notebook 07: it applies the routing rules and writes review cases to Lakehouse tables, and the staff website shows them. Activator, Power Automate and SharePoint were not built. See [Fabric deployment](docs/fabric-deployment.md) and [Known limits](docs/known-limits.md). The solution submission is due on 15 November 2026. Confirm the deadline timezone with the organiser. See [Run the whole flow locally](#run-the-whole-flow-locally).
 
 ## Review the proposal
 
@@ -47,7 +47,7 @@ The build follows the three work packages in the blueprint (section 06). Each wo
 | `kql/` | Eventhouse tables, ingestion mappings and journey queries. | Data and replay |
 | `notebooks/` | Validation, feature snapshot, training, scoring and evaluation notebooks. | Shared. Each notebook has one owner. |
 | `pipelines/` | Fabric pipeline definitions. | Shared. Each pipeline has one owner. |
-| `action/` | Activator rules, Power Automate flows and the SharePoint review-case list. | Dashboard and action |
+| `action/` | Routing rules and the review-case writer. Notebook 07 uses them in Fabric. Also the design for the Activator rules, the Power Automate flow and the SharePoint list, which was not built. | Dashboard and action |
 | `reports/` | Power BI semantic model and mortgage report. | Dashboard and action |
 | `scripts/` | Local runner for the whole flow. | Integration |
 | `fabric/` | Fabric Git-format items, and the settings file for the deploy script. Notebooks and the KQL schema in it are generated. | Integration |
@@ -70,7 +70,7 @@ This repository holds the build for now. The team may move the build to a separa
 
 ## Deploy to Fabric as code
 
-`scripts/deploy_fabric.ps1` creates or targets a workspace, deploys the items, uploads the synthetic data, and runs the notebooks and the scoring pipeline. Opt-in steps (off by default) can also create a capacity, assign workspace roles, set the KQL retention, schedule the pipeline, add role members, create the SharePoint lists, read the Eventstream endpoint for replay, and connect the workspace to GitHub. You sign in once. It has an offline `--validate` mode and a read-only `--dry-run` mode. It is tested offline only. Nobody has run it in Fabric.
+`scripts/deploy_fabric.ps1` creates or targets a workspace, deploys the items, uploads the synthetic data, and runs the notebooks and the scoring pipeline. Opt-in steps (off by default) can also create a capacity, assign workspace roles, set the KQL retention, schedule the pipeline, add role members, create the SharePoint lists, read the Eventstream endpoint for replay, and connect the workspace to GitHub. You sign in once. It has an offline `--validate` mode and a read-only `--dry-run` mode. Its main steps ran in a real Fabric workspace on 5 November 2026. The opt-in steps have not run in Fabric.
 
 ```powershell
 powershell -File scripts\deploy_fabric.ps1 --validate   # offline, no sign-in
