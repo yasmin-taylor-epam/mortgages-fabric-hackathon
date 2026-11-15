@@ -137,7 +137,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <span class="kicker">Customer Pulse 360 · Challenge 4 · HomeBridge (fictional lender)</span>
     <nav class="tabs-nav no-print" aria-label="Pages">
       <a href="#flow" id="tab-flow" class="tab-link">1 · The flow</a>
-      <a href="#outputs" id="tab-outputs" class="tab-link">2 · What the local run produced</a>
+      <a href="#outputs" id="tab-outputs" class="tab-link">2 · Results</a>
       <a href="#deploy" id="tab-deploy" class="tab-link">3 · Deploy to Fabric</a>
     </nav>
     <label class="flex cursor-pointer gap-2 items-center text-xs bg-base-200 py-1 px-3 rounded-full border border-base-content/10 no-print">
@@ -152,11 +152,11 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
 <section class="wrap" style="padding-block: 2rem 1.25rem;">
   <h1>How one early warning becomes one human action</h1>
   <p class="measure" style="margin-top: 1rem; font-size: 1.12rem;">
-    HomeBridge customers sometimes leave for another lender just before their fixed-rate deal ends. This flow scores each mortgage <strong>90 days before the deal ends</strong>, watches live portal activity, and gives <strong>one servicing adviser</strong> one case to look at. A customer who needs payment help goes to trained support first, whatever the score.
+    HomeBridge customers sometimes leave for another lender just before their fixed-rate deal ends. This flow scores each mortgage <strong>90 days before the deal ends</strong>, watches live portal activity, and gives <strong>one servicing adviser</strong> one case to look at. A customer who needs payment help goes to trained support first, whatever the score. The team built this flow and deployed it to Microsoft Fabric. Where a part was designed but not built, this page says so.
   </p>
   <p style="margin-top: .75rem;">
-    <span class="stamp prop">Proposed design</span>
-    <span class="stamp gap">Partly run in Fabric · see the status below</span>
+    <span class="stamp ok">Built · deployed to Microsoft Fabric</span>
+    <span class="stamp gap">Synthetic data · fictional lender</span>
   </p>
 </section>
 
@@ -168,7 +168,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
       <span class="chip"><i class="d"></i>Data and replay</span>
       <span class="chip"><i class="m"></i>Models and evaluation</span>
       <span class="chip"><i class="a"></i>Dashboard and action</span>
-      <span class="chip"><i class="n"></i>No single owner</span>
+      <span class="chip"><i class="n"></i>Shared</span>
     </div>
   </div>
 
@@ -224,12 +224,12 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
       <text class="t" x="520" y="466" text-anchor="middle">KQL journeys</text>
       <text class="s" x="520" y="485" text-anchor="middle">stages · stalls · retries</text>
       <circle class="badge" cx="442" cy="432" r="13"/><text class="badge-t" x="442" y="436">6</text></g>
-    <g id="stop-7"><title>Step 7: Join live events with account context and score summaries</title>
+    <g id="stop-7"><title>Step 7: Join live events with account context and score summaries. The copy pipeline for this step was not built in Fabric.</title>
       <rect class="node own-data" x="626" y="432" width="168" height="76" rx="8"/>
       <text class="t" x="710" y="466" text-anchor="middle">Join context</text>
       <text class="s" x="710" y="485" text-anchor="middle">versioned account copy</text>
       <circle class="badge" cx="632" cy="432" r="13"/><text class="badge-t" x="632" y="436">7</text></g>
-    <g id="stop-8"><title>Step 8: Copy cutoff-filtered journey results into Lakehouse staging</title>
+    <g id="stop-8"><title>Step 8: Copy cutoff-filtered journey results into Lakehouse staging. This pipeline was not built in Fabric.</title>
       <rect class="node own-none" x="816" y="432" width="168" height="76" rx="8"/>
       <text class="t" x="900" y="466" text-anchor="middle">Stage for scoring</text>
       <text class="s" x="900" y="485" text-anchor="middle">cutoff-filtered copy</text>
@@ -243,7 +243,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <path class="edge" d="M604 133 H700 V300 H928" id="edge-3-9"><title>Trained models feed scoring</title></path>
     <path class="edge" d="M984 470 H1010 V339" id="edge-8-9"><title>Staged journey results feed scoring</title></path>
 
-    <g id="stop-9"><title>Step 9: Scheduled scoring and segment assignment</title>
+    <g id="stop-9"><title>Step 9: Scoring and segment assignment. Designed to run on a schedule. In the build it runs on demand.</title>
       <rect class="node own-model" x="930" y="262" width="160" height="76" rx="8"/>
       <text class="t" x="1010" y="295" text-anchor="middle">Scheduled scoring</text>
       <text class="s" x="1010" y="314" text-anchor="middle">risk + segment</text>
@@ -268,10 +268,10 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <path class="edge" d="M1090 300 H1118"/>
     <path class="edge" d="M1182 300 H1208"/>
 
-    <g id="stop-10"><title>Step 10: Activator and Power Automate</title>
+    <g id="stop-10"><title>Step 10: Fabric notebook 07 applies the routing rules. Activator and Power Automate were designed but not built.</title>
       <rect class="node own-act" x="1210" y="262" width="160" height="76" rx="8"/>
-      <text class="t" x="1290" y="295" text-anchor="middle">Activator + flow</text>
-      <text class="s" x="1290" y="314" text-anchor="middle">Power Automate</text>
+      <text class="t" x="1290" y="295" text-anchor="middle">Route cases</text>
+      <text class="s" x="1290" y="314" text-anchor="middle">Fabric notebook 07</text>
       <circle class="badge" cx="1216" cy="262" r="13"/><text class="badge-t" x="1216" y="266">10</text></g>
 
     <!-- payment-support gate -->
@@ -288,24 +288,24 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <path class="edge" d="M1290 436 V482"/>
     <text class="tag" x="1300" y="462">no</text>
 
-    <g id="stop-case"><title>Internal review case in a secured SharePoint list</title>
+    <g id="stop-case"><title>Internal review case in a Lakehouse table</title>
       <path class="node own-act" d="M1206 504 v54 a84 12 0 0 0 168 0 v-54"/>
       <ellipse class="node own-act" cx="1290" cy="504" rx="84" ry="12"/>
       <text class="t" x="1290" y="532" text-anchor="middle">Review case</text>
       <text class="s" x="1290" y="550" text-anchor="middle">one open per key</text></g>
     <path class="edge" d="M1290 572 V606"/>
-    <g id="stop-adviser"><title>The servicing adviser owns the review</title>
+    <g id="stop-adviser"><title>The servicing adviser sees the case on the staff website and owns the review</title>
       <rect class="endnode" x="1190" y="608" width="200" height="46" rx="23"/>
       <text class="t" x="1290" y="636" text-anchor="middle">Servicing adviser</text></g>
 
     <!-- stamps -->
     <g id="clock-60"><rect class="stampbox" x="40" y="565" width="450" height="30" rx="4"/>
-      <text class="stamptext" x="56" y="585">PROPOSED TARGET · 60 s: live event visible in Customer 360</text></g>
+      <text class="stamptext" x="56" y="585">TARGET, NOT MEASURED · 60 s: live event to Customer 360</text></g>
     <g id="clock-15"><rect class="stampbox" x="628" y="320" width="290" height="30" rx="4"/>
-      <text class="stamptext" x="640" y="340">PROPOSED TARGET · scoring every 15 min</text></g>
-    <g id="clock-5"><rect class="stampbox" x="1020" y="590" width="150" height="46" rx="4"/>
-      <text class="stamptext" x="1032" y="609">PROPOSED TARGET</text>
-      <text class="stamptext" x="1032" y="626">5 min: run → alert</text></g>
+      <text class="stamptext" x="640" y="340">15-MIN SCHEDULE · DESIGNED, NOT RUN</text></g>
+    <g id="clock-5"><rect class="stampbox" x="1016" y="590" width="166" height="46" rx="4"/>
+      <text class="stamptext" x="1028" y="609">ON DEMAND</text>
+      <text class="stamptext" x="1028" y="626">staff start step 10</text></g>
     <text class="s" x="1010" y="206" text-anchor="middle" style="font-style: italic">scores and segments written after each successful run</text>
   </svg>
   </div>
@@ -318,7 +318,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <span class="chip"><svg width="26" height="16" viewBox="0 0 26 16"><rect x="1" y="2" width="24" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Step that runs</span>
     <span class="chip"><svg width="20" height="16" viewBox="0 0 20 16"><path d="M10 1 L19 8 L10 15 L1 8z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Check</span>
     <span class="chip"><svg width="30" height="10" viewBox="0 0 30 10"><path d="M1 5h26" stroke="var(--color-error)" stroke-width="2.6"/></svg>Priority path (the risk)</span>
-    <span class="chip"><svg width="30" height="16" viewBox="0 0 30 16"><rect x="1" y="2" width="28" height="12" rx="2" fill="none" stroke="var(--color-warning)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>Target, not a measured result</span>
+    <span class="chip"><svg width="30" height="16" viewBox="0 0 30 16"><rect x="1" y="2" width="28" height="12" rx="2" fill="none" stroke="var(--color-warning)" stroke-width="1.5" stroke-dasharray="4 3"/></svg>Timing note: a target or how it runs</span>
     <span class="chip"><span class="pill-s" style="background: var(--color-primary); color: var(--color-primary-content); border-color: transparent;">n</span>Blueprint step number</span>
   </div>
 </section>
@@ -329,11 +329,11 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <p class="kicker" id="clocks-title">Pause here · three separate clocks</p>
     <p style="font-family: var(--serif); font-size: clamp(1.3rem, 2.6vw, 1.9rem); line-height: 1.2; margin-top: .4rem; max-width: 34ch;">A live event and a fresh score are two different things.</p>
     <div class="grid gap-6" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1.5rem;">
-      <div><div class="clock">60 s</div><p class="small" style="font-size:.9rem">From a live event to the Customer 360 view.</p></div>
-      <div><div class="clock">15 min</div><p class="small" style="font-size:.9rem">Between scoring runs. They refresh features, segments and risk. They do not retrain the models.</p></div>
-      <div><div class="clock">5 min</div><p class="small" style="font-size:.9rem">From a successful scoring run to the alert.</p></div>
+      <div><div class="clock">60 s</div><p class="small" style="font-size:.9rem">Target from a live event to the Customer 360 view. Not measured end to end. In one test by hand, events reached Eventhouse in 31 to 46 seconds.</p></div>
+      <div><div class="clock">15 min</div><p class="small" style="font-size:.9rem">Designed gap between scoring runs. They refresh features, segments and risk. They do not retrain the models. The schedule was not switched on. In the build, scoring runs on demand.</p></div>
+      <div><div class="clock">1–3 min</div><p class="small" style="font-size:.9rem">From "Process new events now" on the staff website to new review cases. Notebook 07 runs as a Fabric job.</p></div>
     </div>
-    <p style="margin-top: 1rem;"><span class="stamp prop">Proposed targets · not measured · not platform guarantees</span></p>
+    <p style="margin-top: 1rem;"><span class="stamp prop">60 s and 15 min are design targets · not measured · not platform guarantees</span></p>
     <p class="why">If scoring fails, the last score is marked stale, the live view still updates, and no new risk event fires (T05, INV-5).</p>
   </div>
 </aside>
@@ -373,16 +373,16 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     </div>
     <div>
       <ol class="stops" style="max-width: 78ch;">
-        <li><span class="n">1</span><h3>Load raw exports</h3><p class="muted">Pipelines load dated account, payment, transfer-request and servicing exports into raw Lakehouse tables.</p><p class="meta">Data and replay · pipelines/</p></li>
+        <li><span class="n">1</span><h3>Load raw exports</h3><p class="muted">Notebook 00 loads dated account, payment, transfer-request and servicing exports into raw Lakehouse tables. It stands in for a designed load pipeline.</p><p class="meta">Data and replay · notebooks/</p></li>
         <li><span class="n">2</span><h3>Freeze feature snapshots</h3><p class="muted">Notebooks check keys and ledger history, then build clean histories and one frozen snapshot per mortgage, deal cycle and cutoff.</p><p class="meta">Notebooks · shared</p></li>
         <li><span class="n">3</span><h3>Train the models</h3><p class="muted">One model estimates refinancing risk. One clustering model groups behaviour. MLflow records versions and feature signatures.</p><p class="meta">Models and evaluation</p></li>
         <li><span class="n">4</span><h3>Publish Gold tables</h3><p class="muted">Scores, segments and evidence references land in Gold Delta tables. A completed-run marker makes them eligible. Power BI reads them in Direct Lake mode.</p><p class="meta">Dashboard and action · reports/</p></li>
-        <li><span class="n">5</span><h3>Replay live events</h3><p class="muted">Eventstream replays a renewal-portal fault into Eventhouse. Each event keeps its original ID and timestamps.</p><p class="meta">Data and replay · kql/</p></li>
+        <li><span class="n">5</span><h3>Replay live events</h3><p class="muted">Eventstream carries portal events into Eventhouse: a replay of the synthetic history, and single events from a demo customer website. Each event keeps its original ID and timestamps. The Eventstream's Eventhouse destination is set up by hand in the Fabric portal.</p><p class="meta">Data and replay · kql/</p></li>
         <li><span class="n">6</span><h3>Read the journey</h3><p class="muted">KQL finds three patterns: stages and portal errors in order, days stuck at one stage, and retries after a software error.</p><p class="meta">Data and replay · kql/</p></li>
-        <li><span class="n">7</span><h3>Add account context</h3><p class="muted">A pipeline copies versioned account context and finished score summaries into Eventhouse. KQL joins them with accepted live events.</p><p class="meta">Data and replay · pipelines/</p></li>
-        <li><span class="n">8</span><h3>Stage the journey results</h3><p class="muted">A separate pipeline copies cutoff-filtered journey results into Lakehouse staging tables, for the notebooks to combine with dated history.</p><p class="meta">Pipelines · shared</p></li>
-        <li><span class="n">9</span><h3>Score on a schedule</h3><p class="muted">A pipeline scores and assigns segments on a schedule. For the replay, the team also starts one run by hand. A failed run leaves the last score marked stale.</p><p class="meta">Models and evaluation · pipelines/</p></li>
-        <li><span class="n">10</span><h3>Create one review case</h3><p class="muted">Activator and Power Automate create an internal case for one adviser in a secured SharePoint list. The writer checks payment-support needs first. A repeat write reads the existing case.</p><p class="meta">Dashboard and action · action/</p></li>
+        <li><span class="n">7</span><h3>Add account context</h3><p class="muted">A pipeline copies versioned account context and finished score summaries into Eventhouse. KQL joins them with accepted live events. The copy pipeline runs in the local build. It was not built in Fabric.</p><p class="meta">Data and replay · pipelines/</p></li>
+        <li><span class="n">8</span><h3>Stage the journey results</h3><p class="muted">A separate pipeline copies cutoff-filtered journey results into Lakehouse staging tables, for the notebooks to combine with dated history. It runs in the local build. It was not built in Fabric, so scores in Fabric use no live journey events.</p><p class="meta">Pipelines · shared</p></li>
+        <li><span class="n">9</span><h3>Score each mortgage</h3><p class="muted">A pipeline scores each open mortgage and assigns a segment with the registered MLflow models. It is designed to run on a schedule. In the build it runs on demand. A failed run leaves the last score marked stale.</p><p class="meta">Models and evaluation · pipelines/</p></li>
+        <li><span class="n">10</span><h3>Create one review case</h3><p class="muted">Fabric notebook 07 applies the routing rules. It checks payment-support needs first. It writes one internal review case for one adviser to a Lakehouse table. A repeat write reads the existing case. The staff website shows the cases. Staff start the notebook with "Process new events now". The Activator, Power Automate and SharePoint route is designed in <code>action/</code>. It was not built.</p><p class="meta">Dashboard and action · notebooks/, action/</p></li>
       </ol>
     </div>
   </div>
@@ -391,7 +391,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
 <!-- RULES -->
 <section class="wrap" aria-labelledby="rules-title" style="padding-block: 0 2.5rem;">
   <h2 id="rules-title">Rules that must hold</h2>
-  <p class="muted measure" style="margin: .5rem 0 1rem;">These come from the blueprint's build specification. The demo must pass them.</p>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">These come from the blueprint's build specification. The repository's automated tests check them on the local build.</p>
   <div style="max-width: 90ch;">
     <div class="rule"><span class="id">INV-1</span><span>An active payment-support request goes to trained servicing staff first, whatever the churn score.</span></div>
     <div class="rule"><span class="id">INV-2</span><span>Features use only data known at the checkpoint. Both <code>occurred_at</code> and <code>ingested_at</code> must be at or before <code>cutoff_at</code>.</span></div>
@@ -402,7 +402,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   </div>
 
   <details class="disc" style="margin-top: 1.5rem;">
-    <summary>Failure cases the demo must pass (T01 to T07)</summary>
+    <summary>Failure cases the build must pass (T01 to T07)</summary>
     <table class="tbl">
       <thead><tr><th>ID</th><th>Case</th><th>Expected result</th></tr></thead>
       <tbody>
@@ -418,86 +418,50 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   </details>
 </section>
 
-<!-- STATUS -->
-<aside class="pause">
-  <div class="wrap" style="padding-block: 2.25rem;">
-    <p class="kicker">Where the build stood · 5 November, before the first Fabric run</p>
-    <h2 style="margin-top: .3rem;">The code exists and runs locally. Fabric has not run it yet.</h2>
-    <div class="figure-scroll" style="margin-top: 1.25rem;" role="img" aria-label="Status chain. Three work packages were built, merged in pull request 9 and passed local tests. Pull request 10 adds the deploy script, which passed offline checks. Running in Fabric is an evidence gap.">
-    <svg viewBox="0 0 1200 250" xmlns="http://www.w3.org/2000/svg" id="fig-status">
-      <title>Build status chain</title>
-      <g id="st-main"><rect class="node own-none" x="20" y="60" width="170" height="80" rx="8"/><text class="t" x="105" y="94" text-anchor="middle">main</text><text class="s" x="105" y="114" text-anchor="middle">blueprint page + folders</text></g>
-      <g id="st-data"><rect class="node own-data" x="225" y="60" width="170" height="80" rx="8"/><text class="t" x="310" y="94" text-anchor="middle">Data and replay</text><text class="s" x="310" y="114" text-anchor="middle">69 files vs main</text></g>
-      <g id="st-model"><rect class="node own-model" x="430" y="60" width="170" height="80" rx="8"/><text class="t" x="515" y="94" text-anchor="middle">Models, evaluation</text><text class="s" x="515" y="114" text-anchor="middle">99 files vs main</text></g>
-      <g id="st-act"><rect class="node own-act" x="635" y="60" width="170" height="80" rx="8"/><text class="t" x="720" y="94" text-anchor="middle">Dashboard, action</text><text class="s" x="720" y="114" text-anchor="middle">84 files vs main</text></g>
-      <g id="st-int"><rect class="node" x="840" y="60" width="150" height="80" rx="8"/><text class="t" x="915" y="94" text-anchor="middle">PR #9</text><text class="s" x="915" y="114" text-anchor="middle">merged + local run</text></g>
-      <g id="st-deploy"><rect class="node" x="1020" y="60" width="150" height="80" rx="8"/><text class="t" x="1095" y="94" text-anchor="middle">PR #10</text><text class="s" x="1095" y="114" text-anchor="middle">deploy script</text></g>
-      <g id="st-fabric"><rect class="gapnode" x="1020" y="170" width="150" height="56" rx="8"/><text class="t" x="1095" y="194" text-anchor="middle">Run in Fabric</text><text class="s" x="1095" y="212" text-anchor="middle">needs your sign-in</text></g>
-      <path class="edge" d="M190 100 H223"/><path class="edge" d="M395 100 H428"/><path class="edge" d="M600 100 H633"/><path class="edge" d="M805 100 H838"/><path class="edge" d="M990 100 H1018"/><path class="edge dash" d="M1095 140 V168"/>
-      <text class="s" x="310" y="160" text-anchor="middle">Built locally</text>
-      <text class="s" x="515" y="160" text-anchor="middle">Built locally</text>
-      <text class="s" x="720" y="160" text-anchor="middle">Built locally</text>
-      <text class="s" x="915" y="160" text-anchor="middle">Open · tests pass locally</text>
-      <g><rect class="stampbox" x="20" y="195" width="520" height="30" rx="4"/><text class="stamptext" x="34" y="215">MEASURED · PR #9: 80 + 22 + 64 + 82 tests; PR #10: 77 offline tests</text></g>
-      <g><rect class="stampbox" style="stroke: var(--color-error)" x="580" y="195" width="400" height="30" rx="4"/><text class="stamptext" style="fill: var(--color-error)" x="594" y="215">EVIDENCE GAP · nothing has run in Fabric</text></g>
-    </svg>
-    </div>
-    <p class="why"><strong>Why this form:</strong> a chain shows what depends on what, and which link is still dashed. <strong>Trade-off:</strong> passing tests show the code is consistent, not that Fabric accepts it. The test counts come from the pull request descriptions and the session reports.</p>
-    <p class="why"><strong>Update (the figure above is a snapshot):</strong> the deploy script has since run in a real Fabric workspace. On 5 November 2026 the workspace, core items, data upload, notebooks, pipeline and model steps ran and finished. On 9 November the model step ran again, and all four report pages exported without an error. On 10 November notebook 05 wrote the evaluation report in Fabric. The Eventstream destination is still a manual portal step, and some opt-in steps are not confirmed. See <code>docs/fabric-deployment.md</code> and <code>docs/known-limits.md</code>.</p>
-  </div>
-</aside>
-
-<!-- NOT SPECIFIED -->
+<!-- OUT OF SCOPE -->
 <section class="wrap" aria-labelledby="ns-title" style="padding-block: 2.5rem 3rem;">
-  <h2 id="ns-title">Deliberately not decided</h2>
+  <h2 id="ns-title">Out of scope</h2>
   <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
-    <li>Alert thresholds. The team freezes them on validation data.</li>
-    <li>Segment names. They follow inspection of the clusters.</li>
     <li>Mortgage default prediction. This build predicts external refinancing, not failure to repay.</li>
-    <li>Contact scripts and customer messages.</li>
-    <li>Fabric capacity and licences.</li>
+    <li>Customer messages, contact scripts, and rate or credit decisions (INV-6). A person decides the next step.</li>
+    <li>Real customer data. All data is synthetic.</li>
   </ul>
-  <p class="muted small" style="margin-top: 1.5rem; font-size: .8rem;">Source: the blueprint page (<code>site/index.html</code> on main) and the three work-package branches. Fictional company and proposed targets. No results are claimed.</p>
+  <p class="muted small" style="margin-top: 1.5rem; font-size: .8rem;">Source: the blueprint page (<code>site/index.html</code>), <code>docs/fabric-deployment.md</code> and <code>docs/evaluation-results.md</code>. HomeBridge is a fictional lender. Timings are design targets unless the text says they were measured.</p>
 </section>
 </main>
 
 <!-- PAGE 2: OUTPUTS -->
 <main id="view-outputs" hidden>
 <section class="wrap" style="padding-block: 2rem 1.25rem;">
-  <h1>What the local run actually produced</h1>
+  <h1>What the model produced</h1>
   <p class="measure" style="margin-top: 1rem; font-size: 1.12rem;">
-    The integration session ran the whole flow on made-up customers on 3 November. It scored <strong>303 open mortgages</strong>. Most look low-risk. <strong>141</strong> cross the normal alert line, but only <strong>6</strong> cross the strict line that matches ten reviews. The model is better than the simple rules, but only moderately good.
+    The model release is <code>hb-refi-clf:2</code>. Its alert line is a score of <strong>0.5062</strong>. On 923 test mortgages it flagged 32. <strong>21 of the 32 really left: 65.6%.</strong> Random picks would be right 22.2% of the time. In a live-style run on <strong>303 open mortgages</strong> it flagged <strong>27</strong>. Each one gets a review case. The model is clearly better than simple rules, but only moderately good.
   </p>
   <p style="margin-top: .75rem;">
-    <span class="stamp ok">Measured · local run, 3 Nov, read from the output files</span>
+    <span class="stamp ok">Measured · evaluation by notebook 05 in Fabric, 10 Nov 2026</span>
     <span class="stamp gap">Synthetic data · not real borrowers</span>
   </p>
 </section>
 
 <!-- SIGNATURE FIGURE: 303 accounts -->
 <section class="wrap" aria-labelledby="bar-title" style="padding-bottom: 2.5rem;">
-  <h2 id="bar-title">The 303 scored mortgages, split by two alert lines</h2>
-  <p class="muted measure" style="margin: .5rem 0 1rem;">Each mortgage gets a score from 0 to 1. Think of it as the estimated chance the customer refinances with another lender. Two lines decide who is flagged.</p>
-  <div class="figure-scroll" role="img" aria-label="One bar of 303 mortgages: 162 below the normal alert line, 135 between the lines, and 6 above the strict line.">
+  <h2 id="bar-title">The 303 open mortgages, split by the alert line</h2>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">Each mortgage gets a score from 0 to 1. Think of it as the estimated chance the customer refinances with another lender. One line decides who is flagged.</p>
+  <div class="figure-scroll" role="img" aria-label="One bar of 303 open mortgages: 276 below the alert line and 27 at or above it.">
   <svg viewBox="0 0 1100 300" xmlns="http://www.w3.org/2000/svg" id="fig-bar">
-    <title>303 scored mortgages split by two alert lines</title>
-    <text class="lbl-b" x="30" y="40">One scoring run · 303 mortgages</text>
-    <g id="bar-low"><title>162 below 0.198</title><rect class="bar-low node" x="30" y="70" width="534" height="70"/></g>
-    <g id="bar-mid"><title>135 between 0.198 and 0.559</title><rect class="bar-mid node" x="564" y="70" width="446" height="70"/></g>
-    <g id="bar-top"><title>6 at or above 0.559</title><rect class="bar-top node" x="1010" y="70" width="60" height="70"/></g>
-    <text class="lbl-b" x="297" y="112" text-anchor="middle">162 · below the normal line</text>
-    <text class="lbl-b" x="787" y="112" text-anchor="middle">135 · flagged by the normal line only</text>
-    <text class="lbl-b" x="1040" y="112" text-anchor="middle" style="fill: var(--color-error-content)">6</text>
-    <path class="axis" d="M564 150 V170"/><path class="axis" d="M1010 150 V170"/>
-    <text class="lbl-b" x="564" y="190" text-anchor="middle">Normal line: score 0.198</text>
-    <text class="lbl" x="564" y="208" text-anchor="middle">best balance of catching leavers and false alarms</text>
-    <text class="lbl-b" x="1010" y="190" text-anchor="end">Strict line: score 0.559</text>
-    <text class="lbl" x="1010" y="208" text-anchor="end">sized for about ten reviews per run</text>
-    <g><rect class="stampbox" x="30" y="236" width="360" height="30" rx="4"/><text class="stamptext" x="44" y="256">MEASURED · account_scores.parquet, 303 rows</text></g>
-    <g><rect class="stampbox" style="stroke: var(--color-error)" x="560" y="236" width="510" height="30" rx="4"/><text class="stamptext" style="fill: var(--color-error)" x="574" y="256">EVIDENCE GAP · lines were set on older data, see the live-run problem</text></g>
+    <title>303 open mortgages split by the alert line</title>
+    <text class="lbl-b" x="30" y="40">One live-style scoring run · 303 open mortgages · as of 16 October 2026</text>
+    <g id="bar-low"><title>276 below 0.5062</title><rect class="bar-low node" x="30" y="70" width="947" height="70"/></g>
+    <g id="bar-top"><title>27 at or above 0.5062</title><rect class="bar-top node" x="977" y="70" width="93" height="70"/></g>
+    <text class="lbl-b" x="503" y="112" text-anchor="middle">276 · below the alert line, no renewal case</text>
+    <text class="lbl-b" x="1023" y="112" text-anchor="middle" style="fill: var(--color-error-content)">27</text>
+    <path class="axis" d="M977 150 V170"/>
+    <text class="lbl-b" x="977" y="190" text-anchor="end">Alert line: score 0.5062</text>
+    <text class="lbl" x="977" y="208" text-anchor="end">set so that at least 60% of alerts were right on the validation data</text>
+    <g><rect class="stampbox" x="30" y="236" width="420" height="30" rx="4"/><text class="stamptext" x="44" y="256">MEASURED · 27 flagged, ranks 1 to 27 in the queue</text></g>
   </svg>
   </div>
-  <p class="why"><strong>Why this form:</strong> one bar shows at a glance how few mortgages the strict line picks out. <strong>Trade-off:</strong> it does not say which flagged mortgages really leave. The next charts do that.</p>
+  <p class="why"><strong>Why this form:</strong> one bar shows at a glance how few mortgages the alert line picks out. <strong>Trade-off:</strong> these mortgages have no outcome yet, so the bar cannot say which flagged ones really leave. The test results below do that.</p>
 </section>
 
 <!-- GLOSSARY -->
@@ -513,12 +477,13 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
         <tr><td class="term">Synthetic data</td><td class="num">3,304 cycles</td><td>Made-up customers that look realistic. A "cycle" is one fixed-rate deal on one mortgage. Nothing here comes from a real person.</td><td><span class="verdict meh">context</span></td></tr>
         <tr><td class="term">Quarantined records</td><td class="num">35 of ~130,000</td><td>Rows set aside because they were broken: unknown account, conflicting borrower, duplicate with different values and so on. The checks caught them on purpose.</td><td><span class="verdict good">working</span></td></tr>
         <tr><td class="term">Score</td><td class="num">avg 0.22</td><td>The model's estimate of the chance a mortgage refinances elsewhere. The average of 0.22 matches the 22 in 100 real rate in the test months.</td><td><span class="verdict good">sensible</span></td></tr>
-        <tr><td class="term">Accuracy</td><td class="num">62%</td><td>Share of all calls that were right. Misleading here: always guessing "nobody leaves" scores 78%. So we look at the numbers below instead.</td><td><span class="verdict meh">ignore</span></td></tr>
-        <tr><td class="term">Precision</td><td class="num">32%</td><td>Of the mortgages the model flagged, how many really left. About 1 in 3. The rules baseline managed 24%.</td><td><span class="verdict meh">modest</span></td></tr>
-        <tr><td class="term">Recall</td><td class="num">64%</td><td>Of the mortgages that really left, how many the model flagged. About 2 in 3. The rules baseline caught 19%.</td><td><span class="verdict good">decent</span></td></tr>
+        <tr><td class="term">Alert line</td><td class="num">0.5062</td><td>A mortgage with a score at or above this line is flagged. A named rule saved with the model sets it: at least 60% of alerts right on the April validation data (460 mortgages).</td><td><span class="verdict meh">context</span></td></tr>
+        <tr><td class="term">Accuracy</td><td class="num">78.9%</td><td>Share of all calls that were right. Misleading here: always guessing "nobody leaves" scores 77.8%. So we look at the numbers below instead.</td><td><span class="verdict meh">ignore</span></td></tr>
+        <tr><td class="term">Precision</td><td class="num">65.6%</td><td>Of the 32 mortgages the model flagged, 21 really left. About 2 in 3. A 95% range is roughly 48% to 80%. The rules baseline managed 20%.</td><td><span class="verdict good">good</span></td></tr>
+        <tr><td class="term">Recall</td><td class="num">10.2%</td><td>Of the 205 mortgages that really left, the alerts found 21. About 1 in 10. This choice protects adviser time. A lower line (0.198) finds 64%, but flags 405 of 923 mortgages and is right only 32% of the time. The rules baseline caught 2%.</td><td><span class="verdict meh">low by choice</span></td></tr>
         <tr><td class="term">Lift at ten</td><td class="num">3.4×</td><td>Take the ten highest scores each month. Their refinance rate is 3.4 times the normal 22%. The rules baseline gets 1.0×, which is no better than random.</td><td><span class="verdict good">strong</span></td></tr>
-        <tr><td class="term">Average precision</td><td class="num">0.41</td><td>One number for how well flagged mortgages are ranked. Random guessing gives about 0.22. Rules gave 0.22. The model gives 0.41.</td><td><span class="verdict good">better</span></td></tr>
-        <tr><td class="term">ROC AUC</td><td class="num">0.67</td><td>Pick one leaver and one stayer at random. How often does the leaver score higher? 0.5 is a coin flip and 1.0 is perfect. 0.67 is a real but modest signal.</td><td><span class="verdict meh">modest</span></td></tr>
+        <tr><td class="term">Average precision</td><td class="num">0.41</td><td>One number for how well the score ranks leavers above stayers, across all lines. Random guessing gives about 0.22. Rules gave 0.225. The model gives 0.409.</td><td><span class="verdict good">better</span></td></tr>
+        <tr><td class="term">ROC AUC</td><td class="num">0.67</td><td>Pick one leaver and one stayer at random. How often does the leaver score higher? 0.5 is a coin flip and 1.0 is perfect. The model gives 0.672, the rules baseline 0.509. A real but modest signal.</td><td><span class="verdict meh">modest</span></td></tr>
         <tr><td class="term">Calibration</td><td class="num">error 0.02</td><td>When the model says 30%, do about 30% really leave? Yes, closely. See the chart below.</td><td><span class="verdict good">trustworthy</span></td></tr>
         <tr><td class="term">Proxy check</td><td class="num">0 flagged</td><td>A test that the model is not quietly using payment-hardship signals or loan balance. None of its inputs track them closely.</td><td><span class="verdict good">clean</span></td></tr>
       </tbody>
@@ -593,7 +558,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
 <!-- ONE ACCOUNT EXPLAINED -->
 <aside class="pause">
   <div class="wrap" style="padding-block: 2.25rem;">
-    <p class="kicker">One mortgage, explained · highest score in the run</p>
+    <p class="kicker">One mortgage, explained · highest score in the scoring run with cutoff 15 October 2026</p>
     <h2 style="margin-top: .3rem;">Why the model gave HB-M-003197 a score of 0.93</h2>
     <p class="muted measure" style="margin: .5rem 0 1rem;">Every scored mortgage keeps its top reasons. Here are the top eight for the highest-scored one. A bar to the right pushes the score up. A bar to the left pushes it down. The numbers are "points added before the score is turned into a chance"; bigger means a stronger push.</p>
     <div class="figure-scroll" role="img" aria-label="Eight reasons for one high-risk mortgage. The strongest is that the latest transfer request was abandoned.">
@@ -621,14 +586,14 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
       <g class="lbl-b"><text x="827" y="36">+1.60</text><text x="604" y="76">+0.70</text><text x="527" y="116">+0.39</text><text x="523" y="156">+0.38</text><text x="519" y="196">+0.37</text><text x="491" y="236">+0.25</text><text x="428" y="276">−0.16 (pulls the score down)</text><text x="464" y="316">+0.14</text></g>
     </svg>
     </div>
-    <p class="why"><strong>Why this form:</strong> bars from a centre line show what pushes a score up and what pulls it down for one account. <strong>Trade-off:</strong> these reasons explain the score. They do not prove why the customer would really leave, and the account is synthetic. Across all 303 mortgages, the top reason was the deal length for 163 of them.</p>
+    <p class="why"><strong>Why this form:</strong> bars from a centre line show what pushes a score up and what pulls it down for one account. <strong>Trade-off:</strong> these reasons explain the score. They do not prove why the customer would really leave, and the account is synthetic. Across all 303 mortgages in that run, the top reason was the deal length for 163 of them.</p>
   </div>
 </aside>
 
 <!-- SEGMENTS + ALERTS -->
 <section class="wrap" aria-labelledby="seg-title" style="padding-block: 2.5rem;">
   <h2 id="seg-title">Four groups of similar mortgages</h2>
-  <p class="muted measure" style="margin: .5rem 0 1rem;">A separate model sorts mortgages into groups by behaviour. The groups have no names yet. The team names them after looking at the profiles. Numbers below are from the test months.</p>
+  <p class="muted measure" style="margin: .5rem 0 1rem;">A separate model sorts mortgages into groups by behaviour. The groups are numbered, not named. Numbers below are from the test months.</p>
   <div style="overflow-x: auto;">
   <table class="gloss">
     <thead><tr><th>Group</th><th>Test mortgages</th><th>Really refinanced</th><th>What sets it apart</th></tr></thead>
@@ -645,16 +610,15 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
 
 <aside class="pause">
   <div class="wrap" style="padding-block: 2.25rem;">
-    <p class="kicker">The problem to solve before the demo</p>
-    <h2 style="margin-top: .3rem;">Too many alerts for the people available</h2>
+    <p class="kicker">From scores to people</p>
+    <h2 style="margin-top: .3rem;">Every flagged mortgage gets one review case</h2>
     <div class="grid gap-6" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1.25rem;">
-      <div><div class="clock">10</div><p style="font-size:.9rem">Reviews the team can handle per run (the capacity).</p></div>
-      <div><div class="clock">6</div><p style="font-size:.9rem">Mortgages over the strict line in the checkpoint run. This fits the capacity.</p></div>
-      <div><div class="clock" style="color: var(--color-error);">22</div><p style="font-size:.9rem">Mortgages flagged in each later live run with the earlier threshold (0.5593), per the session report. This was over the capacity.</p></div>
+      <div><div class="clock">0.5062</div><p style="font-size:.9rem">The alert line, saved with model release <code>hb-refi-clf:2</code>.</p></div>
+      <div><div class="clock">27</div><p style="font-size:.9rem">Mortgages flagged in the live-style run of 303. Each gets a renewal review case, ranked by score. There is no cap.</p></div>
+      <div><div class="clock">29</div><p style="font-size:.9rem">Review cases in Fabric after notebook 07 ran: 27 renewal, 1 payment support and 1 technical.</p></div>
     </div>
-    <p class="why">The strict line was set on checkpoint data, 90 days before the deal ends. Live runs score mortgages at a different point in the deal, so the line no longer fits. The team needs a cap on live alerts, or a separate live threshold. One test fails after extra live runs, so the script runs them only in demo mode.</p>
-    <p class="why"><strong>Update (historical figures above):</strong> the threshold now comes from a named rule saved with the model release. The rule is <code>min_precision</code> 0.6, which gives a threshold of 0.5062. The live scores flag 27 mortgages. Every flagged mortgage gets a review case, ranked by score. There is no cap.</p>
-    <p style="margin-top: .75rem;"><span class="stamp gap">Reported by the session · live runs not re-run for this page</span></p>
+    <p class="why">Payment support does not wait for a score. An active payment-support request gets a support case first (INV-1). The staff website shows each case with its score, its top reasons and the Fabric table it reads.</p>
+    <p style="margin-top: .75rem;"><span class="stamp ok">Measured · Fabric workspace, 10 Nov 2026</span></p>
   </div>
 </aside>
 
@@ -664,10 +628,11 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
   <ul class="list-disc" style="padding-left: 1.25rem; margin-top: .75rem; max-width: 80ch;">
     <li>Real predictive power. Outcomes in the data come from hidden rules in the generator, not real borrowers.</li>
     <li>That the alerts save customers. That needs real actions and a comparison group.</li>
-    <li>Anything about Fabric. These results come from a local run, not from Fabric. The timing targets are not measured here.</li>
-    <li>The numbers from the case-writer replay (6 renewal cases, 1 payment-support case, 435 cases in the local store). They come from the integration pull request. The case store itself was not inspected for this page.</li>
+    <li>Speed. The 60-second view and the 15-minute scoring targets were not measured.</li>
+    <li>Live journey signals in Fabric scores. The copy pipelines for steps 7 and 8 were not built in Fabric.</li>
+    <li>Precise figures. Precision rests on 32 alerts, and the top-ten lift rests on ten mortgages a month.</li>
   </ul>
-  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>data/output/lakehouse/gold</code> and <code>data/output/reports/evaluation_report.json</code> in the integration worktree, release <code>REL-20261103T182309Z</code>; segment, quarantine and split figures from the same run. Train 1,383, validation 460, test 923 mortgages.</p>
+  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>docs/evaluation-results.md</code>. Release <code>hb-refi-clf:2</code>, evaluation report <code>REL-20261110T121639Z</code>, written by notebook 05 in Fabric on 10 November 2026. A local rebuild with the same data and seed gives the same figures. The example mortgage, segment, calibration, quarantine and split figures come from that rebuild. Train 1,383, validation 460, test 923 mortgages. Review case counts: <code>docs/demo-rehearsal-plan.md</code>.</p>
 </section>
 </main>
 
@@ -679,8 +644,8 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     A script does most of the work. You sign in once in a browser, and it creates the workspace, publishes the items, uploads the data and runs the notebooks. <strong>A few steps stay by hand</strong>, mostly because they need an administrator or a person to approve a connection.
   </p>
   <p style="margin-top: .75rem;">
-    <span class="stamp gap">Partly tested in Fabric · main steps ran on 5 November</span>
-    <span class="stamp prop">From docs/fabric-deployment.md in PR #10</span>
+    <span class="stamp ok">Main steps ran in Fabric · 5 November 2026</span>
+    <span class="stamp prop">Opt-in steps not confirmed in Fabric</span>
   </p>
 </section>
 
@@ -719,7 +684,7 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <h2 style="margin-top: .3rem;">Test on one workspace first</h2>
     <p class="muted measure" style="margin: .5rem 0 1rem;">The main deploy steps ran in a real workspace on 5 November 2026. The Eventstream destination still needs manual portal steps, and some opt-in steps are not confirmed. Test on one workspace first, then run the same script on the main one.</p>
     <ol class="stops" style="max-width: 78ch;">
-      <li><span class="n">1</span><h3>Get the code</h3><p class="muted">Check out the branch for PR #10. It already contains PR #9. You need Python 3.10 or later.</p></li>
+      <li><span class="n">1</span><h3>Get the code</h3><p class="muted">Check out <code>main</code>. You need Python 3.10 or later.</p></li>
       <li><span class="n">2</span><h3>Set the names</h3><p class="muted">Copy <code>fabric.config.example.yml</code> to <code>fabric.config.yml</code>. Set <code>workspace_name</code> and <code>capacity_name</code>. Find the capacity name under Workspace settings, then License info.</p></li>
       <li><span class="n">3</span><h3>Run the three commands</h3><p class="muted">Validate, then dry run, then deploy. Sign in yourself in the browser.</p></li>
       <li><span class="n">4</span><h3>Do the hand steps</h3><p class="muted">The list is below. Do them once, on the workspace you will demo from.</p></li>
@@ -735,8 +700,9 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <thead><tr><th>Step</th><th>Why it stays by hand</th></tr></thead>
     <tbody>
       <tr><td class="term">Purview sensitivity labels</td><td>The API needs an interactive Fabric administrator. It does not accept app identities.</td></tr>
-      <tr><td class="term">Activator rules</td><td>The script does not build them. The published file format has no way to represent a Power Automate action.</td></tr>
-      <tr><td class="term">Power Automate flow and its first connections</td><td>A person must approve the SharePoint connection. Linking an Activator rule to a flow is done in the portal.</td></tr>
+      <tr><td class="term">Activator rules</td><td>Designed, not built. The published file format has no way to represent a Power Automate action. The build uses Fabric notebook 07 instead.</td></tr>
+      <tr><td class="term">Power Automate flow and its first connections</td><td>Designed, not built. A person would need to approve the SharePoint connection and link an Activator rule to the flow in the portal.</td></tr>
+      <tr><td class="term">Eventstream destination</td><td>Fabric rejected both API shapes in a live test on 9 November 2026. The portal steps that worked are in <code>docs/fabric-deployment.md</code>.</td></tr>
       <tr><td class="term">Free trial capacity</td><td>There is no API to start a trial.</td></tr>
       <tr><td class="term">One-time tenant setting</td><td>A Fabric admin must switch on "Service principals can call Fabric public APIs" before an app identity can use the APIs.</td></tr>
       <tr><td class="term">Report role members</td><td>They do not travel with the model files. The opt-in <code>rls</code> step can add them, but it needs the model's XMLA endpoint.</td></tr>
@@ -753,14 +719,14 @@ page 2 (#outputs): surface: Broadsheet - reader task: understand; type voice: sa
     <li><strong>Deployment pipelines:</strong> they also move definitions only, not data.</li>
     <li><strong>Do not turn on <code>prune</code></strong> while other people share the workspace.</li>
   </ul>
-  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>docs/fabric-deployment.md</code> and the PR #10 description. Guidance on moving between workspaces is general Fabric behaviour and is untested here.</p>
+  <p class="muted" style="margin-top: 1.5rem; font-size: .8rem;">Source: <code>docs/fabric-deployment.md</code>. Guidance on moving between workspaces is general Fabric behaviour and is untested here.</p>
 </section>
 </main>
 
 <script>
   (function () {
     var views = { flow: document.getElementById('view-flow'), outputs: document.getElementById('view-outputs'), deploy: document.getElementById('view-deploy') };
-    var titles = { flow: 'HomeBridge renewal early warning: the flow', outputs: 'HomeBridge: what the local run produced', deploy: 'HomeBridge: deploy to Fabric' };
+    var titles = { flow: 'HomeBridge renewal early warning: the flow', outputs: 'HomeBridge: results', deploy: 'HomeBridge: deploy to Fabric' };
     function show() {
       var key = (location.hash || '#flow').replace('#', '');
       if (!views[key]) key = 'flow';
